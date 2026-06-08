@@ -1,0 +1,63 @@
+# === Core / Runtime ===
+# anyio
+# attrs
+bjoern
+# colorlog
+# configurable-json
+# dotmap
+edwh-auth-rbac >=1.0, <2.0
+edwh-migrate>=1.0.0
+pgskewer >= 0.3
+edwh-uuid7
+humanize
+# invoke
+# py4web==1.20240509.1
+py4web==1.20260403.2 # note: 1.20260518.2 has breaking change regarding fixtures
+py4web-debug-tools
+# setuptools
+# tabulate
+# tqdm
+typeguard
+watchdog
+# wheel
+
+# === Data / DB ===
+bcrypt
+# celery
+diskcache
+dill
+filelock
+# plumbum
+psycopg2-binary
+pyjwt[crypto]
+redis
+requests
+TypeDAL>=4.2.0
+yarl
+
+# === Parsing / Content / Metadata ===
+b2sdk < 3
+beautifulsoup4
+iso3166 # landen
+is-isbn
+markdown2
+more-itertools
+# pybars4
+# pysass
+python-slugify
+pytz
+pyyaml
+qrcode[pil]
+ua-parser
+user-agents
+yatl
+
+# === Tooling / Test ===
+pytest
+pytest-cov
+
+#########################################
+# PINNED VERSIONS FOR SECURITY REASONS: #
+#########################################
+urllib3>=2.0.7
+pgqueuer~=0.24.3

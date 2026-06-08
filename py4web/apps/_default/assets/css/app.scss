@@ -1,0 +1,60 @@
+// 1. Include functions first (so you can manipulate colors, SVGs, calc, etc)
+@import "shared_code/modules/css/bootstrap/functions";
+
+// 2. Include any default variable overrides here
+
+//$base-theme-colors: (
+//        "primary": $primary,
+//        "secondary": $secondary,
+//        "success": $success,
+//        "info": $info,
+//        "warning": $warning,
+//        "danger": $danger,
+//        "light": $light,
+//        "dark": $dark,
+//);
+
+// scss-docs-start import-stack (see bootstrap/bootstrap.scss)
+// Configuration
+@import "shared_code/modules/css/bootstrap/variables";
+
+@import "shared_code/modules/css/bootstrap/variables-dark";
+@import "shared_code/modules/css/bootstrap/maps";
+@import "shared_code/modules/css/bootstrap/mixins";
+@import "shared_code/modules/css/bootstrap/utilities";
+
+// Layout & components
+@import "shared_code/modules/css/bootstrap/root";
+@import "shared_code/modules/css/bootstrap/reboot";
+@import "shared_code/modules/css/bootstrap/type";
+@import "shared_code/modules/css/bootstrap/images";
+@import "shared_code/modules/css/bootstrap/containers";
+@import "shared_code/modules/css/bootstrap/grid";
+@import "shared_code/modules/css/bootstrap/tables";
+@import "shared_code/modules/css/bootstrap/forms";
+@import "shared_code/modules/css/bootstrap/buttons";
+@import "shared_code/modules/css/bootstrap/transitions";
+@import "shared_code/modules/css/bootstrap/dropdown";
+@import "shared_code/modules/css/bootstrap/button-group";
+@import "shared_code/modules/css/bootstrap/nav";
+@import "shared_code/modules/css/bootstrap/navbar";
+@import "shared_code/modules/css/bootstrap/card";
+@import "shared_code/modules/css/bootstrap/accordion";
+@import "shared_code/modules/css/bootstrap/breadcrumb";
+@import "shared_code/modules/css/bootstrap/pagination";
+@import "shared_code/modules/css/bootstrap/badge";
+@import "shared_code/modules/css/bootstrap/alert";
+@import "shared_code/modules/css/bootstrap/progress";
+@import "shared_code/modules/css/bootstrap/list-group";
+@import "shared_code/modules/css/bootstrap/close";
+@import "shared_code/modules/css/bootstrap/toasts";
+@import "shared_code/modules/css/bootstrap/modal";
+@import "shared_code/modules/css/bootstrap/tooltip";
+@import "shared_code/modules/css/bootstrap/popover";
+@import "shared_code/modules/css/bootstrap/carousel";
+@import "shared_code/modules/css/bootstrap/spinners";
+@import "shared_code/modules/css/bootstrap/offcanvas";
+@import "shared_code/modules/css/bootstrap/placeholders";
+@import "shared_code/modules/css/bootstrap/helpers";
+@import "shared_code/modules/css/bootstrap/utilities/api";
+// scss-docs-end import-stack

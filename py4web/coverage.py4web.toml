@@ -1,0 +1,12 @@
+[run]
+branch = true
+parallel = true
+sigterm = true
+data_file = "/shared_cache/pytest/.coverage.py4web.runtime"
+source = ["/p4w/apps"]
+
+[report]
+omit = [
+    "/opt/venv/*",
+    "*/site-packages/*",
+]

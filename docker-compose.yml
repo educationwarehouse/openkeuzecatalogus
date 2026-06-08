@@ -1,0 +1,368 @@
+networks:
+  broker:
+    name: broker
+    external: true
+  backend:
+    name: ${PROJECT}_backend
+
+services:
+  migrate:
+    restart: "no"
+    image: remcoboerma/omgeving-migrate:${DOCKER_TAG}
+    build:
+      context: migrate
+      args:
+        PIP_INDEX_URL: https://devpi.edwh.nl/root/pypi/+simple/
+        B2_ATTACHMENTS_KEY: ${B2_ATTACHMENTS_KEY}
+        B2_ATTACHMENTS_KEYID: ${B2_ATTACHMENTS_KEYID}
+    depends_on:
+      - pg-0
+      - redis-master
+    extra_hosts:
+      host.docker.internal: host-gateway
+    environment: &shared_environment
+      PROJECT: ${PROJECT}
+      PYTHONIOENCODING: "UTF-8"
+      HOSTINGDOMAIN: ${HOSTINGDOMAIN}
+      PY4WEB_SUBDOMAIN: ${PY4WEB_SUBDOMAIN}
+      STATE_OF_DEVELOPMENT: ${STATE_OF_DEVELOPMENT:-ONT}
+      REDIS_MASTER_HOST: redis-master
+      REDIS_SLAVE_HOST: redis-slave
+      INSIDE_DOCKER_POSTGRES_URI: ${INSIDE_DOCKER_POSTGRES_URI}
+      POSTGRES_URI: ${INSIDE_DOCKER_POSTGRES_URI}
+      MIGRATE_URI: ${INSIDE_DOCKER_POSTGRES_URI}
+      SCHEMA_VERSION: ${SCHEMA_VERSION}
+      DB_FOLDER: "/tmp"
+      USE_TYPEDAL: 1
+      TYPEDAL_CACHING: 0
+      PYTHONPATH: /pythonpath
+      EMAIL_VERIFICATION_SEED: ${EMAIL_VERIFICATION_SEED}
+      NTFY_ERROR_URL: ${NTFY_ERROR_URL}
+      NTFY_WARNING_URL: ${NTFY_WARNING_URL}
+      NTFY_SORT_URL: ${NTFY_SORT_URL}
+      APPLOG_FAKE: ${APPLOG_FAKE:-0}
+      TOOLS_APPLOG_ID: ${TOOLS_APPLOG_ID}
+      TOOLS_APPLOG_KEY: ${TOOLS_APPLOG_KEY}
+      B2_ATTACHMENTS_BUCKETNAME: ${B2_ATTACHMENTS_BUCKETNAME}
+      MAILGUN_MAX_RETRIES: ${MAILGUN_MAX_RETRIES}
+      MAILGUN_API_KEY: ${MAILGUN_API_KEY}
+      MAILGUN_NEXT_RETRY_DELAY_EXPRESSION: ${MAILGUN_NEXT_RETRY_DELAY_EXPRESSION}
+      UPLOAD_NEXT_RETRY_DELAY_EXPRESSION: ${UPLOAD_NEXT_RETRY_DELAY_EXPRESSION}
+      UPLOAD_MAX_RETRIES: ${UPLOAD_MAX_RETRIES}
+      MAILGUN_DOMAIN: ${MAILGUN_DOMAIN}
+      DEFAULT_FROM_ADDRESS: ${DEFAULT_FROM_ADDRESS}
+      APPLICATION_NAME: ${APPLICATION_NAME}
+      EDDIE_EMAIL: ${EDDIE_EMAIL}
+      ENTREE_FAKE: ${ENTREE_FAKE:-0}
+      ENTREE_CLIENT_ENDPOINT: ${ENTREE_CLIENT_ENDPOINT}
+      ENTREE_CLIENT_ID: ${ENTREE_CLIENT_ID}
+      ENTREE_CLIENT_SECRET: ${ENTREE_CLIENT_SECRET}
+      MIGRATIONS_FILE: /pythonpath/shared_code/migrations/migrations.py
+      MIGRATE_SEED_BASE_URL: ${MIGRATE_SEED_BASE_URL}
+      MIGRATE_SEED_BEARER_TOKEN: ${MIGRATE_SEED_BEARER_TOKEN}
+      TESTING_SNAPSHOT_URL: ${TESTING_SNAPSHOT_URL}
+      # sync:
+      DELEN_SYNC_ENDPOINT: ${DELEN_SYNC_ENDPOINT}
+      DELEN_SYNC_PLATFORM: ${DELEN_SYNC_PLATFORM}
+      DELEN_SYNC_JWT: ${DELEN_SYNC_JWT}
+      DELEN_SYNC_POLICY: ${DELEN_SYNC_POLICY:-full_history}
+      # b2:
+      B2_ATTACHMENTS_KEY: ${B2_ATTACHMENTS_KEY}
+      B2_ATTACHMENTS_KEYID: ${B2_ATTACHMENTS_KEYID}
+      B2_HASH_SALT: ${B2_HASH_SALT}
+      # mail:
+      SMTP_FAKE: ${SMTP_FAKE:-1}
+      SMTP_SERVER: ${SMTP_SERVER}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_SENDER: ${SMTP_SENDER}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_TLS: ${SMTP_TLS}
+      SMTP_SSL: ${SMTP_SSL}
+      # AI:
+      AI_PROVIDER: ${AI_PROVIDER}
+      AI_MODEL: ${AI_MODEL}
+      AI_HOST: ${AI_HOST}
+      AI_API_KEY: ${AI_API_KEY}
+      # testing:
+      PYTEST_MOCK_EMAIL_DOMAIN: ${PYTEST_MOCK_EMAIL_DOMAIN}
+    volumes:
+      - type: bind
+        source: ./migrate/data
+        target: /data
+      - type: bind
+        source: ./migrate/flags
+        target: /flags
+      - type: bind
+        source: ./shared_code
+        target: /pythonpath/shared_code
+        read_only: true
+      - type: bind
+        source: ./shared_cache
+        target: /shared_cache
+      - type: bind
+        source: ./shared_applog
+        target: /shared_applog
+      - type: bind
+        source: ./shared_keys
+        target: /shared_keys
+    networks:
+      - backend
+    command: migrate
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "25m"
+        max-file: "2"
+
+  py4web:
+    image: remcoboerma/omgeving-py4web-${PROJECT}:${DOCKER_TAG}
+    build:
+      context: py4web
+      args:
+        PIP_INDEX_URL: https://devpi.edwh.nl/root/pypi/+simple/
+    restart: unless-stopped
+    depends_on:
+      pg-0:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      pgq-applog:
+        condition: service_healthy
+    stop_grace_period: 2s
+    deploy:
+      replicas: ${PY4WEB_REPLICAS:-3} # indien bjoern
+    expose:
+      - 8000
+      - 7999
+    environment:
+      <<: *shared_environment
+      PY4WEB_PASSWORD_FILE: /p4w/password.txt # to parameterize the _dashboard app
+      PY4WEB_DASHBOARD_MODE: full # if via uwsgi, the py4web's run method isn't ran, we'll have to use the ENV vars
+      PY4WEB_SESSION_SECRET: ${PY4WEB_SESSION_SECRET}
+      PY4WEB_APPLOG_KEY: ${PY4WEB_APPLOG_KEY}
+      PY4WEB_APPLOG_ID: ${PY4WEB_APPLOG_ID}
+      PY4WEB_ERRORLOG: ":stderr"
+      PY4WEB_DEBUG_MODE: ${PY4WEB_DEBUG_MODE:-0}
+      REDASH_SECRET: ${REDASH_SECRET:-}
+      DEBUG_PYCHARM_WITH_BJOERN: "nee"
+      PY4WEB_SESSION_WL: ${PY4WEB_SESSION_WL}
+      PY4WEB_SESSION_SYNC: ${PY4WEB_SESSION_SYNC}
+      SIMPLE_ANALYTICS_URL: ${SIMPLE_ANALYTICS_URL:-https://inzichtin-delen.meteddie.nl}
+      GRIST_API: ${GRIST_API}
+      GRIST_HOST: ${GRIST_HOST}
+      GRIST_DOCUMENT: ${GRIST_DOCUMENT}
+      COVERAGE_PROCESS_START: ${PY4WEB_COVERAGE_PROCESS_START:-}
+    command: python3 py4web_bjoern.py
+    volumes:
+      - type: bind
+        source: ./shared_code
+        target: /pythonpath/shared_code
+        read_only: true
+      # - type: bind
+      #   source: ./py4web/uploaded_attachments
+      #   target: /p4w/apps/front_end/uploads
+      - type: bind
+        source: ./py4web/
+        target: /p4w/
+      - type: bind
+        source: ./migrate/flags
+        target: /flags
+        read_only: true
+      # - type: bind
+      #   source: ./password.txt
+      #   target: /p4w/password.txt
+      - type: bind
+        source: ./py4web/py4web_bjoern.py
+        target: /p4w/py4web_bjoern.py
+      - type: bind
+        source: ./shared_cache
+        target: /shared_cache
+      - type: bind
+        source: ./shared_applog
+        target: /shared_applog
+      - type: bind
+        source: ./shared_keys
+        target: /shared_keys
+      - type: bind # voor bijv. uploads vanuit w2p -> p4w
+        source: ./shared_user_storage
+        target: /shared_user_storage
+    networks:
+      - broker
+      - backend
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.${PROJECT}-py4web-dev.loadbalancer.server.port=8000"
+      - "traefik.http.routers.${PROJECT}-fragments-secure.tls=true"
+      - "traefik.http.routers.${PROJECT}-fragments-secure.tls.certresolver=${CERTRESOLVER}"
+      - "traefik.http.routers.${PROJECT}-fragments-secure.rule=Host(`fragments.${HOSTINGDOMAIN}`)"
+      - "traefik.http.routers.${PROJECT}-fragments-secure.middlewares=strip-front-end-version, cors, www-redirect, edwh-std-security, regio-headers"
+      - "traefik.http.routers.${PROJECT}-py4web-secure.tls=true"
+      - "traefik.http.routers.${PROJECT}-py4web-secure.tls.certresolver=${CERTRESOLVER}"
+      - "traefik.http.routers.${PROJECT}-py4web-secure.rule=Host(`${PY4WEB_SUBDOMAIN}.${HOSTINGDOMAIN}`) || Host(`www.${PY4WEB_SUBDOMAIN}.${HOSTINGDOMAIN}`) || Host(`${HOSTINGDOMAIN}`)"
+      - "traefik.http.routers.${PROJECT}-py4web-secure.middlewares=cors, www-redirect, edwh-std-security, regio-headers"
+    healthcheck:
+      test: [ "CMD", "curl", "-sf", "http://localhost:8000/ping" ]
+      interval: 1m30s
+      timeout: 15s
+      retries: 10
+      start_period: 60s
+      start_interval: 2s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "25m"
+        max-file: "2"
+
+  pgq-scrapers: &pgq
+    build:
+      context: pgq
+    command: pgq run pgq.consumers.scrapers:main --batch-size 1
+    # if you have small jobs, you can use a higher batch size (these will be processed by the same instance)
+    # if you have slower jobs, batch size 1 helps with parallizing (at the cost of more overhead)
+    networks:
+      - backend
+    environment:
+      <<: *shared_environment
+    depends_on:
+      pg-0:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    deploy:
+      replicas: ${PGQ_WORKERS:-3} # workers
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - python -c "import os,time,sys; p='/tmp/pgq-heartbeat'; sys.exit(0 if os.path.exists(p) and (time.time() - os.path.getmtime(p) < 120) else 1)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    volumes:
+      - type: bind
+        source: ./pgq
+        target: /pythonpath/pgq
+        read_only: true
+      - type: bind
+        source: ./shared_code
+        target: /pythonpath/shared_code
+        read_only: true
+      - type: bind
+        source: ./shared_cache
+        target: /shared_cache
+      - type: bind
+        source: ./shared_applog
+        target: /shared_applog
+
+  pgq-applog:
+    <<: *pgq
+    command: pgq run pgq.consumers.applog:main --batch-size 5
+    deploy:
+      replicas: 1
+
+  playwright:
+    build:
+      context: ./playwright
+    depends_on:
+      py4web:
+        condition: service_healthy
+    environment:
+      <<: *shared_environment
+      WEB_BASE_URL: ${WEB_BASE_URL:-http://py4web:8000}
+    volumes:
+      - type: bind
+        source: ./playwright
+        target: /work
+      - type: bind
+        source: ./shared_cache
+        target: /shared_cache
+      - type: bind
+        source: ./shared_applog
+        target: /shared_applog
+    networks:
+      - backend
+    restart: "no"
+
+  ######### redis ####################
+  redis-master: # acts as master
+    image: redis
+    ports:
+      - "${REDIS_PORT}:6379"
+    restart: unless-stopped
+    networks:
+      - backend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "25m"
+        max-file: "2"
+    healthcheck:
+      test: [ "CMD-SHELL", "redis-cli ping | grep PONG" ]
+      interval: 1m30s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+      start_interval: 10s
+
+  redis-slave:
+    restart: unless-stopped
+    image: redis
+    depends_on:
+      - redis-master
+    command: redis-server --slaveof redis-master 6379
+    networks:
+      - backend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "25m"
+        max-file: "2"
+
+  ######### postgresql ###############
+  pg-0: # Standalone PostgreSQL instance
+    build:
+      context: postgres
+    restart: unless-stopped
+    shm_size: '100MB'
+    ports:
+      - "${PGPOOL_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - type: bind
+        source: ./postgres/addendum.conf
+        target: /etc/postgresql/postgresql.conf
+        read_only: true
+      - type: bind
+        source: ./postgres/extensions.sql
+        target: /docker-entrypoint-initdb.d/extensions.sql
+        read_only: true
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_USER=${POSTGRES_USERNAME}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DATABASE}
+      - POSTGRES_MAX_CONNECTIONS=200
+    networks:
+      backend:
+        aliases:
+          - postgres
+          - pgpool
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "25m"
+        max-file: "2"
+    healthcheck:
+      test: pg_isready --dbname=$POSTGRES_DATABASE --username=$POSTGRES_USERNAME -h pg-0
+      interval: 1m30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+      start_interval: 10s
+
+volumes:
+  postgres_data:
+    driver: local

@@ -1,0 +1,103 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "openkeuzecatalogus"
+dynamic = ["version"]
+description = 'Open Keuze Catalogus'
+readme = "README.md"
+requires-python = ">=3.14"
+license = { file = "LICENSE.txt" }
+
+dependencies = [
+    'edwh[pip,bundler,uptime]',
+]
+
+[project.optional-dependencies]
+dev = [
+    "ty",
+]
+
+[project.urls]
+Documentation = "https://github.com/educationwarehouse/openkeuzecatalogus#readme"
+Issues = "https://github.com/educationwarehouse/openkeuzecatalogus/issues"
+Source = "https://github.com/educationwarehouse/openkeuzecatalogus"
+
+[tool.hatch.version]
+path = "__init__.py"
+
+[tool.setuptools]
+packages = []
+
+[tool.semantic_release]
+branch = "openkeuzecatalogus/staging"
+version_variable = "__init__.py:__version__"
+change_log = "CHANGELOG.md"
+upload_to_repository = false
+upload_to_release = false
+build_command = "hatch build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["shared_code"]
+
+[tool.typedal]
+dialect = "postgres"
+folder = "databases"
+caching = false
+pool_size = 1
+migrate_table = "ewh_implemented_features"
+flag_location = "/flags"
+create_flag_location = true
+schema = "public"
+migrate = false  # disable pydal's automatic migration behavior
+fake_migrate = false
+# pydal2sql:
+input = "shared_code/edwh/platform/data_model.py"
+output = "shared_code/edwh/platform/migrations.py"
+magic = true
+function = "define_tables"
+
+[tool.ruff]
+target-version = "py314"
+line-length = 120
+extend-exclude = [
+    "py4web/apps/_dashboard"
+]
+
+[tool.ruff.lint]
+# Start strict-but-practical
+select = [
+    "ANN", # type annotations
+    "D", # docstrings
+    "E", # pycodestyle errors
+    "F", # pyflakes
+    "W", # pycodestyle warnings
+    "I", # import sorting
+    "B", # bugbear
+    "UP", # pyupgrade
+    "SIM", # simplify
+    "C4", # comprehensions
+    "PIE", # misc good practices
+    "RUF", # Ruff-specific rules
+]
+
+ignore = [
+    "ANN401", # sometimes Any is useful
+    "D400", # docstring must end with a period
+    "D401", # docstring must be imperative mood
+    "D404", # docstring may not start with `This` ???
+    "D203", # incompatible with D211; keep no-blank-line-before-class
+    "D213", # incompatible with D212; keep multi-line-summary-first-line
+]
+
+[tool.ty.rules]
+invalid-context-manager = "ignore" # ty claims our ViewMigrationManager doesn't implement __exit__ properly
+
+[tool.ty.src]
+exclude = [
+    "py4web/apps/_dashboard",
+    "venv",
+    "**/tests/**",
+    "**/test_*.py",
+]

@@ -1,0 +1,7 @@
+[services]
+services = "discover"
+minimal = ["py4web", "pgq-applog"]
+include_celeries_in_minimal = "false"
+include_pgq_in_minimal = "true"
+log = ["py4web"]
+db = ["pg-0"]

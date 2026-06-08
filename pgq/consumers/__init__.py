@@ -1,0 +1,1 @@
+"""PGQ consumer entrypoints."""

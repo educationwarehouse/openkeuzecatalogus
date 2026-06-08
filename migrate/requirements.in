@@ -1,0 +1,49 @@
+# === Core / Runtime ===
+# attrs
+# colorlog
+edwh-auth-rbac >=1.0, <2.0
+edwh-migrate>=1.1.0
+# edwh-uuid7
+html2markdown
+# invoke
+# setuptools
+tabulate
+tqdm
+# wheel
+
+# === Data / DB ===
+bcrypt
+# celery
+diskcache
+dill
+filelock
+pgskewer >= 0.3
+# plumbum
+psycopg2-binary
+pyjwt[crypto]
+redis
+requests
+TypeDAL>=4.2.0
+yarl
+
+# === Parsing / Content / Metadata ===
+iso3166 # landen
+markdown2
+more-itertools
+# pybars4
+# pysass
+python-slugify
+pytz
+pyyaml
+# ua-parser
+# user-agents
+yatl
+
+# === Tooling / Test ===
+pytest
+pytest-cov
+
+#########################################
+# PINNED VERSIONS FOR SECURITY REASONS: #
+#########################################
+urllib3>=2.0.7
