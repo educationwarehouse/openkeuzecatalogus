@@ -15,13 +15,13 @@ async-timeout==5.0.1
 asyncpg==0.31.0
     # via pgskewer
 b2sdk==2.12.0
-    # via -r py4web/requirements.in
+    # via -r requirements.in
 bcrypt==5.0.0
-    # via -r py4web/requirements.in
+    # via -r requirements.in
 beautifulsoup4==4.14.3
-    # via -r py4web/requirements.in
+    # via -r requirements.in
 bjoern==3.2.2
-    # via -r py4web/requirements.in
+    # via -r requirements.in
 certifi==2026.5.20
     # via requests
 cffi==2.0.0
@@ -40,7 +40,7 @@ configuraptor==2.5.4
     # via
     #   edwh-migrate
     #   typedal
-coverage==7.14.1
+coverage[toml]==7.14.1
     # via pytest-cov
 croniter==6.2.2
     # via pgqueuer
@@ -50,29 +50,29 @@ cryptography==48.0.0
     #   pyjwt
 dill==0.4.1
     # via
-    #   -r py4web/requirements.in
+    #   -r requirements.in
     #   pgskewer
     #   typedal
 diskcache==5.6.3
-    # via -r py4web/requirements.in
+    # via -r requirements.in
 dotmap==1.3.30
     # via edwh-auth-rbac
 edwh-auth-rbac==1.0.2
-    # via -r py4web/requirements.in
+    # via -r requirements.in
 edwh-migrate==2.0.1
     # via
-    #   -r py4web/requirements.in
+    #   -r requirements.in
     #   edwh-auth-rbac
 edwh-uuid7==0.2.3
     # via
-    #   -r py4web/requirements.in
+    #   -r requirements.in
     #   pgskewer
 expandvars==1.1.2
     # via configuraptor
 filelock==3.29.0
-    # via -r py4web/requirements.in
+    # via -r requirements.in
 humanize==4.15.0
-    # via -r py4web/requirements.in
+    # via -r requirements.in
 idna==3.17
     # via
     #   anyio
@@ -81,9 +81,9 @@ idna==3.17
 iniconfig==2.3.0
     # via pytest
 is-isbn==0.1.0
-    # via -r py4web/requirements.in
+    # via -r requirements.in
 iso3166==2.1.1
-    # via -r py4web/requirements.in
+    # via -r requirements.in
 legacy-cgi==2.6.4
     # via
     #   edwh-migrate
@@ -93,11 +93,11 @@ logfury==1.0.1
 markdown-it-py==4.2.0
     # via rich
 markdown2==2.5.5
-    # via -r py4web/requirements.in
+    # via -r requirements.in
 mdurl==0.1.2
     # via markdown-it-py
 more-itertools==11.1.0
-    # via -r py4web/requirements.in
+    # via -r requirements.in
 multidict==6.7.1
     # via yarl
 ombott==2.5
@@ -110,10 +110,10 @@ pathspec==1.1.1
     # via py4web
 pgqueuer==0.24.3
     # via
-    #   -r py4web/requirements.in
+    #   -r requirements.in
     #   pgskewer
 pgskewer==0.3.2
-    # via -r py4web/requirements.in
+    # via -r requirements.in
 pillow==12.2.0
     # via qrcode
 pluggy==1.6.0
@@ -129,13 +129,13 @@ portalocker==3.2.0
 propcache==0.5.2
     # via yarl
 psycopg2-binary==2.9.12
-    # via -r py4web/requirements.in
+    # via -r requirements.in
 py4web==1.20260403.2
     # via
-    #   -r py4web/requirements.in
+    #   -r requirements.in
     #   py4web-debug-tools
 py4web-debug-tools==1.3.2
-    # via -r py4web/requirements.in
+    # via -r requirements.in
 pycparser==3.0
     # via cffi
 pycryptodome==3.23.0
@@ -162,16 +162,16 @@ pygments==2.20.0
     #   rich
 pyjson5==2.0.1
     # via configuraptor
-pyjwt==2.13.0
+pyjwt[crypto]==2.13.0
     # via
-    #   -r py4web/requirements.in
+    #   -r requirements.in
     #   py4web
 pytest==9.0.3
     # via
-    #   -r py4web/requirements.in
+    #   -r requirements.in
     #   pytest-cov
 pytest-cov==7.1.0
-    # via -r py4web/requirements.in
+    # via -r requirements.in
 python-dateutil==2.9.0.post0
     # via
     #   croniter
@@ -186,23 +186,23 @@ python-dotenv==1.2.2
     #   pydantic-settings
 python-slugify==8.0.4
     # via
-    #   -r py4web/requirements.in
+    #   -r requirements.in
     #   typedal
 pytz==2026.2
-    # via -r py4web/requirements.in
+    # via -r requirements.in
 pyyaml==6.0.3
     # via
-    #   -r py4web/requirements.in
+    #   -r requirements.in
     #   configuraptor
-qrcode==8.2
-    # via -r py4web/requirements.in
+qrcode[pil]==8.2
+    # via -r requirements.in
 redis==8.0.0
-    # via -r py4web/requirements.in
+    # via -r requirements.in
 renoir==1.9.0
     # via py4web
 requests==2.34.2
     # via
-    #   -r py4web/requirements.in
+    #   -r requirements.in
     #   b2sdk
     #   configuraptor
     #   py4web
@@ -228,13 +228,13 @@ tomli==2.4.1
     # via configuraptor
 tomli-w==1.2.0
     # via configuraptor
-tornado==6.5.6
+tornado==6.5.7
     # via py4web
 typedal==4.8.6
-    # via -r py4web/requirements.in
+    # via -r requirements.in
 typeguard==4.5.2
     # via
-    #   -r py4web/requirements.in
+    #   -r requirements.in
     #   configuraptor
 typer==0.26.6
     # via pgqueuer
@@ -253,30 +253,30 @@ typing-inspection==0.4.2
     #   pydantic-settings
 ua-parser==1.0.2
     # via
-    #   -r py4web/requirements.in
+    #   -r requirements.in
     #   user-agents
 ua-parser-builtins==202606
     # via ua-parser
 urllib3==2.7.0
     # via
-    #   -r py4web/requirements.in
+    #   -r requirements.in
     #   requests
 user-agents==2.2.0
-    # via -r py4web/requirements.in
+    # via -r requirements.in
 uvloop==0.22.1
     # via
     #   pgqueuer
     #   pgskewer
 watchdog==6.0.0
-    # via -r py4web/requirements.in
+    # via -r requirements.in
 watchgod==0.7
     # via py4web
 wheel==0.47.0
     # via py4web
 yarl==1.24.2
-    # via -r py4web/requirements.in
+    # via -r requirements.in
 yatl==20260518.1
     # via
-    #   -r py4web/requirements.in
+    #   -r requirements.in
     #   py4web
     #   py4web-debug-tools
