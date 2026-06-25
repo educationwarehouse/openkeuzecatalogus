@@ -23,11 +23,11 @@ attrs==26.1.0
 automat==25.4.16
     # via twisted
 b2sdk==2.11.0
-    # via -r pgq/requirements.in
+    # via -r requirements.in
 bcrypt==5.0.0
     # via paramiko
 beautifulsoup4==4.14.3
-    # via -r pgq/requirements.in
+    # via -r requirements.in
 certifi==2026.5.20
     # via requests
 cffi==2.0.0
@@ -46,7 +46,7 @@ configuraptor==2.5.4
     #   typedal
 constantly==23.10.4
     # via twisted
-coverage==7.14.1
+coverage[toml]==7.14.1
     # via pytest-cov
 croniter==6.2.2
     # via pgqueuer
@@ -74,11 +74,11 @@ diceware==1.0.1
     # via edwh
 dill==0.4.1
     # via
-    #   -r pgq/requirements.in
+    #   -r requirements.in
     #   pgskewer
     #   typedal
 diskcache==5.6.3
-    # via -r pgq/requirements.in
+    # via -r requirements.in
 docstring-parser==0.18.0
     # via
     #   edwh
@@ -86,12 +86,12 @@ docstring-parser==0.18.0
 dotmap==1.3.30
     # via edwh-auth-rbac
 edwh==1.8.6
-    # via -r pgq/requirements.in
+    # via -r requirements.in
 edwh-auth-rbac==1.0.2
-    # via -r pgq/requirements.in
+    # via -r requirements.in
 edwh-migrate==2.0.1
     # via
-    #   -r pgq/requirements.in
+    #   -r requirements.in
     #   edwh-auth-rbac
 edwh-uuid7==0.2.3
     # via pgskewer
@@ -127,11 +127,11 @@ invoke==2.2.1
     #   fabric
     #   paramiko
 is-isbn==0.1.0
-    # via -r pgq/requirements.in
+    # via -r requirements.in
 isbnlib==3.10.14
     # via onixcheck
 iso3166==2.1.1
-    # via -r pgq/requirements.in
+    # via -r requirements.in
 isodate==0.7.2
     # via zeep
 itemadapter==0.13.1
@@ -171,12 +171,12 @@ lxml==6.1.1
 markdown-it-py==4.2.0
     # via rich
 markdown2==2.5.5
-    # via -r pgq/requirements.in
+    # via -r requirements.in
 mdurl==0.1.2
     # via markdown-it-py
 more-itertools==10.8.0
     # via
-    #   -r pgq/requirements.in
+    #   -r requirements.in
     #   edwh
     #   jaraco-classes
     #   jaraco-functools
@@ -185,7 +185,7 @@ multidict==6.7.1
     #   yarl
     #   yayarl
 onixcheck==0.9.11
-    # via -r pgq/requirements.in
+    # via -r requirements.in
 packaging==24.2
     # via
     #   edwh
@@ -202,7 +202,7 @@ parsel==1.11.0
 pgqueuer==0.24.3
     # via pgskewer
 pgskewer==0.3.2
-    # via -r pgq/requirements.in
+    # via -r requirements.in
 platformdirs==4.10.0
     # via zeep
 playwright==1.60.0
@@ -222,7 +222,7 @@ propcache==0.5.2
 protego==0.6.0
     # via scrapy
 psycopg2-binary==2.9.12
-    # via -r pgq/requirements.in
+    # via -r requirements.in
 pycparser==3.0
     # via cffi
 pydal==20260520.0
@@ -248,21 +248,21 @@ pygments==2.20.0
     #   rich
 pyjson5==2.0.1
     # via configuraptor
-pyjwt==2.13.0
-    # via -r pgq/requirements.in
+pyjwt[crypto]==2.13.0
+    # via -r requirements.in
 pynacl==1.6.2
     # via paramiko
 pyopenssl==26.2.0
     # via scrapy
 pytest==9.0.3
     # via
-    #   -r pgq/requirements.in
+    #   -r requirements.in
     #   pytest-asyncio
     #   pytest-cov
 pytest-asyncio==1.4.0
-    # via -r pgq/requirements.in
+    # via -r requirements.in
 pytest-cov==7.1.0
-    # via -r pgq/requirements.in
+    # via -r requirements.in
 python-dateutil==2.9.0.post0
     # via
     #   croniter
@@ -272,7 +272,7 @@ python-dateutil==2.9.0.post0
     #   typedal
 python-dotenv==1.2.2
     # via
-    #   -r pgq/requirements.in
+    #   -r requirements.in
     #   configuraptor
     #   edwh
     #   edwh-migrate
@@ -280,10 +280,8 @@ python-dotenv==1.2.2
     #   pydantic-settings
 python-slugify==8.0.4
     # via
-    #   -r pgq/requirements.in
+    #   -r requirements.in
     #   typedal
-pytz==2026.2
-    # via zeep
 pyyaml==6.0.3
     # via
     #   configuraptor
@@ -294,10 +292,10 @@ queuelib==1.9.0
 rapidfuzz==3.14.5
     # via edwh
 redis==8.0.0
-    # via -r pgq/requirements.in
+    # via -r requirements.in
 requests==2.32.5
     # via
-    #   -r pgq/requirements.in
+    #   -r requirements.in
     #   b2sdk
     #   configuraptor
     #   edwh
@@ -320,10 +318,10 @@ ruff==0.14.9
     # via edwh
 scrapy==2.13.4
     # via
-    #   -r pgq/requirements.in
+    #   -r requirements.in
     #   scrapy-playwright
 scrapy-playwright==0.0.46
-    # via -r pgq/requirements.in
+    # via -r requirements.in
 secretstorage==3.5.0
     # via keyring
 service-identity==26.1.0
@@ -359,12 +357,12 @@ tomlkit==0.15.0
     # via edwh
 tqdm==4.67.3
     # via
-    #   -r pgq/requirements.in
+    #   -r requirements.in
     #   edwh
 twisted==25.5.0
     # via scrapy
 typedal==4.8.6
-    # via -r pgq/requirements.in
+    # via -r requirements.in
 typeguard==4.5.2
     # via configuraptor
 typer==0.26.6
@@ -400,13 +398,13 @@ w3lib==2.4.1
 wrapt==2.2.1
     # via deprecated
 xmltodict==1.0.4
-    # via -r pgq/requirements.in
+    # via -r requirements.in
 yarl==1.24.2
-    # via -r pgq/requirements.in
+    # via -r requirements.in
 yayarl==2.2.1
     # via edwh
-zeep==4.3.2
-    # via -r pgq/requirements.in
+zeep==4.3.3
+    # via -r requirements.in
 zope-interface==8.5
     # via
     #   scrapy
