@@ -1,26 +1,23 @@
 from py4web import action
 
-from ..fixtures import common, flash
-from ..models import auth, db
+from ..fixtures import common
+from ..models import auth
 
 
 @action("index")
-@action.uses(db)
+@common()
 def index() -> str:
     return "hello world"
 
 
-@action("flash")
-@common("auth.html")
-def flash_demo() -> dict:
-    # fixme: remove
-    flash.set("joejoe")
-    return {
-        "form": "get joejoe'd",
-    }
-
-
 @action("profile")
-@action.uses(auth.user)
+@common(None, auth.user)
 def profile() -> str:
-    return str(auth.get_user())
+    me = auth.get_user()
+    return str(me.as_dict() if me else {})
+
+
+@action("auth/error")
+@common()
+def auth_no_roles() -> str:
+    return "geen rollen (todo)"

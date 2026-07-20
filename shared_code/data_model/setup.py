@@ -2,17 +2,25 @@
 
 from typedal import TypeDAL
 
+from shared_code.data_model.mixins.effdt import setup_record_operators
 from shared_code.data_model.tables import (
     AuthUser,
     CountsPerMinute,
     Evidence,
+    ImporterRun,
+    ImporterRunCountStat,
+    ImporterRunErrorStat,
     Method,
     MethodEd,
+    Organisation,
+    OrganisationEd,
     Product,
     ProductEd,
     Signal,
     Supplier,
     SupplierEd,
+    Tagged,
+    TaggedEd,
     Vision,
     VisionEd,
 )
@@ -72,6 +80,44 @@ def define_tables(db: TypeDAL) -> TypeDAL:
     )
 
     db.define(
+        Tagged,
+        rname="tagged_model",
+        format="%(predicate)s",
+        singular="Tagged",
+        plural="Tagged",
+        redefine=True,
+        migrate=False,
+        permissions={"insert": False},
+    )
+    db.define(
+        TaggedEd,
+        rname="tagged_ed",
+        format="%(predicate)s",
+        singular="TaggedEd",
+        plural="TaggedEds",
+        redefine=True,
+        migrate=False,
+    )
+    db.define(
+        Organisation,
+        rname="organisation_model",
+        format="%(name)s",
+        singular="Organisation",
+        plural="Organisations",
+        redefine=True,
+        migrate=False,
+        permissions={"insert": False},
+    )
+    db.define(
+        OrganisationEd,
+        rname="organisation_ed",
+        format="%(name)s",
+        singular="OrganisationEd",
+        plural="OrganisationEds",
+        redefine=True,
+        migrate=False,
+    )
+    db.define(
         Supplier,
         rname="supplier_model",
         format="%(name)s",
@@ -79,6 +125,7 @@ def define_tables(db: TypeDAL) -> TypeDAL:
         plural="Suppliers",
         redefine=True,
         migrate=False,
+        permissions={"insert": False},
     )
     db.define(
         SupplierEd,
@@ -97,6 +144,7 @@ def define_tables(db: TypeDAL) -> TypeDAL:
         plural="Methods",
         redefine=True,
         migrate=False,
+        permissions={"insert": False},
     )
     db.define(
         MethodEd,
@@ -115,6 +163,7 @@ def define_tables(db: TypeDAL) -> TypeDAL:
         plural="Products",
         redefine=True,
         migrate=False,
+        permissions={"insert": False},
     )
     db.define(
         ProductEd,
@@ -133,6 +182,7 @@ def define_tables(db: TypeDAL) -> TypeDAL:
         plural="Visions",
         redefine=True,
         migrate=False,
+        permissions={"insert": False},
     )
     db.define(
         VisionEd,
@@ -143,6 +193,36 @@ def define_tables(db: TypeDAL) -> TypeDAL:
         redefine=True,
         migrate=False,
     )
+
+    db.define(
+        ImporterRun,
+        rname="importer_run",
+        format="%(source)s",
+        singular="ImporterRun",
+        plural="ImporterRuns",
+        redefine=True,
+        migrate=False,
+    )
+    db.define(
+        ImporterRunCountStat,
+        rname="importer_run_count_stat",
+        format="%(metric)s",
+        singular="ImporterRunCountStat",
+        plural="ImporterRunCountStats",
+        redefine=True,
+        migrate=False,
+    )
+    db.define(
+        ImporterRunErrorStat,
+        rname="importer_run_error_stat",
+        format="%(error_code)s",
+        singular="ImporterRunErrorStat",
+        plural="ImporterRunErrorStats",
+        redefine=True,
+        migrate=False,
+    )
+
+    setup_record_operators(db=db)
 
     # prevent locks:
     db.commit()

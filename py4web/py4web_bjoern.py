@@ -19,4 +19,4 @@ def _start_coverage_if_configured() -> None:  # pragma: no cover
 if __name__ == "__main__":
     _start_coverage_if_configured()
     application = wsgi(apps_folder="apps")
-    bjoern.run(application, "0.0.0.0", 8000)
+    bjoern.run(application, "0.0.0.0", 8000)  # noqa: S104 'binds to all interfaces' within Docker

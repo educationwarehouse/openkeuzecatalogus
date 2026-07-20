@@ -19,6 +19,7 @@ import edwh.tasks
 import termcolor._types
 from dotenv import load_dotenv
 from edwh import DOCKER_COMPOSE
+from edwh.tasks import OutputMode
 from ewok import Context, Task, task
 from invoke import Result
 from invoke.exceptions import UnexpectedExit
@@ -32,7 +33,10 @@ type AnyDict = dict[str, t.Any]
 CACHE_DIR = Path("/shared_cache/pytest")
 HOST_CACHE_BASE_DIR = Path("shared_cache")
 HOST_CACHE_DIR = HOST_CACHE_BASE_DIR / "pytest"
-PY4WEB_COVERAGE_CONFIG = "/p4w/coverage.py4web.toml"
+HOST_SHARED_COVERAGE_CONFIG = "shared_code/coverage.toml"
+CONTAINER_SHARED_COVERAGE_CONFIG = "/pythonpath/shared_code/coverage.toml"
+CONTAINER_PY4WEB_COVERAGE_CONFIG = "/p4w/coverage.py4web.toml"
+CONTAINER_PY4WEB_RUNTIME_COVERAGE_FILE = str(CACHE_DIR / ".coverage.py4web.runtime")
 TEST_RUN_SNAPSHOT_NAME = "test_run.autorestore"
 DEVDB_SNAPSHOTS_DIR = Path("migrate/data")
 TEST_RUN_LOCK_FILE = HOST_CACHE_BASE_DIR / "pytest.run.lock"
@@ -42,18 +46,13 @@ TEST_MIGRATE_SEED_BASE_URL = "file:///data/seeding"
 load_dotenv()
 
 
-def docker_compose(c: Context, args: str) -> Result | None:
+def docker_compose(c: Context, args: str) -> Result:
     """Run a docker compose command after enforcing non-production safety."""
     deny_in_productie()
     try:
-        result = c.run(f"{DOCKER_COMPOSE} {args}", pty=True)
+        return c.run(f"{DOCKER_COMPOSE} {args}", pty=True)
     except UnexpectedExit as err:
-        print(f"docker compose {args} failed with code", err.result)
-        result = None
-
-    # if result is None:
-    #     raise RuntimeError("something went wrong, Context.run returned no result.")
-    return result
+        raise RuntimeError(f"docker compose {args} failed") from err
 
 
 def docker_compose_run(
@@ -62,7 +61,7 @@ def docker_compose_run(
     inner_cmd: str,
     environment: AnyDict,
     with_dependencies: bool = True,
-) -> Result | None:
+) -> Result:
     """Run something in docker compose, with environment variables."""
     environment = copy(environment)
     workdir = environment.pop("WORKDIR", "/pythonpath")
@@ -146,9 +145,12 @@ def write_coverage_html(
     environment: AnyDict,
     coverage_data_file: str,
     suite_name: str,
+    rcfile: str = CONTAINER_SHARED_COVERAGE_CONFIG,
 ) -> None:
     """Generate an HTML coverage report for one suite inside a container."""
-    html_cmd = f"coverage html -i --data-file={coverage_data_file} -d {CACHE_DIR}/htmlcov/{suite_name}"
+    html_cmd = (
+        f"coverage html --rcfile={rcfile} -i --data-file={coverage_data_file} -d {CACHE_DIR}/htmlcov/{suite_name}"
+    )
     docker_compose_run(c, container=container, inner_cmd=f"sh -lc {shlex.quote(html_cmd)}", environment=environment)
 
 
@@ -160,7 +162,7 @@ def clear_mock_inbox(c: Context) -> None:
 def default_pytest_args() -> list[str]:
     """Extra pytest args from env, applied to each pytest-backed `go-*` task."""
     configured = os.getenv("PYTEST_DEFAULT_ARGS", "").strip()
-    return shlex.split(configured) if configured else []
+    return shlex.split(configured) if configured else ["-s"]
 
 
 def resolve_local_pytest_command() -> str | None:
@@ -204,30 +206,6 @@ def go_shared_code(
         pytest_args=updated_pytest_args,
         environment=environment,
     )
-    if coverage:
-        merge_cmd = dedent(
-            f"""
-            inputs="{CACHE_DIR}/.coverage.shared_code"
-            if [ -f "{CACHE_DIR}/.coverage.migrate" ]; then
-              inputs="$inputs {CACHE_DIR}/.coverage.migrate"
-            fi
-            coverage combine --keep --data-file={CACHE_DIR}/.coverage.shared_code.merged $inputs
-            """
-        ).strip()
-        docker_compose_run(
-            c,
-            container="migrate",
-            inner_cmd=f"sh -lc {shlex.quote(merge_cmd)}",
-            environment=environment,
-        )
-        write_coverage_html(
-            c,
-            container="migrate",
-            environment=environment,
-            coverage_data_file=f"{CACHE_DIR}/.coverage.shared_code.merged",
-            suite_name="shared_code",
-        )
-
     return result
 
 
@@ -247,7 +225,8 @@ def go_py4web(
 
     if coverage:
         environment["COVERAGE_FILE"] = CACHE_DIR / ".coverage.py4web.pytest"
-        updated_pytest_args.extend(coverage_args("apps", "01_py4web"))
+        updated_pytest_args.extend(coverage_args("apps", "01_py4web", CONTAINER_PY4WEB_COVERAGE_CONFIG))
+        updated_pytest_args.append("--cov=common")
 
     result = go.body(
         c,
@@ -263,6 +242,7 @@ def go_py4web(
             environment=environment,
             coverage_data_file=f"{CACHE_DIR}/.coverage.py4web.pytest",
             suite_name="py4web",
+            rcfile=CONTAINER_PY4WEB_COVERAGE_CONFIG,
         )
     return result
 
@@ -283,7 +263,7 @@ def py4web_runtime_coverage_report(c: Context) -> None:
               inputs="{CACHE_DIR}/.coverage.py4web.pytest $inputs"
             fi
             coverage combine --keep --data-file={coverage_data_file} $inputs
-            coverage json --data-file={coverage_data_file} -o {runtime_json}
+            coverage json --rcfile={CONTAINER_PY4WEB_COVERAGE_CONFIG} --data-file={coverage_data_file} -o {runtime_json}
             """
         ).strip()
     )
@@ -295,6 +275,7 @@ def py4web_runtime_coverage_report(c: Context) -> None:
         environment={"WORKDIR": "/p4w"},
         coverage_data_file=coverage_data_file,
         suite_name="py4web",
+        rcfile=CONTAINER_PY4WEB_COVERAGE_CONFIG,
     )
 
 
@@ -309,7 +290,7 @@ def wait_for_py4web(c: Context, attempts: int = 30, sleep_seconds: int = 1) -> N
         f"""
         set -e
         for i in $(seq 1 {attempts}); do
-          curl -sf http://py4web:8000/ping >/dev/null && exit 0
+          curl -sf http://py4web:8000/healthcheck >/dev/null && exit 0
           sleep {sleep_seconds}
         done
         echo 'py4web not reachable from playwright container' >&2
@@ -324,7 +305,8 @@ def recreate_py4web(c: Context, runtime_coverage: bool = True) -> None:
     cmd = f"{DOCKER_COMPOSE} up -d --force-recreate py4web"
     compose_env = default_testing_env()
     if runtime_coverage:
-        compose_env["PY4WEB_COVERAGE_PROCESS_START"] = PY4WEB_COVERAGE_CONFIG
+        compose_env["PY4WEB_COVERAGE_PROCESS_START"] = CONTAINER_PY4WEB_COVERAGE_CONFIG
+        compose_env["PY4WEB_COVERAGE_FILE"] = CONTAINER_PY4WEB_RUNTIME_COVERAGE_FILE
     c.run(
         cmd,
         pty=True,
@@ -337,7 +319,7 @@ def go_web(
     c: Context,
     pytest_args: t.Iterable[str] = (),
     environment: AnyDict | None = None,
-    coverage: bool = False,
+    coverage: bool = True,
 ) -> Result | None:
     """Run browser-driven Playwright tests against the running py4web service."""
     recreate_py4web(c, runtime_coverage=coverage)
@@ -348,10 +330,15 @@ def go_web(
         edwh.tasks.wait_until_healthy(c, ["py4web", "pgq-applog"])
 
         try:
-            bash_check_coverage_used = shlex.quote(f'[ "${{COVERAGE_PROCESS_START:-}}" = "{PY4WEB_COVERAGE_CONFIG}" ]')
+            bash_check_coverage_used = shlex.quote(
+                f'[ "${{COVERAGE_PROCESS_START:-}}" = "{CONTAINER_PY4WEB_COVERAGE_CONFIG}" ]'
+                f' && [ "${{COVERAGE_FILE:-}}" = "{CONTAINER_PY4WEB_RUNTIME_COVERAGE_FILE}" ]'
+            )
             docker_compose(c, f"exec -T py4web sh -lc {bash_check_coverage_used}")
         except UnexpectedExit as e:
-            raise RuntimeError("PY4WEB runtime coverage is disabled (COVERAGE_PROCESS_START mismatch).") from e
+            raise RuntimeError(
+                "PY4WEB runtime coverage is disabled (COVERAGE_PROCESS_START or COVERAGE_FILE mismatch)."
+            ) from e
 
     wait_for_py4web(c)
     clear_mock_inbox(c)
@@ -404,6 +391,12 @@ def go_pgq(
     if coverage:
         environment["COVERAGE_FILE"] = CACHE_DIR / ".coverage.pgq"
         updated_pytest_args.extend(coverage_args("pgq", "01_pgq"))
+        updated_pytest_args.extend(
+            [
+                "--cov=shared_code/modules/scrapers",
+                "--cov=shared_code/infra/http",
+            ]
+        )
 
     result = go.body(
         c,
@@ -459,6 +452,7 @@ def go_tasks(
             [
                 "--cov=tasks",
                 "--cov-branch",
+                f"--cov-config={HOST_SHARED_COVERAGE_CONFIG}",
                 "--cov-report=",
                 f"--cov-report=json:{host_cache}/cov.01_tasks.json",
             ]
@@ -474,7 +468,10 @@ def go_tasks(
 
     if coverage:
         c.run(
-            f"coverage html -i --data-file={coverage_file} -d {host_cache}/htmlcov/tasks",
+            (
+                f"coverage html --rcfile={HOST_SHARED_COVERAGE_CONFIG} -i "
+                f"--data-file={coverage_file} -d {host_cache}/htmlcov/tasks"
+            ),
             env=run_env,
             pty=True,
         )
@@ -505,8 +502,9 @@ def go_migrate(
     migrate_cmd = "/opt/venv/bin/migrate"
     if coverage:
         migrate_cmd = (
-            "coverage run --branch /opt/venv/bin/migrate && "
-            f"coverage json --include='/pythonpath/shared_code/migrations/*' -o {migrate_report}"
+            f"coverage run --rcfile={CONTAINER_SHARED_COVERAGE_CONFIG} --branch /opt/venv/bin/migrate && "
+            f"coverage json --rcfile={CONTAINER_SHARED_COVERAGE_CONFIG} "
+            f"--include='/pythonpath/shared_code/migrations/*' -o {migrate_report}"
         )
 
     result = docker_compose_run(
@@ -517,11 +515,16 @@ def go_migrate(
     return result
 
 
-def coverage_args(cov_target: str, suite_name: str) -> list[str]:
+def coverage_args(
+    cov_target: str,
+    suite_name: str,
+    cov_config: str = CONTAINER_SHARED_COVERAGE_CONFIG,
+) -> list[str]:
     """Coverage arguments for a single source root."""
     return [
         f"--cov={cov_target}",
         "--cov-branch",
+        f"--cov-config={cov_config}",
         "--cov-report=",
         f"--cov-report=json:{CACHE_DIR}/cov.{suite_name}.json",
     ]
@@ -586,22 +589,14 @@ def default_testing_env() -> dict[str, t.Any]:
     }
 
 
-def run_full_suite(
-    c: Context,
+def _build_full_suite_pytest_options(
     show_output: bool = False,
     verbose: bool = False,
     exitfirst: bool = False,
     keyword_search: str = "",
-    coverage: bool = True,
     extra: str = "",
-    apps: t.Iterable[str] | None = None,
-) -> None:
-    """Once `run` acquires a lock to ensure only one test suite runs at a time, run each test and aggregate results."""
-    c.sudo(f"rm -rf {HOST_CACHE_DIR}")
-
+) -> list[str]:
     pytest_options = [f"-o cache_dir={CACHE_DIR}"]
-
-    environment = default_testing_env()
 
     if extra:
         pytest_options.append(extra)
@@ -617,50 +612,140 @@ def run_full_suite(
     if len(pytest_options) == 1:
         pytest_options.extend(default_pytest_args())
 
-    if coverage:
-        environment["COVERAGE_FILE"] = CACHE_DIR / ".coverage"
+    return pytest_options
 
-    # tests: dict[str, t.Callable[[Context, list[str], dict[str, t.Any], bool], Result | None]] = {
-    tests: dict[str, Task] = {
+
+def _collect_full_suite_tasks(apps: set[str]) -> dict[str, Task]:
+    tests = {
         "tasks": go_tasks,
         "migrate": go_migrate,
+        "pgq": go_pgq,
         "shared-code": go_shared_code,
         "py4web": go_py4web,
         "web": go_web,
-        "pgq": go_pgq,
     }
 
-    if apps:
-        # filter specific ones
-        tests = {k: v for k, v in tests.items() if k in apps}
+    # filter specific ones
+    return {k: v for k, v in tests.items() if k in apps} if apps else tests
 
-    results = {}
+
+@task()
+def collect_shared_code_coverage(c: Context, environment: AnyDict, container: str = "pgq-applog") -> None:
+    """Combine all suite coverage files and generate the shared_code JSON + HTML report.
+
+    Runs in pgq-applog so all source files (pgq + shared_code) are present.
+    """
+    # uses pgq- container because that has access to both shared code (used by importer) and pgq paths
+    collect_cmd = dedent(
+        f"""
+        inputs=""
+        for f in "{CACHE_DIR}/.coverage.shared_code" "{CACHE_DIR}/.coverage.migrate" "{CACHE_DIR}/.coverage.pgq"; do
+            [ -f "$f" ] && inputs="$inputs $f"
+        done
+        coverage combine --keep --data-file={CACHE_DIR}/.coverage.shared_code.merged $inputs
+        coverage json \
+            --rcfile={CONTAINER_SHARED_COVERAGE_CONFIG} \
+            --data-file={CACHE_DIR}/.coverage.shared_code.merged \
+            -o {CACHE_DIR}/cov.01_shared_code.json
+        """
+    ).strip()
+    env = environment | {"WORKDIR": "/pythonpath"}
+    docker_compose_run(c, container=container, inner_cmd=f"sh -lc {shlex.quote(collect_cmd)}", environment=env)
+    write_coverage_html(
+        c,
+        container=container,
+        environment=env,
+        coverage_data_file=f"{CACHE_DIR}/.coverage.shared_code.merged",
+        suite_name="shared_code",
+    )
+
+
+def run_suite_task(
+    c: Context,
+    test: Task,
+    pytest_options: list[str],
+    environment: dict,
+    coverage: bool,
+) -> str:
+    """Execute a test suite task and handle its result."""
+    try:
+        edwh.tasks.set_permissions(
+            c,
+            "shared_cache",
+            filepermissions=666,
+            directorypermissions=777,
+        )
+
+        result = test.body(c, copy(pytest_options), copy(environment), coverage)
+
+        is_ok = result.ok if isinstance(result, Result) else bool(result)
+
+        return "ok" if is_ok else "err"
+
+    except Exception as e:
+        return f"fatal {e}"
+
+
+def run_full_suite(
+    c: Context,
+    show_output: bool = False,
+    verbose: bool = False,
+    exitfirst: bool = False,
+    keyword_search: str = "",
+    coverage: bool = True,
+    extra: str = "",
+    apps: t.Iterable[str] | None = None,
+    mode: OutputMode = "cli",
+) -> None:
+    """Once `run` acquires a lock to ensure only one test suite runs at a time, run each test and aggregate results."""
+    c.sudo(f"rm -rf {HOST_CACHE_DIR}")
+
+    pytest_options = _build_full_suite_pytest_options(
+        show_output=show_output,
+        verbose=verbose,
+        exitfirst=exitfirst,
+        keyword_search=keyword_search,
+        extra=extra,
+    )
+
+    environment = default_testing_env()
+
+    if coverage:
+        environment["COVERAGE_FILE"] = CACHE_DIR / ".coverage"
+
+    tests = _collect_full_suite_tasks(set(apps or ()))
+
+    results: dict[str, str] = {}
 
     with restore_database_after_tests(c):
         for test_name, test in tests.items():
-            try:
-                # ensure correct permissions before each task:
-                edwh.tasks.set_permissions(c, "shared_cache", filepermissions=666, directorypermissions=777)
+            results[test_name] = run_suite_task(
+                c,
+                test,
+                pytest_options=pytest_options,
+                environment=environment,
+                coverage=coverage,
+            )
 
-                result = test.body(c, copy(pytest_options), copy(environment), coverage)
-                is_ok = result.ok if isinstance(result, Result) else bool(result)
-                results[test_name] = "ok" if is_ok else "err"
-                if exitfirst and not is_ok:
-                    break
-            except Exception as e:
-                results[test_name] = f"fatal {e}"
-                if exitfirst:
-                    break
+            if exitfirst and results[test_name] != "ok":
+                break
 
     all_ok = all(value == "ok" for value in results.values())
+
+    if coverage:
+        collect_shared_code_coverage(c, environment)
+
     print("--- START REPORTING ---")
 
     if coverage and all_ok and not report(c):
         # report prints and returns boolean for threshold ok
         all_ok = False
 
-    for test_name, status in results.items():
-        cprint(f"⬤ {test_name}: {status}", status_color(status))
+    if mode == "json":
+        print(json.dumps(results))
+    else:
+        for test_name, status in results.items():
+            edwh.tasks._print_lint_status(f"{test_name}: {status}", ok=status == "ok", output=mode)
 
     print("--- END REPORTING ---")
 
@@ -675,7 +760,7 @@ def run_full_suite(
         "no_wait_for_lock": ("no-wait-for-lock",),
     },
     iterable=("apps",),
-    pre=[edwh.tasks.setup],
+    pre=[edwh.tasks.setup, edwh.tasks.stop],
 )
 def run(
     c: Context,
@@ -687,6 +772,7 @@ def run(
     apps: t.Iterable[str] | None = None,  # -a x -a y
     coverage: bool = True,
     extra: str = "",
+    output: OutputMode = "cli",
 ) -> None:
     """Main entrypoint that runs the full test suite (if not in production mode)."""
     deny_in_productie()
@@ -705,6 +791,7 @@ def run(
             coverage=coverage,
             extra=extra,
             apps=apps or None,
+            mode=output,
         )
 
 
@@ -820,3 +907,9 @@ def report(c: Context, min_coverage: float = 80.0) -> bool:
     else:
         cprint(f"Coverage threshold met: {total_percent:.2f}% >= {min_coverage:.2f}%", color="green")
         return True
+
+
+@task()
+def htmlcov(c: Context) -> None:
+    """Open the htmlcov directory in your prefered browser."""
+    c.run("xdg-open shared_cache/pytest/htmlcov/index.html")

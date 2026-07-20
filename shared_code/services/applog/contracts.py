@@ -1,16 +1,18 @@
 """Application logging service contracts."""
 
-from __future__ import annotations
-
 import abc
 import datetime as dt
 import json
 import typing as t
 from uuid import UUID
 
-from typedal import TypeDAL
+from endow import Service
 
-from shared_code.services.env import bool_from_env
+from shared_code.util.env import bool_from_env
+from shared_code.util.time import utcnow
+
+if t.TYPE_CHECKING:
+    from shared_code.infra.database import DatabaseContext
 
 
 class ApplogEvent(t.TypedDict, total=False):
@@ -20,12 +22,24 @@ class ApplogEvent(t.TypedDict, total=False):
     kind: t.Literal["auth_action", "error", "event"]
     action: str | None
     details: str | dict
-    related: t.NotRequired[str | UUID]
+    user_gid: str | None
+    related: str | UUID | None
     # ...
+
+
+class AuthEvent(ApplogEvent):
+    """Specialized applog event shape for authentication actions."""
+
+    email: str | None
+    success: bool | None
+    ip: str | None
+    user_agent: str | None
 
 
 class ApplogSignal(t.TypedDict):
     """Signal envelope used for queued applog processing."""
+
+    # not used manually
 
     name: str
     signal_source: str
@@ -36,29 +50,29 @@ class ApplogSignal(t.TypedDict):
     related: str | None
 
 
-class AuthEvent(ApplogEvent):
-    """Specialized applog event shape for authentication actions."""
-
-    user_gid: str | None
-    email: str | None
-    success: bool | None
-    ip: str | None
-    user_agent: str | None
-
-
-class Applogger(abc.ABC):
+class Applogger(Service, abc.ABC):
     """Abstract app logger contract with shared event helpers."""
 
-    db: TypeDAL
+    db: DatabaseContext
 
     @abc.abstractmethod
     def fire(self, event: ApplogEvent) -> bool:
         """Persist a normalized applog event payload."""
         ...
 
+    def try_fire(self, event: ApplogEvent) -> bool:
+        """Attempt to persist an event and swallow unexpected failures."""
+        try:
+            if "timestamp" not in event:
+                event["timestamp"] = utcnow()
+            return self.fire(event)
+        except Exception as e:
+            print(f"[applog] failed with {e}")
+            return False
+
     def write_auth_event(self, event: AuthEvent) -> bool:
         """Backward-compatible auth-specific writer alias."""
-        return self.fire(event)
+        return self.try_fire(event)
 
     def log_auth_action(
         self,
@@ -81,7 +95,7 @@ class Applogger(abc.ABC):
             details=details,
         )
         # Queueing belongs in a separate implementation; base contract is sync only.
-        return self.fire(event)
+        return self.try_fire(event)
 
     @classmethod
     def from_env(cls) -> Applogger:
@@ -107,7 +121,7 @@ class Applogger(abc.ABC):
     ) -> AuthEvent:
         normalized_details = dict(details or {})
         return {
-            "timestamp": dt.datetime.now(tz=dt.UTC).isoformat(),
+            "timestamp": utcnow().isoformat(),
             "kind": "auth_action",
             "action": action,
             "user_gid": str(user_gid) if user_gid else None,

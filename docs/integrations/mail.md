@@ -41,5 +41,5 @@ If required SMTP settings are incomplete, `SMTPMailer.from_env(...)` raises `OSE
 ## Auth Integration
 
 Py4web auth uses this mailer:
-- `auth.sender = Mailer.from_env(db)` in `py4web/apps/_default/models/auth.py`.
+- `auth.sender = backend.mailer` in `py4web/common/models/backend/auth_cls.py`.
 - Registration email confirmation and password reset emails flow through the same contract.

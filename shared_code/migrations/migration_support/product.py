@@ -35,9 +35,12 @@ class ProductModelWithPrio_V1(ViewMigrationManager):
         """Remove product model triggers/functions and drop the model table."""
         self.db.executesql("""
         DROP TRIGGER IF EXISTS refresh_product_model_trigger ON product_ed;
+        DROP TRIGGER IF EXISTS product_model_update_trigger ON product_ed;
         """)
 
         self.db.executesql("""
-        DROP FUNCTION IF EXISTS get_active_product;
+        DROP FUNCTION IF EXISTS get_active_product(uuid);
+        DROP FUNCTION IF EXISTS apply_change_product_model();
+        DROP FUNCTION IF EXISTS rebuild_product_model();
         """)
         drop_table_or_mv(self.db, "product_model")

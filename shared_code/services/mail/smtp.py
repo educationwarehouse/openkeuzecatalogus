@@ -5,10 +5,8 @@ import smtplib
 import typing as t
 from email.message import EmailMessage
 
-from typedal import TypeDAL
-
-from shared_code.services.env import bool_from_env
 from shared_code.services.mail.contracts import EmailAddress, Mailer
+from shared_code.util.env import bool_from_env
 
 
 class SMTPMailer(Mailer):
@@ -16,7 +14,6 @@ class SMTPMailer(Mailer):
 
     def __init__(
         self,
-        db: TypeDAL,
         host: str,
         port: int,
         user: str,
@@ -33,7 +30,6 @@ class SMTPMailer(Mailer):
         self.password = password
         self.tls = tls
         self.ssl = ssl
-        self.db = db
 
     def send_email_message(self, message: EmailMessage, all_recipients: list[EmailAddress]) -> bool:
         """Send a prepared email via SMTP and report success as a boolean."""
@@ -50,7 +46,7 @@ class SMTPMailer(Mailer):
             return False
 
     @classmethod
-    def from_env(cls, db: TypeDAL) -> t.Self:
+    def from_env(cls) -> t.Self:
         """Create an SMTP mailer instance from environment variables."""
         server = os.environ.get("SMTP_SERVER", "")
         port = int(os.environ.get("SMTP_PORT") or "587")
@@ -74,5 +70,4 @@ class SMTPMailer(Mailer):
             password=password,
             tls=bool_from_env("SMTP_TLS", default=False),
             ssl=bool_from_env("SMTP_SSL", default=False),
-            db=db,
         )

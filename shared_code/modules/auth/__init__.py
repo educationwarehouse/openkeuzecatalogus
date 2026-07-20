@@ -1,5 +1,9 @@
 """Auth-related business helpers."""
 
-from .password_reset import mark_reset_password_expiry, validate_reset_password_token
+from .contract import AuthActor, AuthAdapter, AuthContext
 
-__all__ = ["mark_reset_password_expiry", "validate_reset_password_token"]
+__all__ = [
+    "AuthActor",
+    "AuthAdapter",
+    "AuthContext",
+]

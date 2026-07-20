@@ -5,10 +5,11 @@ import typing as t
 from pydal.validators import IS_FLOAT_IN_RANGE, IS_NULL_OR
 from typedal import TypedField, relationship
 
-from shared_code.data_model.mixins import SearchMixin
-from shared_code.data_model.tables.base import BaseTable, SharedProductField
+from shared_code.data_model.mixins.search import SearchMixin
+from shared_code.data_model.tables.base import BaseTable
+from shared_code.data_model.tables.shared_product import SharedProductField
 
-if t.TYPE_CHECKING:  # pragma: no cover
+if t.TYPE_CHECKING:
     from shared_code.data_model.tables.product import Product
 
 

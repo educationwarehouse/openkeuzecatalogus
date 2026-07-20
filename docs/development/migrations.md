@@ -103,6 +103,38 @@ If no restore file exists:
   - `{MIGRATE_SEED_BASE_URL}/seed/vision_ed`
 - Rows are upserted by `sync_gid`.
 
+## Supplier RBAC Seeding
+
+Supplier access is data-driven rather than env-var driven.
+
+- Migration `setup_supplier_rbac_groups_20260618_002` seeds special supplier rows when they are missing.
+- The seeded suppliers are `Education Warehouse` and `SIVON`.
+- Each supplier gets a matching RBAC identity in the form `<supplier gid>@supplier`.
+- All supplier identities inherit from `supplier@internal`.
+- The seeded Education Warehouse and SIVON suppliers also inherit from `admin@internal`.
+- Runtime login and email-verification hooks then match the user's email domain against `supplier_ed.email_domains` and grant the corresponding supplier membership.
+
+For the runtime flow, see [Supplier memberships and access control](../architecture/supplier-memberships.md).
+
+## Organisation RBAC and Permission Backfill
+
+Organisation access is also data-driven.
+
+- Migration `create_organisation_ed_20260622_001` creates the effective-dated organisation source table and current model table.
+- Migration `setup_organisation_rbac_groups_20260622_002` ensures the base RBAC groups exist:
+  - `users@internal`
+  - `organisation@internal`
+  - `board@internal`
+  - `school@internal`
+  - `location@internal`
+- Organisation rows create or update their own RBAC identities in the form `<organisation gid>@organisation`.
+- Migration `seed_organisation_data_from_old_server_json_20260622_003` can import organisation rows and relations from old-server JSON endpoints.
+- Migration `backfill_organisation_rbac_permissions_20260623_001` converts seeded organisation hierarchy relations into explicit RBAC permissions.
+
+Runtime login and email-verification hooks also match the user's email domain against `organisation_ed.email_domains` and grant the corresponding organisation membership.
+
+For the runtime and policy model, see [Auth and RBAC](../architecture/auth-rbac.md).
+
 ## Troubleshooting
 
 - Migrate exits immediately but app starts:
@@ -112,4 +144,5 @@ If no restore file exists:
 - Restore expected but not happening:
   - Confirm file is in `./migrate/data` and named as one of the supported variants.
 - Re-run intentionally with same schema version:
-  - Remove the matching `.complete` lock file in `./migrate/flags` first.
+  - Remove the matching `.complete` lock file in `./migrate/flags` first; 
+- You can also run `edwh migrate --force` to automatically remove those flag files before migrating.

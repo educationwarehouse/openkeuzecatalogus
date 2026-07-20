@@ -1,23 +1,20 @@
 """Kennisnet Entree OAuth service contracts."""
 
-from __future__ import annotations
-
 import abc
 import secrets
 import typing as t
 
+from endow import Service
 from pydal.validators import CRYPT
 
 from shared_code.services.applog import Applogger
-from shared_code.services.env import bool_from_env
+from shared_code.util.env import bool_from_env
 
 
-class EntreeOAuthService(abc.ABC):
+class EntreeOAuthService(Service, abc.ABC):
     """Service contract for Entree OAuth2 exchange and profile mapping."""
 
-    def __init__(self) -> None:
-        """Initialize applog dependency used for auth login markers."""
-        self.applog = Applogger.from_env()
+    applog: Applogger
 
     @abc.abstractmethod
     def exchange_code_for_token(

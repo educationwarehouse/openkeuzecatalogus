@@ -1,6 +1,7 @@
 """Core helpers used by migration support classes."""
 
 import contextlib
+import sys
 import typing as t
 
 from pydal import DAL
@@ -31,7 +32,8 @@ def is_materialized_view(db: DAL, name: str, scheme: str = "public") -> bool:
     if scheme:
         name = f"{scheme}.{name}"
 
-    return bool(db.executesql(f"SELECT 1 FROM materialized_views where mview = '{name}'"))
+    # return bool(db.executesql(f"-- SELECT 1 FROM materialized_views where mview = '{name}'"))
+    return bool(db.executesql(t"SELECT 1 FROM materialized_views where mview = {name}"))
 
 
 def drop_table_or_mv(db: DAL, name: str, scheme: str = "public") -> None:
@@ -61,6 +63,7 @@ def create_effdted_model_view_with_prio_v4(
     # step -1
     db.executesql(f"""
     DROP TRIGGER IF EXISTS refresh_{model}_trigger ON {effdt};
+    DROP TRIGGER IF EXISTS {model}_update_trigger ON {effdt};
     """)
 
     # stap 0
@@ -94,7 +97,7 @@ def create_effdted_model_view_with_prio_v4(
             table_ed.*
         FROM
             ranked inner join {effdt} table_ed on table_ed.id = ranked.id and rn = 1 and table_ed.effstatus = 'T';
-    """
+    """  # noqa S608: all parameters are in our control so no SQL injection possible
     )
 
     db.executesql(f"""
@@ -111,7 +114,8 @@ def create_effdted_model_view_with_prio_v4(
     """)
 
     # stap 2
-    db.executesql(f"""
+    db.executesql(
+        f"""
     CREATE OR REPLACE FUNCTION apply_change_{model}()
     RETURNS TRIGGER AS $$
     DECLARE
@@ -145,19 +149,23 @@ def create_effdted_model_view_with_prio_v4(
         RETURN NULL;
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """  # noqa S608: all parameters are in our control so no SQL injection possible
+    )
 
     # stap 3
-    db.executesql(f"""
+    db.executesql(
+        f"""
     CREATE OR REPLACE TRIGGER {model}_update_trigger
         AFTER INSERT
         ON {effdt}
         FOR EACH ROW
             EXECUTE PROCEDURE apply_change_{model}();
-    """)
+    """
+    )
 
     # stap 4
-    db.executesql(f"""
+    db.executesql(
+        f"""
     CREATE OR REPLACE FUNCTION rebuild_{model}()
     RETURNS void AS $$
     BEGIN
@@ -169,7 +177,8 @@ def create_effdted_model_view_with_prio_v4(
         SELECT * FROM get_active_{table}();
     END;
     $$ LANGUAGE plpgsql;
-    """)
+    """  # noqa S608: all parameters are in our control so no SQL injection possible
+    )
 
     # stap 5 - indices
     db.executesql(f"""
@@ -219,7 +228,7 @@ def no_triggers(db: DAL) -> t.Generator[None]:
 
 
 def rebuild_all_materialized_tables_v1(
-    db: DAL, exceptions: t.Iterable[str] = (), dependency_order: list[str] | None = None
+    db: DAL, exceptions: t.Iterable[str] = (), extra: t.Iterable[str] = (), dependency_order: list[str] | None = None
 ) -> list[str]:
     """Rebuild all public materialized tables, optionally ordered by dependency."""
     # Get all materialized table models
@@ -241,6 +250,7 @@ def rebuild_all_materialized_tables_v1(
                 table,  # Secondary sort by name for consistency
             ),
         )
+    table_names.extend(extra)
 
     # Execute rebuild functions in dependency order
     for table_name in table_names:
@@ -254,3 +264,16 @@ def rebuild_all_materialized_tables_v1(
             db.rollback()
 
     return table_names
+
+
+def simple_progress[T](items: t.Collection[T], every: int = 1000, final: bool = True) -> t.Iterator[T]:
+    """Yield items while printing coarse progress for large migration batches."""
+    idx = 0
+
+    for idx, item in enumerate(items, 1):
+        if idx % every == 0:
+            print(f"{idx} / {len(items)}", file=sys.stderr)
+        yield item
+
+    if items and final:
+        print(f"{idx} / {len(items)}", file=sys.stderr)

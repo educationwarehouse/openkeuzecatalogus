@@ -5,18 +5,19 @@
 - Docker with Compose support.
 - `edwh` installed and available in `PATH`.
 - Permission to run `sudo` when `edwh setup` adjusts local ownership/permissions.
+  - Tip: you can use `edwh sudo` on your machine once to avoid typing your `sudo` password every time.
 
 ### Install and Verify `edwh`
 
 Server install options:
 
-- `uvenv install edwh[plugins]`
-- `pipx install 'edwh[plugins]'`
+- `uvenv install edwh[server-plugins]`
+- `pipx install 'edwh[server-plugins]'`
 
 Local development:
 
 1. Create/activate a virtual environment.
-2. Install with `uv pip install 'edwh[plugins]'`.
+2. Install with `uv pip install 'edwh[server-plugins]'`. `server-plugins` is a subset of our commonly used plugins. You can also choose `edwh[plugins]` to get the full set.
 
 Verify installation:
 
@@ -56,6 +57,10 @@ Bootstrap URL behavior:
 - Seed import env keys:
   - Replaced by `MIGRATE_SEED_BASE_URL` and `MIGRATE_SEED_BEARER_TOKEN`.
   - These are written to `.env` and used by migrate-time JSON seed import.
+- Membership-driven access:
+  - Supplier access is driven by `supplier_ed.email_domains` and seeded supplier rows.
+  - Organisation access is driven by `organisation_ed.email_domains` and organisation RBAC identities.
+  - Verified users are matched to suppliers and organisations by email domain during login and email verification.
 - You can set these values either by answering prompts in `edwh setup` or by editing `.env` directly.
 
 ## Preflight Checklist (First Run)
@@ -107,3 +112,7 @@ This repository’s CLI behavior is defined in `tasks.py` and exposed through th
   - Run these as `edwh local.<task_name>` (for example `edwh local.pip-bump-all`).
 
 In short: both command forms come from the same `tasks.py`; the difference is whether the task name hooks into a global `edwh` command name or stays project-local under `local.*`.
+
+## See Also
+
+- [Secrets management (`.env` workflow)](US-TOOL-02-secrets.md)

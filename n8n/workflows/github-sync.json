@@ -1,0 +1,115 @@
+{
+  "name": "Repo sync naar forgejo",
+  "nodes": [
+    {
+      "parameters": {
+        "owner": {
+          "__rl": true,
+          "value": "educationwarehouse",
+          "mode": "list",
+          "cachedResultName": "educationwarehouse",
+          "cachedResultUrl": "https://github.com/educationwarehouse"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "onzeleermiddelen-private",
+          "mode": "list",
+          "cachedResultName": "onzeleermiddelen-private",
+          "cachedResultUrl": "https://github.com/educationwarehouse/onzeleermiddelen-private"
+        },
+        "events": [
+          "push"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.githubTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ff600ecf-6408-4912-96df-3a4aad750159",
+      "name": "Github Trigger",
+      "webhookId": "60260d05-3ee1-4ba8-85b7-1d751de57927",
+      "credentials": {
+        "githubApi": {
+          "id": "mnodTH6qEgckZtPs",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://git.utils.edwh.nl/api/v1/repos/it-admin/{{ $json.body.repository.name }}/mirror-sync",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "e550e589-789b-4312-abc0-361c86d93402",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YFCFxbLHVFhP3PdB",
+          "name": "Forgejo Token"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "f324ad47-c11d-41ec-b286-731581a23900",
+      "name": "No Operation, do nothing"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Github Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "ebfc120d-0d1c-4b85-aa6c-5d279c889599",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bbd3a9deeac13480fc3948fdf4224b13c81c9022f13c693bd7074a073726ba5f"
+  },
+  "nodeGroups": [],
+  "id": "rP4yjllzcaZCvAVT",
+  "tags": []
+}

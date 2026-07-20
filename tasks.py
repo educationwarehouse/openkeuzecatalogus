@@ -4,6 +4,7 @@ import enum
 import os
 import pathlib
 import random
+import secrets
 import shlex
 import shutil
 import socket
@@ -18,15 +19,18 @@ import edwh
 import edwh.tasks
 from dotenv import load_dotenv
 from edwh import DOCKER_COMPOSE
-from edwh.helpers import run_pty
+from edwh.__about__ import __version__ as EDWH_VERSION
+from edwh.tasks import LintOutput, OutputMode, run_command_with_output, warn_plugin_version_check
 from ewok import Context, task
-from termcolor import cprint
-from termcolor._types import Color
 from tqdm import tqdm
+
+MINIMAL_REQUIRED_EDWH_VERSION = "1.10.0"
+
+warn_plugin_version_check(EDWH_VERSION, MINIMAL_REQUIRED_EDWH_VERSION, "edwh")
 
 SHARED_CODE = Path("shared_code")
 BOOTSTRAP_PATH = SHARED_CODE / "modules/css/bootstrap/"
-DEFAULT_UNSAFE_PASSWORD = "test"
+DEFAULT_UNSAFE_PASSWORD = "test"  # noqa: S105 only used locally on dev machines
 
 
 class classproperty[T](property):
@@ -48,7 +52,6 @@ class StateOfDevelopment(enum.Enum):
     ONT = "Ontwikkel"
     DEMO = "Demo"
     TEST = "Test"
-    UAT = "User Acceptance Testing"
     PRD = "Productie"
 
     @classmethod
@@ -81,7 +84,7 @@ class StateOfDevelopment(enum.Enum):
 
     def is_productie(self) -> bool:
         """Is the state of development production-like?"""
-        return self.name in ("DEMO", "UAT", "PRD")
+        return self.name in ("DEMO", "PRD")
 
     def is_ontwikkel(self) -> bool:
         """Is the state of development testing-like?"""
@@ -116,7 +119,7 @@ def generate_jwt_key(c: Context, overwrite: bool = False) -> str:
     try:
         private_key = key_file.read_text()
     except FileNotFoundError:
-        private_key = random.randbytes(4096).hex()
+        private_key = secrets.token_hex(4096)
         key_file.touch()
         key_file.write_text(private_key)
 
@@ -159,7 +162,9 @@ def uptimerobot_autoadd(c: Context) -> None:
 @task()
 def pip_bump_all(c: Context) -> None:
     """Bump all .txt files using `edwh pip.upgrade`."""
+    c.run("edwh pip.upgrade shared_code/requirements.in")
     c.run("edwh pip.upgrade py4web,migrate,pgq,playwright")
+    c.run("edwh pip.upgrade requirements-dev.in")
 
 
 @task()
@@ -187,7 +192,7 @@ def setup_smtp(_: Context, dotenv_path: Path, sod: str = "") -> None:
     else:
         edwh.check_env("SMTP_PORT", "587", "SMTP Port")
 
-    sender = edwh.check_env("SMTP_SENDER", "automaat@mail.onzeleermiddelen.nl", "Email address to send mail from.")
+    sender = edwh.check_env("SMTP_SENDER", "automaat@mail.openkeuzecatalogus.nl", "Email address to send mail from.")
     edwh.check_env("SMTP_USER", sender, "SMTP Login User")
 
     edwh.check_env("SMTP_PASSWORD", "", "SMTP Login Password")
@@ -410,7 +415,7 @@ def setup(c: Context) -> None:
     _state_of_development = edwh.check_env(
         key="STATE_OF_DEVELOPMENT",
         default="",
-        comment="ontwikkel: ONT|test: TEST|demo: DEMO |user acceptance testing: UAT|productie: PRD",
+        comment="ontwikkel: ONT|test: TEST|demo: DEMO|productie: PRD",
         allowed_values=StateOfDevelopment.options,
     )
 
@@ -484,7 +489,7 @@ def setup(c: Context) -> None:
         )
         edwh.check_env(
             key=f"{app}_APPLOG_KEY",
-            default=random.randbytes(32).hex(),
+            default=random.randbytes(32).hex(),  # noqa S311 : this is not a cryptographic purpose
             comment=f"{app} applog key, should be registered at applog when transferred over HTTPS.",
             force_default=use_default,
         )
@@ -573,6 +578,18 @@ def setup(c: Context) -> None:
         key="INSIDE_DOCKER_PG_DUMP_URI",
         default=f"postgres://{postgres_username}:{postgres_password}@pg-0:5432/{postgres_database}",
         comment="The pydal compatible URI used for pg_dump inside docker",
+        force_default=use_default,
+    )
+    edwh.check_env(
+        key="SUPERSET_DB_USER",
+        default="superset_readonly",
+        comment="Read-only PostgreSQL username used by Superset.",
+        force_default=use_default,
+    )
+    edwh.check_env(
+        key="SUPERSET_DB_PASSWORD",
+        default=edwh.tasks.generate_password(c, silent=True),
+        comment="Password for the Superset read-only PostgreSQL user.",
         force_default=use_default,
     )
 
@@ -677,12 +694,21 @@ def setup(c: Context) -> None:
         force_default=use_default,
     )
 
+    if is_dev:
+        edwh.check_env(
+            key="PY4WEB_RESTART_SECRET",
+            default=edwh.tasks.generate_password(c, silent=True),
+            comment="(dev only) Token for /restart/<secret>",
+            force_default=use_default,
+        )
+
     edwh.check_env(
         key="PY4WEB_SESSION_SECRET",
         default=str(uuid.uuid4()),
         comment="Session gid for py4web",
         force_default=use_default,
     )
+
     edwh.check_env(
         key="ENTREE_CLIENT_ENDPOINT",
         default="oidcng.entree.kennisnet.nl" if state_of_development.is_productie() else "oidcng.entree-s.kennisnet.nl",
@@ -740,19 +766,47 @@ def find_ty() -> str:
     return ty.find_ty_bin()
 
 
-@task()
-def lint(ctx: Context) -> None:
-    """Extend `edwh lint` with `ty check`."""
+def lint_ruff_fmt(ctx: Context, mode: OutputMode = "cli") -> bool:
+    """Run Ruff import and format checks."""
+    ruff = edwh.tasks.find_ruff()
+    ruff_imports_success = run_command_with_output(ctx, f"{ruff} check . --quiet --select I", mode=mode, tool="isort")
+    ruff_format_success = run_command_with_output(ctx, f"{ruff} format . --check", mode=mode, tool="ruff (fmt)")
+    return ruff_imports_success and ruff_format_success
+
+
+def lint_ty(ctx: Context, mode: OutputMode = "cli") -> bool:
+    """Run ty type checks."""
     ty = find_ty()
 
-    command = [ty, "check", "--quiet"]
+    return run_command_with_output(ctx, f"{ty} check . --color always", mode=mode, tool="ty")
 
-    success = bool(run_pty(ctx, *command))
-    color: Color = "green" if success else "red"
-    cprint("⬤ ty", color=color)
 
-    if not success:
-        raise SystemExit(1)
+def lint_fixmes(ctx: Context, mode: OutputMode = "cli") -> bool:
+    """Fail when source comments contain FIXME markers."""
+    return run_command_with_output(
+        ctx,
+        (
+            "! git grep -n -i -E '(^|[[:space:]])(#|//|/\\*|\\*)[[:space:]]*.*\\<FIXME\\>' "
+            "-- '*.py' '*.js' '*.jsx' '*.ts'"
+        ),
+        mode=mode,
+        tool="fixme",
+    )
+
+
+@task()
+def lint(ctx: Context) -> LintOutput:
+    """Extend `edwh lint` with Ruff import/format checks and `ty check`."""
+    result = ctx["result"]
+    mode: OutputMode = result["mode"]
+
+    success = dict(result["results"]) | {
+        "formatting (ruff)": lint_ruff_fmt(ctx, mode=mode),
+        "typing (ty)": lint_ty(ctx, mode=mode),
+        "fixme": lint_fixmes(ctx, mode=mode),
+    }
+
+    return {"mode": mode, "results": success}
 
 
 def build_rsync_command(source: Path, test: bool = False, files: bool = False) -> str:
@@ -763,7 +817,7 @@ def build_rsync_command(source: Path, test: bool = False, files: bool = False) -
     exclude = "--exclude .git/ "
 
     if not public_target:
-        target = pathlib.Path(__file__).parent.parent.resolve() / "onzeleermiddelen-public"
+        target = pathlib.Path(__file__).parent.parent.resolve() / "openkeuzecatalogus"
 
     for app in private_apps.split(","):
         exclude += f"--exclude py4web/apps/{app} "

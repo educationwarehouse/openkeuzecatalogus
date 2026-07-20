@@ -1,0 +1,100 @@
+{
+  "products": [
+    {
+      "productId": "9781234567897",
+      "name": "Licentie rekenen 1",
+      "publisher": "Fixture Publisher",
+      "productFamilyName": "Rekenen Compleet",
+      "type": "physical",
+      "status": "available",
+      "studies": [
+        {
+          "studyLevels": [
+            {"studyLevelName": "vmbo 1"},
+            {"studyLevelName": "vmbo 4"}
+          ]
+        }
+      ],
+      "subjects": [
+        {"subjectName": "Rekenen"},
+        {"subjectName": "Wiskunde"}
+      ],
+      "media": {
+        "mainThumbnailUrl": {
+          "url": "https://cdn.example.test/rekenen-1.png"
+        }
+      },
+      "price": [
+        {
+          "priceIncl": 12.5
+        }
+      ],
+      "forSale": true,
+      "licensePeriod": {
+        "licenseVariant": "year"
+      },
+      "activationPeriod": {
+        "activationVariant": "single-use"
+      },
+      "productUsages": ["boek", "online"],
+      "longDescription": "Rekenmethode voor leerjaar 1.",
+      "trialAccessUrl": "https://example.test/trial/rekenen-1",
+      "defaultAccessUrl": "https://example.test/info/rekenen"
+    },
+    {
+      "productId": "digital-product-2",
+      "name": "Licentie rekenen 2",
+      "publisher": "Fixture Publisher",
+      "productFamilyName": "Rekenen Compleet",
+      "type": "digital",
+      "status": "limited-available",
+      "studies": [
+        {
+          "studyLevels": [
+            {"studyLevelName": "tto 5"}
+          ]
+        }
+      ],
+      "subjects": [
+        {"subjectName": "Rekenen"}
+      ],
+      "price": [
+        {
+          "priceExcl": "9.99"
+        }
+      ],
+      "forSale": false,
+      "licensePeriod": {
+        "licenseVariant": "days",
+        "licenseDays": 30
+      },
+      "activationPeriod": {
+        "activationVariant": "bulk"
+      },
+      "productUsages": ["online", "app"],
+      "defaultAccessUrl": "https://example.test/info/rekenen"
+    },
+    {
+      "productId": "issue-product-1",
+      "name": "Licentie probleemproduct",
+      "publisher": "Fixture Publisher",
+      "productFamilyName": "Probleem Methode",
+      "type": "physical",
+      "status": "mystery-status",
+      "studies": [
+        {
+          "studyLevels": [
+            {"studyLevelName": "groep acht"},
+            {"studyLevelName": "zonderjaar"}
+          ]
+        }
+      ],
+      "subjects": [
+        {"subjectName": "Oriëntatie"}
+      ],
+      "forSale": true,
+      "licensePeriod": {},
+      "activationPeriod": {}
+    }
+  ]
+}

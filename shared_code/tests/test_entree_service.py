@@ -1,13 +1,13 @@
 """Tests for Entree OAuth services."""
 
-from __future__ import annotations
-
 import typing as t
+
+from typedal import TypeDAL
 
 from shared_code.services.entree import MockEntreeOAuthService, RequestsEntreeOAuthService
 from shared_code.services.entree.contracts import EntreeOAuthService
 
-if t.TYPE_CHECKING:  # pragma: no cover
+if t.TYPE_CHECKING:
     from pytest import MonkeyPatch
 
 
@@ -30,9 +30,9 @@ def test_mock_entree_service_exposes_configured_payloads() -> None:
     assert userinfo == {"uid": "test-user", "sn": "Jansen"}
 
 
-def test_normalize_userinfo_combines_infix_and_prefixes_email() -> None:
+def test_normalize_userinfo_combines_infix_and_prefixes_email(db_psql: TypeDAL) -> None:
     """Service should map Entree names/email and include hashed password."""
-    service = RequestsEntreeOAuthService.from_env()
+    service = RequestsEntreeOAuthService.with_injected(db=db_psql)
 
     user = service.normalize_userinfo(
         {
@@ -48,9 +48,9 @@ def test_normalize_userinfo_combines_infix_and_prefixes_email() -> None:
     assert user["password"]  # (Lazy)Crypt obj
 
 
-def test_normalize_userinfo_without_mail_or_uid_returns_none() -> None:
+def test_normalize_userinfo_without_mail_or_uid_returns_none(db_psql: TypeDAL) -> None:
     """Missing identity should stop user creation."""
-    service = RequestsEntreeOAuthService.from_env()
+    service = RequestsEntreeOAuthService.with_injected(db=db_psql)
 
     user = service.normalize_userinfo({"sn": "NoEmail"})
 

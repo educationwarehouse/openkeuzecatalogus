@@ -3,10 +3,20 @@ branch = true
 parallel = true
 sigterm = true
 data_file = "/shared_cache/pytest/.coverage.py4web.runtime"
-source = ["/p4w/apps"]
+source = [
+    "/p4w/apps",
+    "/p4w/common",
+]
 
 [report]
 omit = [
     "/opt/venv/*",
     "*/site-packages/*",
+]
+exclude_also = [
+    '^\s*if\s+TYPE_CHECKING:',
+    '^\s*if\s+typing\.TYPE_CHECKING:',
+    '^\s*if\s+t\.TYPE_CHECKING:',
+    '^\s*raise NotImplementedError(?:\(.*\))?$',
+    '^\s*@(abc\.)?abstractmethod\b',
 ]

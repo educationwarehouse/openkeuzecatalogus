@@ -1,19 +1,21 @@
 """Mail service contracts."""
 
-from __future__ import annotations
-
 import abc
 import typing as t
 import warnings
 from email.message import EmailMessage
 
+from endow import Service
 from pgskewer.helpers import EnqueuedJob, queue_job
-from typedal import TypeDAL
 
-from shared_code.services.env import bool_from_env
+from shared_code.util.env import bool_from_env
 
-if t.TYPE_CHECKING:  # pragma: no cover
+if t.TYPE_CHECKING:
+    # noinspection PyUnusedImports
     from py4web.utils.mailer import Mailer as Py4webMailer
+
+    from shared_code.infra.database import DatabaseContext
+
 
 type EmailAddress = str
 type Recipients = EmailAddress | t.Sequence[EmailAddress]
@@ -29,10 +31,10 @@ class QueuedEmail(t.TypedDict):
     all_recipients: list[EmailAddress]
 
 
-class Mailer(abc.ABC):
+class Mailer(Service, abc.ABC):
     """Abstract mailer contract plus shared message construction helpers."""
 
-    db: TypeDAL
+    db: DatabaseContext
 
     # start contract to be implemented
     sender: str
@@ -117,16 +119,16 @@ class Mailer(abc.ABC):
         )
 
     @classmethod
-    def from_env(cls, db: TypeDAL) -> Mailer:
+    def from_env(cls) -> Mailer:
         """Instantiate the configured mail transport from environment variables."""
         if bool_from_env("SMTP_FAKE", True):
             from .fake import MockMailer
 
-            return MockMailer.from_env(db)
+            return MockMailer.from_env()
         else:
             from .smtp import SMTPMailer
 
-            return SMTPMailer.from_env(db)
+            return SMTPMailer.from_env()
 
     def build_message(
         self,

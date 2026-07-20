@@ -6,16 +6,16 @@ from pgqueuer.models import Job, Schedule
 from pgskewer import ImprovedQueuer, parse_payload, unblock
 
 from pgq.consumers.health import mark_heartbeat
+from shared_code.infra.database import database_context
 from shared_code.services import Mailer
 from shared_code.services.applog.handler import process_applog_deque as process_applog_deque_blocking
-from shared_code.services.database import database_context
 from shared_code.services.mail.contracts import QueuedEmail
 
 
 def send_email_message_blocking(data: QueuedEmail) -> None:
     """Send an email payload using the configured mailer inside a DB context."""
-    with database_context() as db:
-        mailer = Mailer.from_env(db)
+    with database_context("pgq.send_email_message") as db:
+        mailer = Mailer.with_injected(db=db)
         mailer.send_email_message(**data)
 
 

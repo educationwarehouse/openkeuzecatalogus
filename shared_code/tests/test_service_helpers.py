@@ -4,9 +4,10 @@ import datetime as dt
 
 import pytest
 
-from shared_code.services.database import catch_errors
-from shared_code.services.env import bool_from_env
-from shared_code.services.time.clock import normalize_timestamp
+from shared_code.infra.database import catch_errors
+from shared_code.services.applog.contracts import ApplogEvent, Applogger
+from shared_code.util.env import bool_from_env
+from shared_code.util.time import normalize_timestamp
 
 
 def test_normalize_timestamp_from_datetime_returns_isoformat() -> None:
@@ -41,21 +42,21 @@ def test_bool_from_env_parses_truthy_and_falsey(monkeypatch: pytest.MonkeyPatch)
 def test_catch_errors_logs_and_reraises_exception(monkeypatch: pytest.MonkeyPatch) -> None:
     """When an exception occurs, catch_errors should fire applog error event and reraise."""
 
-    class _FakeApplogger:
+    class _FakeApplogger(Applogger):
         def __init__(self) -> None:
-            self.fired_events: list[dict] = []
+            self.fired_events: list[ApplogEvent] = []
 
-        def fire(self, event: dict) -> bool:
+        def fire(self, event: ApplogEvent) -> bool:
             self.fired_events.append(event)
             return True
 
     fake_logger = _FakeApplogger()
     monkeypatch.setattr(
-        "shared_code.services.database.Applogger.from_env",
+        "shared_code.infra.database.Applogger.from_env",
         lambda: fake_logger,
     )
     fixed_now = dt.datetime(2026, 6, 1, 10, 11, 12, tzinfo=dt.UTC)
-    monkeypatch.setattr("shared_code.services.database.utcnow", lambda: fixed_now)
+    monkeypatch.setattr("shared_code.services.applog.contracts.utcnow", lambda: fixed_now)  # needed
 
     with pytest.raises(ValueError, match="boom"), catch_errors("unit.test.app"):
         raise ValueError("boom")

@@ -37,9 +37,12 @@ class VisionModelWithPrio_V1(ViewMigrationManager):
         """Drop view/index objects for the vision model."""
         self.db.executesql("""
         DROP TRIGGER IF EXISTS refresh_vision_model_trigger ON vision_ed;
+        DROP TRIGGER IF EXISTS vision_model_update_trigger ON vision_ed;
         """)
 
         self.db.executesql("""
-        DROP FUNCTION IF EXISTS get_active_vision;
+        DROP FUNCTION IF EXISTS get_active_vision(uuid);
+        DROP FUNCTION IF EXISTS apply_change_vision_model();
+        DROP FUNCTION IF EXISTS rebuild_vision_model();
         """)
         drop_table_or_mv(self.db, "vision_model")

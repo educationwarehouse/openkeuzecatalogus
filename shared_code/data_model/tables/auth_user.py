@@ -1,28 +1,28 @@
 """Auth user table model and identity synchronization hooks."""
 
 import typing as t
-import uuid
 
-from edwh_auth_rbac import AuthRbac
 from pydal.validators import IS_EMAIL, IS_EMPTY_OR, IS_IN_SET, IS_LOWER, IS_NOT_IN_DB
-from typedal import TypeDAL, relationship
-from typedal.fields import TimestampField, TypedField, UUIDField
+from typedal import relationship
+from typedal.fields import TimestampField, TypedField
 from typedal.types import OpRow, Set, Validator
 from typedal.web2py_py4web_shared import AuthUser as _AuthUser
 
 from shared_code.data_model.constants import ROLE_USER, SECTOREN
-from shared_code.data_model.mixins import SearchMixin
-from shared_code.data_model.validators.is_uuid import IS_UUID
-from shared_code.services import Applogger
+from shared_code.data_model.mixins.search import SearchMixin
+from shared_code.data_model.tables.base import InternalUUIDField
 
-if t.TYPE_CHECKING:  # pragma: no cover
+if t.TYPE_CHECKING:
+    from shared_code.infra.database import DatabaseContext
+
     type identity = t.Any
 
 
 class AuthUser(_AuthUser, SearchMixin, search_fields=("email", "first_name", "last_name")):
     """Application-specific auth user extension with RBAC identity sync."""
 
-    gid = UUIDField(default=uuid.uuid4, writable=False, requires=IS_UUID(), filter_out=str, label="gid")
+    # gid = UUIDField(default=uuid.uuid4, writable=False, requires=IS_UUID(), filter_out=str, label="gid")
+    gid = InternalUUIDField(label="GID")
     api_key_hash = TypedField(str, readable=False, writable=False)
     past_passwords_hash: TypedField[list[str]]
     reset_password_expires_at = TimestampField(readable=False, writable=False, notnull=False)
@@ -48,9 +48,12 @@ class AuthUser(_AuthUser, SearchMixin, search_fields=("email", "first_name", "la
     )
 
     @classmethod
-    def __on_define__(cls, db: TypeDAL) -> None:
+    def __on_define__(cls, db: DatabaseContext) -> None:
         """Configure validators and register table hooks after model definition."""
         super().__on_define__(db)
+        auth = db.auth
+        # access raw rbac because AuthContext doesn't include all these features (update_identity, add_user)
+        rbac = auth.raw_rbac
 
         cls.past_passwords_hash.readable = False
         cls.past_passwords_hash.writable = False
@@ -73,16 +76,7 @@ class AuthUser(_AuthUser, SearchMixin, search_fields=("email", "first_name", "la
             ],
         )
 
-        rbac = AuthRbac(db)
-        rbac.define_model(
-            allowed_types=["user", "group", "item"],
-            redefine=True,
-            migrate=False,
-        )
-
-        applog = Applogger.from_env()
-
-        def on_insert(row: OpRow, reference: int, logger: Applogger = applog) -> None:
+        def on_insert(row: OpRow, reference: int) -> None:
             if user := rbac.get_user(row.email):
                 # identity already exists, user was invited
                 rbac.update_identity(
@@ -93,7 +87,7 @@ class AuthUser(_AuthUser, SearchMixin, search_fields=("email", "first_name", "la
                     fullname=f"{row.first_name} {row.last_name}",
                     password=row.password,
                 )
-                logger.log_auth_action(
+                db.applog.log_auth_action(
                     action="registration",
                     success=True,
                     user_gid=getattr(row, "gid", None),
@@ -109,7 +103,7 @@ class AuthUser(_AuthUser, SearchMixin, search_fields=("email", "first_name", "la
                     member_of=[],
                     gid=getattr(row, "gid", None),
                 )
-                logger.log_auth_action(
+                db.applog.log_auth_action(
                     action="registration",
                     success=True,
                     user_gid=getattr(row, "gid", None),
@@ -117,11 +111,16 @@ class AuthUser(_AuthUser, SearchMixin, search_fields=("email", "first_name", "la
                     details={"scenario": "new_identity"},
                 )
 
-            rbac.add_membership(user, ROLE_USER)
+            db.commit()
+            user_gid = user["object_id"]
+
+            # normal auth, includes logging:
+            auth.add_membership(user_gid, ROLE_USER)
 
             AuthUser(reference).update_record(
-                gid=user["object_id"],
+                gid=user_gid,
             )
+            db.commit()
 
         cls.after_insert(on_insert)
 

@@ -1,18 +1,77 @@
 """Supplier table definitions."""
 
-from pydal.validators import IS_IN_SET
+import typing as t
+import uuid
+
+from pydal.validators import IS_EMPTY_OR, IS_IN_SET, IS_URL
+from typedal import TypeDAL
 from typedal.fields import TypedField
+from typedal.types import OpRow
 
-from shared_code.data_model.mixins.effdt import EffdtFields
+from shared_code.data_model.constants import ROLE_SUPPLIER
+from shared_code.data_model.mixins.effdt.mixin import EffdtFields
+from shared_code.data_model.mixins.search import SearchMixin
+from shared_code.data_model.representers.lists import comma_separated
 from shared_code.data_model.tables.base import BaseTable
+from shared_code.util.olid import generate_supplier_olid
+
+if t.TYPE_CHECKING:
+    pass
 
 
-class Supplier(BaseTable, EffdtFields):
-    """Current supplier model view."""
+def keep_supplier_group_in_sync(cls: type[SupplierEd]) -> t.Callable[[OpRow, int], None]:
+    """Keep the supplier RBAC group aligned with the latest active supplier row."""
+    db = cls._db  # type: DatabaseContext
+    assert db, "Can't use keep_supplier_group_in_sync on a class used without db.define()"
+    auth = db.auth
+    # access raw rbac because AuthContext doesn't include all these features (update_identity, add_group)
+    rbac = auth.raw_rbac
 
-    name = TypedField(str, label="Naam")
-    logo_url = TypedField(str, label="Logo URL")
+    def wrapper(_changes: OpRow, row_id: int) -> None:
+        row = cls(row_id)
+        if not row or row.effstatus is False:
+            return
+
+        group_email = f"{row.gid}@supplier"
+
+        if existing := rbac.get_group(row.gid):
+            # propagate name changes
+            rbac.update_identity(existing["object_id"], email=group_email, name=row.name, fullname=row.name)
+        else:
+            rbac.add_group(
+                group_email,
+                row.name,
+                [ROLE_SUPPLIER],
+                gid=str(row.gid),
+                allow_existing=True,
+            )
+            db.applog.try_fire(
+                {
+                    "kind": "event",
+                    "action": "supplier-group-created",
+                    "user_gid": db.auth.id,
+                    "related": str(row.gid),
+                    "details": {
+                        "supplier_gid": str(row.gid),
+                        "supplier_name": row.name,
+                        "group_email": group_email,
+                    },
+                },
+            )
+
+        rbac.add_permission(row.gid, row.gid, "*")
+
+        db.commit()
+
+    return wrapper
+
+
+class SupplierEd(BaseTable, EffdtFields, SearchMixin, search_fields=("name", "gid", "olid")):
+    """Effective-dated supplier source table."""
+
+    name = TypedField(str, label="Naam", required=True)
     olid = TypedField(str, label="OLID", unique=True)
+    logo_url = TypedField(str, label="Logo URL")
     status_visions = TypedField(
         str,
         label="Status Visies",
@@ -22,10 +81,46 @@ class Supplier(BaseTable, EffdtFields):
                 "wil niet delen",
                 "in gesprek",
                 "compleet",
-            }
+            },
         ),
     )
 
+    email_domains = TypedField(
+        list[str],
+        label="Email Domeinen",
+        comment="Gebruikt voor automatische rol-toekenning",
+        represent=comma_separated,
+    )
 
-class SupplierEd(Supplier):
-    """Effective-dated supplier source table."""
+    endpoint_type = TypedField(
+        str,
+        requires=IS_IN_SET(("edu-v", "none")),
+        label="Type API endpoint",
+    )
+
+    endpoint_base_url = TypedField(
+        str | None,
+        requires=IS_EMPTY_OR(IS_URL()),
+        label="Basis-URL endpoint voor data-import",
+        comment="Zonder resource-pad, bijvoorbeeld: https://app.cumulus.co/api/edu-v/v1/",
+    )
+
+    @classmethod
+    def __on_define__(cls, db: TypeDAL) -> None:
+        """Generate supplier OLIDs before inserts when none was supplied."""
+        super().__on_define__(db)
+
+        def on_insert(fields: SupplierEd) -> None:
+            if fields.get("olid"):
+                return
+
+            gid = fields.get("gid") or uuid.uuid4()
+            fields["gid"] = gid
+            fields["olid"] = generate_supplier_olid(gid)
+
+        cls.before_insert(on_insert)
+        cls.after_insert(keep_supplier_group_in_sync(cls))
+
+
+class Supplier(SupplierEd):
+    """Current supplier model view."""

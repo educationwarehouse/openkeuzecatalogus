@@ -1,27 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <base href="[[=URL('static')]]/">
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="[[=URL('static/css/bundled-latest.css')]]">
-    <script defer src="[[=URL('static/js/bundled-latest.js')]]"></script>
-    [[block page_head]][[end]]
-</head>
-<body class="edwh-messagebus" data-bs-theme=light>
-<main class="container py-5">
-    [[include]]
-</main>
+[[extend '../../../common/templates/layout.html']]
 
-[[if flash_obj := globals().get('flash',''):]]
-<template id="py4web-flash">
-    <div class="alert [[=flash_obj.get('class') or 'alert-primary']]" role="alert">
-        [[=flash_obj.get('message')]]
-    </div>
-</template>
-[[pass]]
-
-[[block page_scripts]][[end]]
-
-</body>
-</html>
+[[include]]

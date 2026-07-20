@@ -1,0 +1,17 @@
+[run]
+branch = true
+parallel = true
+
+[report]
+omit = [
+    "/opt/venv/*",
+    "*/site-packages/*",
+    "/p4w/*.html",
+]
+exclude_also = [
+    '^\s*if\s+TYPE_CHECKING:',
+    '^\s*if\s+typing\.TYPE_CHECKING:',
+    '^\s*if\s+t\.TYPE_CHECKING:',
+    '^\s*raise NotImplementedError(?:\(.*\))?$',
+    '^\s*@(abc\.)?abstractmethod\b',
+]

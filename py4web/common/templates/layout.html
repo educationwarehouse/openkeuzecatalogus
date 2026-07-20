@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="[[=URL('static/css/bundled-latest.css', use_appname=False)]]">
+    <script defer src="[[=URL('static/js/bundled-latest.js', use_appname=False)]]"></script>
+    <script src="https://kit.fontawesome.com/fe5a63b17a.js" crossorigin="anonymous"></script>
+    [[block page_head]][[end]]
+</head>
+<body class="edwh-messagebus" data-bs-theme=light>
+<main class="container py-5">
+    [[if globals().get("auth") and auth.is_impersonating():]]
+    <div class="alert alert-warning d-flex align-items-center justify-content-between gap-3" role="alert">
+        <div>
+            <strong>Impersonating.</strong>
+            Je werkt momenteel als een andere gebruiker.
+        </div>
+        <a class="btn btn-sm btn-outline-dark" href="[[=URL('admin', 'stop_impersonate', use_appname=False)]]">Stop</a>
+    </div>
+    [[pass]]
+    [[include]]
+</main>
+
+[[if flash_obj := globals().get('flash',''):]]
+<template id="py4web-flash">
+    <div class="alert [[=flash_obj.get('class') or 'alert-primary']]" role="alert">
+        [[=flash_obj.get('message')]]
+    </div>
+</template>
+[[pass]]
+
+[[block page_scripts]][[end]]
+
+</body>
+</html>

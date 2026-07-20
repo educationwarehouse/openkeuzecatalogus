@@ -1,0 +1,794 @@
+{
+  "name": "CI Workflow Forgejo",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "Dit kijkt in welke branch je zit",
+        "height": 96,
+        "width": 166
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        240,
+        -192
+      ],
+      "typeVersion": 1,
+      "id": "ad1e6977-c62a-4018-ba2b-cccadc8740a7",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "Dit voert de tests uit",
+        "height": 96,
+        "width": 150
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        848,
+        -576
+      ],
+      "typeVersion": 1,
+      "id": "15ef2ea8-eb43-41a1-9929-cc49b7344ebd",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.pull_request.head.ref }}",
+                    "rightValue": "staging",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "e0780f0c-3ca1-4d0b-b68c-1071a5348b55"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "256f3a98-22d1-41a8-bd58-498466978ad0",
+                    "leftValue": "={{ $json.body.pull_request.head.ref }}",
+                    "rightValue": "prd",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        480,
+        -208
+      ],
+      "id": "c5fd394f-0fc9-41aa-a8cc-018d0b83b578",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "content": "Kijkt of het Staging of prd is",
+        "height": 96,
+        "width": 166
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        432,
+        -288
+      ],
+      "typeVersion": 1,
+      "id": "f0f68674-5ad9-455b-8e68-d1eaf00db266",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1648,
+        -208
+      ],
+      "id": "bc485549-9744-4c8b-8789-a9f3564c55f9",
+      "name": "No Operation, do nothing2"
+    },
+    {
+      "parameters": {
+        "owner": {
+          "__rl": true,
+          "value": "educationwarehouse",
+          "mode": "list",
+          "cachedResultName": "educationwarehouse",
+          "cachedResultUrl": "https://github.com/educationwarehouse"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "onzeleermiddelen-private",
+          "mode": "list",
+          "cachedResultName": "onzeleermiddelen-private",
+          "cachedResultUrl": "https://github.com/educationwarehouse/onzeleermiddelen-private"
+        },
+        "events": [
+          "pull_request"
+        ],
+        "options": {
+          "insecureSSL": false
+        }
+      },
+      "type": "n8n-nodes-base.githubTrigger",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        -112
+      ],
+      "id": "bf398768-3927-4d83-8746-a3b49403ae91",
+      "name": "Github Trigger",
+      "webhookId": "8492a2dc-d386-47e6-ae13-407fcd3b4fa0",
+      "credentials": {
+        "githubApi": {
+          "id": "mnodTH6qEgckZtPs",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "review",
+        "owner": {
+          "__rl": true,
+          "value": "educationwarehouse",
+          "mode": "list",
+          "cachedResultName": "educationwarehouse",
+          "cachedResultUrl": "https://github.com/educationwarehouse"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "onzeleermiddelen-private",
+          "mode": "list",
+          "cachedResultName": "onzeleermiddelen-private",
+          "cachedResultUrl": "https://github.com/educationwarehouse/onzeleermiddelen-private"
+        },
+        "pullRequestNumber": "={{ $('Github Trigger').item.json.body.number }}",
+        "event": "comment",
+        "body": "=Pytest: \n{{ $json.test_report }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [
+        1216,
+        -496
+      ],
+      "id": "7cf4b144-53e5-45e6-9c33-bcd6e70d3244",
+      "name": "Create a review",
+      "webhookId": "3f3d306c-e197-4b66-983d-1b7837482480",
+      "credentials": {
+        "githubApi": {
+          "id": "mnodTH6qEgckZtPs",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "29a6c0cb-6fae-4fae-8f9f-a434a1899ed3",
+              "leftValue": "={{ $json.body.action }}",
+              "rightValue": "opened",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        32,
+        -112
+      ],
+      "id": "40ae9144-8e53-4c75-82bb-dfae34688e52",
+      "name": "If"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        496,
+        144
+      ],
+      "id": "a37f6688-abae-41be-bca0-11d89176779f",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "95e1029d-af9d-4b4d-97ca-c698a3e3c370",
+              "leftValue": "={{ $json.body.pull_request.head.ref }}",
+              "rightValue": "staging",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "e3fc61b1-8c5f-4722-8d4f-6c160ca481c6",
+              "leftValue": "={{ $json.body.pull_request.head.ref }}",
+              "rightValue": "prd",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        272,
+        -112
+      ],
+      "id": "7ee018bd-3df8-4c50-ba3f-253ccd8ac0c7",
+      "name": "branch"
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": "git stash && git pull",
+        "cwd": "/home/ubuntu/onzeleermiddelen-staging"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        688,
+        -416
+      ],
+      "id": "12256ab4-7a4d-4035-a38f-f4cd4830e99f",
+      "name": "git pull",
+      "alwaysOutputData": false,
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "yd9tmkNdCsx0IjIL",
+          "name": "SSH Utils Hetzner"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": ". ./venv/bin/activate && ./venv/bin/edwh test.run",
+        "cwd": "/home/ubuntu/onzeleermiddelen-staging"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        880,
+        -496
+      ],
+      "id": "2f468f5f-41c3-4f31-9eff-d8b8921cb2fd",
+      "name": "pytest uitvoeren",
+      "alwaysOutputData": false,
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "yd9tmkNdCsx0IjIL",
+          "name": "SSH Utils Hetzner"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "review",
+        "owner": {
+          "__rl": true,
+          "value": "educationwarehouse",
+          "mode": "list",
+          "cachedResultName": "educationwarehouse",
+          "cachedResultUrl": "https://github.com/educationwarehouse"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "onzeleermiddelen-private",
+          "mode": "list",
+          "cachedResultName": "onzeleermiddelen-private",
+          "cachedResultUrl": "https://github.com/educationwarehouse/onzeleermiddelen-private"
+        },
+        "pullRequestNumber": "={{ $('Github Trigger').item.json.body.number }}",
+        "event": "comment",
+        "body": "=Linttest:\n{{ $json.stdout }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [
+        1232,
+        -304
+      ],
+      "id": "29a52222-b08a-4a7d-b27b-e9dba39e3e26",
+      "name": "Create a review1",
+      "webhookId": "3f3d306c-e197-4b66-983d-1b7837482480",
+      "credentials": {
+        "githubApi": {
+          "id": "mnodTH6qEgckZtPs",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "review",
+        "owner": {
+          "__rl": true,
+          "value": "educationwarehouse",
+          "mode": "list",
+          "cachedResultName": "educationwarehouse",
+          "cachedResultUrl": "https://github.com/educationwarehouse"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "onzeleermiddelen-private",
+          "mode": "list",
+          "cachedResultName": "onzeleermiddelen-private",
+          "cachedResultUrl": "https://github.com/educationwarehouse/onzeleermiddelen-private"
+        },
+        "pullRequestNumber": "={{ $('Github Trigger').item.json.body.number }}",
+        "event": "comment",
+        "body": "={{ $json.test_report }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [
+        1216,
+        -128
+      ],
+      "id": "54338e50-70a3-48f1-b16d-04b4a0ba9d8d",
+      "name": "Create a review2",
+      "webhookId": "3f3d306c-e197-4b66-983d-1b7837482480",
+      "credentials": {
+        "githubApi": {
+          "id": "mnodTH6qEgckZtPs",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b30b6546-4262-466f-a289-791d40c75596",
+              "name": "test_report",
+              "value": "={{ $json.stdout.replace(/\\r/g, '').split('--- START REPORTING ---')[1].split('--- END REPORTING ---')[0].trim() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1056,
+        -128
+      ],
+      "id": "42b616ca-4eab-4c12-9790-f4c8fbda1908",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": "git stash && git pull",
+        "cwd": "/home/ubuntu/onzeleermiddelen-prd"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        688,
+        -48
+      ],
+      "id": "76c36dc8-cf60-436d-9c64-0cdff11c28ce",
+      "name": "git pull1",
+      "alwaysOutputData": false,
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "yd9tmkNdCsx0IjIL",
+          "name": "SSH Utils Hetzner"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": ". ./venv/bin/activate && uv pip install . && ./venv/bin/edwh lint",
+        "cwd": "/home/ubuntu/onzeleermiddelen-staging"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        992,
+        -304
+      ],
+      "id": "69618834-0675-4faf-8e27-211d903e494e",
+      "name": "linttest uitvoeren",
+      "alwaysOutputData": false,
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "yd9tmkNdCsx0IjIL",
+          "name": "SSH Utils Hetzner"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": ". ./venv/bin/activate && ./venv/bin/edwh test.run",
+        "cwd": "/home/ubuntu/onzeleermiddelen-prd"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        880,
+        -128
+      ],
+      "id": "3f7ec7ca-29f6-45e2-aa87-e4f581f4f73f",
+      "name": "pytest uitvoeren1",
+      "alwaysOutputData": false,
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "yd9tmkNdCsx0IjIL",
+          "name": "SSH Utils Hetzner"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b30b6546-4262-466f-a289-791d40c75596",
+              "name": "test_report",
+              "value": "={{ $json.stdout.replace(/\\r/g, '').split('--- START REPORTING ---')[1].split('--- END REPORTING ---')[0].trim() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1056,
+        -496
+      ],
+      "id": "42178ca6-c1e6-4e03-8381-457e6f1cd467",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "resource": "review",
+        "owner": {
+          "__rl": true,
+          "value": "educationwarehouse",
+          "mode": "list",
+          "cachedResultName": "educationwarehouse",
+          "cachedResultUrl": "https://github.com/educationwarehouse"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "onzeleermiddelen-private",
+          "mode": "list",
+          "cachedResultName": "onzeleermiddelen-private",
+          "cachedResultUrl": "https://github.com/educationwarehouse/onzeleermiddelen-private"
+        },
+        "pullRequestNumber": "={{ $('Github Trigger').item.json.body.number }}",
+        "event": "comment",
+        "body": "=Linttest:\n{{ $json.stdout }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [
+        1216,
+        96
+      ],
+      "id": "0e2777d9-38b3-499f-9557-94d1041bb02f",
+      "name": "Create a review3",
+      "webhookId": "3f3d306c-e197-4b66-983d-1b7837482480",
+      "credentials": {
+        "githubApi": {
+          "id": "mnodTH6qEgckZtPs",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": ". ./venv/bin/activate && uv pip install . && ./venv/bin/edwh lint",
+        "cwd": "/home/ubuntu/onzeleermiddelen-prd"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        976,
+        96
+      ],
+      "id": "9d3f9cb8-2ef8-46a6-89b6-5706009746f3",
+      "name": "linttest uitvoeren1",
+      "alwaysOutputData": false,
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "yd9tmkNdCsx0IjIL",
+          "name": "SSH Utils Hetzner"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "git pull",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "git pull1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Github Trigger": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a review": {
+      "main": [
+        [
+          {
+            "node": "linttest uitvoeren",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "branch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "branch": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "git pull": {
+      "main": [
+        [
+          {
+            "node": "pytest uitvoeren",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "pytest uitvoeren": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a review1": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "Create a review2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "git pull1": {
+      "main": [
+        [
+          {
+            "node": "pytest uitvoeren1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a review2": {
+      "main": [
+        [
+          {
+            "node": "linttest uitvoeren1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "linttest uitvoeren": {
+      "main": [
+        [
+          {
+            "node": "Create a review1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "pytest uitvoeren1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Create a review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "linttest uitvoeren1": {
+      "main": [
+        [
+          {
+            "node": "Create a review3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a review3": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "W7cWIrqhp1xDy3oa",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "4cba2781-9929-4506-b0f6-47e88a408972",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bbd3a9deeac13480fc3948fdf4224b13c81c9022f13c693bd7074a073726ba5f"
+  },
+  "nodeGroups": [],
+  "id": "cFq1Gz1OM5c6OVWX",
+  "tags": []
+}

@@ -7,14 +7,21 @@ import string
 import subprocess
 import typing as t
 import warnings
+import uuid
 from pathlib import Path
 from urllib.parse import urlparse
 
 import pytest
-from typedal import TypeDAL
+from edwh_auth_rbac import AuthRbac
 
+from shared_code.data_model import AuthUser, Supplier, SupplierEd
+from shared_code.data_model.constants import ROLE_ADMIN, ROLE_BOARD, ROLE_LOCATION, ROLE_ORGANISATION, ROLE_SCHOOL, ROLE_SUPPLIER, ROLE_USER
+from shared_code.modules.auth import AuthAdapter
+from shared_code.modules.auth.contract import AuthActor, AuthContext
 from shared_code.data_model.setup import define_tables
-from shared_code.services.database import database_context
+from shared_code.infra.database import database_context, DatabaseContext as TypeDAL
+from shared_code.services.applog import Applogger
+
 
 DEFAULT_SNAPSHOT_NAME = "testing.snapshot"
 
@@ -167,11 +174,10 @@ def _random_snapshot_suffix(length: int = 6) -> str:
 @pytest.fixture()
 def db_psql() -> t.Iterator[TypeDAL]:
     """Fresh Postgres TypeDAL instance per test."""
-    postgres_uri = os.environ.get("POSTGRES_URI")
-    if not postgres_uri:
+    if not os.environ.get("POSTGRES_URI"):
         raise RuntimeError("POSTGRES_URI is required for shared_code tests.")
 
-    database = TypeDAL(postgres_uri)
+    database = TypeDAL.with_injected(auth_adapter=AuthAdapter.for_service("pytest.db_psql"))
     try:
         yield database
     finally:
@@ -228,8 +234,293 @@ def db_per_file(migrated_db_per_file: None) -> t.Iterator[TypeDAL]:
     """Module-scoped TypeDAL instance with shared tables defined."""
     assert migrated_db_per_file is None
 
-    with database_context() as database:
+    with database_context("pytest.db_per_file") as database:
         yield database
+
+
+def _unique_email(prefix: str, domain: str = "example.test") -> str:
+    """Return a unique email address for test users."""
+    return f"{prefix}-{uuid.uuid4().hex}@{domain}"
+
+
+def _seed_rbac_roles(db: TypeDAL) -> AuthRbac:
+    """Create the RBAC model and base roles needed by shared user fixtures."""
+    rbac = AuthRbac(db)
+    rbac.define_model(allowed_types=["user", "group", "item"], redefine=True, migrate=False)
+    rbac.add_group(ROLE_USER, "Users", [], allow_existing=True)
+    organisation = rbac.add_group(ROLE_ORGANISATION, "Organisaties", [ROLE_USER], allow_existing=True)
+    rbac.add_group(ROLE_BOARD, "Besturen", [organisation["object_id"]], allow_existing=True)
+    rbac.add_group(ROLE_SCHOOL, "Scholen", [organisation["object_id"]], allow_existing=True)
+    rbac.add_group(ROLE_LOCATION, "Vestigingen", [organisation["object_id"]], allow_existing=True)
+    rbac.add_group(ROLE_SUPPLIER, "Suppliers", [], allow_existing=True)
+    rbac.add_group(ROLE_ADMIN, "Admins", [], allow_existing=True)
+    db.commit()
+    return rbac
+
+
+@pytest.fixture()
+def seeded_rbac(db_per_file: TypeDAL) -> AuthRbac:
+    """RBAC model with the shared user-role identities pre-seeded."""
+    return _seed_rbac_roles(db_per_file)
+
+
+def _build_auth_adapter(
+    user: AuthUser,
+    roles: t.Iterable[str] = (),
+    permissions: t.Iterable[str] = (),
+    grant_membership: t.Callable[[AuthContext, str, str], None] | None = None,
+    check_membership: t.Callable[[AuthContext, str], bool] | None = None,
+    check_permission: t.Callable[[AuthContext, str], bool] | None = None,
+) -> AuthAdapter:
+    """Create a user-scoped AuthAdapter for test fixtures."""
+    role_set = set(roles)
+    permission_set = set(permissions)
+    actor = AuthActor(
+        kind="user",
+        id=str(user.gid),
+        email=user.email,
+        name=user.full_name,
+    )
+    return AuthAdapter(
+        get_actor=lambda: actor,
+        get_roles=lambda _ctx: set(role_set),
+        get_permissions=lambda _ctx: set(permission_set),
+        grant_membership=grant_membership,
+        check_membership=check_membership,
+        check_permission=check_permission,
+    )
+
+
+@pytest.fixture()
+def auth_user_factory(
+    seeded_rbac: AuthRbac,
+) -> t.Iterator[t.Callable[..., AuthUser]]:
+    """Build and tear down auth users created during a test."""
+    created_user_ids: list[int] = []
+
+    def create_user(
+        prefix: str = "user",
+        domain: str = "example.test",
+        first_name: str = "Test",
+        last_name: str = "User",
+        password: str = "ValidPass123!",  # noqa: S106 - test credential
+        roles: t.Iterable[str] = (),
+    ) -> AuthUser:
+        email = _unique_email(prefix, domain)
+        row, errors = AuthUser.validate_and_insert(
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            password=password,
+        )
+        assert row, errors
+
+        user = AuthUser(row["id"])
+        assert user is not None
+
+        for role in roles:
+            seeded_rbac.add_membership(str(user.gid), str(role))
+
+        AuthUser._db.commit()
+        created_user_ids.append(user.id)
+        return user
+
+    yield create_user
+
+    for user_id in reversed(created_user_ids):
+        user = AuthUser(user_id)
+        if user:
+            user.delete_record()
+    AuthUser._db.commit()
+
+
+@pytest.fixture()
+def normal_user(auth_user_factory: t.Callable[..., AuthUser]) -> AuthUser:
+    """Create a baseline user with only the default user membership."""
+    return auth_user_factory(prefix="normal")
+
+
+@pytest.fixture()
+def admin_user(auth_user_factory: t.Callable[..., AuthUser]) -> AuthUser:
+    """Create a user with the admin membership."""
+    return auth_user_factory(prefix="admin", roles=[ROLE_ADMIN])
+
+
+@pytest.fixture()
+def auth_adapter_factory(
+    seeded_rbac: AuthRbac,
+) -> t.Callable[..., AuthAdapter]:
+    """Create a reusable AuthAdapter factory for user-scoped tests."""
+
+    def create_adapter(
+        user: AuthUser,
+        roles: t.Iterable[str] = (),
+        permissions: t.Iterable[str] = (),
+        grant_membership: t.Callable[[AuthContext, str, str], None] | None = None,
+        check_membership: t.Callable[[AuthContext, str], bool] | None = None,
+        check_permission: t.Callable[[AuthContext, str], bool] | None = None,
+    ) -> AuthAdapter:
+        subject = str(user.gid)
+        default_grant = lambda _ctx, current_subject, role: seeded_rbac.add_membership(current_subject, role)
+        default_check = lambda _ctx, role: seeded_rbac.has_membership(subject, role)
+        return _build_auth_adapter(
+            user,
+            roles=roles,
+            permissions=permissions,
+            grant_membership=grant_membership or default_grant,
+            check_membership=check_membership or default_check,
+            check_permission=check_permission,
+        )
+
+    return create_adapter
+
+@pytest.fixture()
+def supplier_factory(db_per_file: TypeDAL) -> t.Iterator[t.Callable[..., Supplier]]:
+    """Build and tear down supplier rows created during a test."""
+    created_supplier_ids: list[int] = []
+
+    def create_supplier(
+        name: str,
+        email_domains: list[str],
+        endpoint_type: str = "none",
+        allow_existing: bool = True,
+    ) -> Supplier:
+        primary_domain = email_domains[0]
+
+        if allow_existing and (existing := Supplier.where(Supplier.email_domains.contains(primary_domain)).first()):
+            return existing
+
+        row = SupplierEd.insert(
+            name=name,
+            email_domains=email_domains,
+            endpoint_type=endpoint_type,
+        )
+        assert row is not None
+        db_per_file.commit()
+        created_supplier_ids.append(row.id)
+        return t.cast(Supplier, row)
+
+    yield create_supplier
+
+    for supplier_id in reversed(created_supplier_ids):
+        supplier = Supplier(supplier_id)
+        if supplier:
+            supplier.delete_record()
+    db_per_file.commit()
+
+
+@pytest.fixture()
+def supplier(supplier_factory: t.Callable[..., Supplier]) -> Supplier:
+    """Create a generic supplier row for membership-oriented tests."""
+    return supplier_factory(
+        name="Supplier Test",
+        email_domains=["supplier.example.test"],
+    )
+
+
+@pytest.fixture()
+def supplier_user(
+    auth_user_factory: t.Callable[..., AuthUser],
+    supplier: Supplier,
+) -> AuthUser:
+    """Create a user that belongs to the supplier RBAC identity."""
+    return auth_user_factory(
+        prefix="supplier",
+        domain=(supplier.email_domains[0] if supplier.email_domains else "example.test"),
+        roles=[str(supplier.gid)],
+    )
+
+
+@pytest.fixture()
+def supplier_adapter(
+    auth_adapter_factory: t.Callable[..., AuthAdapter],
+    supplier_user: AuthUser,
+    supplier: Supplier,
+) -> AuthAdapter:
+    """Create an adapter for a user that belongs to a supplier."""
+    return auth_adapter_factory(supplier_user, roles=[ROLE_USER, str(supplier.gid)])
+
+
+@pytest.fixture()
+def education_warehouse_supplier(
+    db_per_file: TypeDAL,
+    seeded_rbac: AuthRbac,
+) -> Supplier:
+    """Return the Education Warehouse supplier, creating it once if needed."""
+    if existing := Supplier.where(Supplier.email_domains.contains("educationwarehouse.nl")).first():
+        supplier = t.cast(Supplier, existing)
+    else:
+        supplier = t.cast(
+            Supplier,
+            SupplierEd.insert(
+                name="Education Warehouse",
+                email_domains=["educationwarehouse.nl"],
+                endpoint_type="none",
+            ),
+        )
+        db_per_file.commit()
+
+    if not supplier:
+        raise RuntimeError("Failed to create the Education Warehouse supplier")
+
+    if not seeded_rbac.has_membership(str(supplier.gid), ROLE_ADMIN):
+        seeded_rbac.add_membership(str(supplier.gid), ROLE_ADMIN)
+        db_per_file.commit()
+
+    return supplier
+
+
+@pytest.fixture()
+def education_warehouse_supplier_user(
+    auth_user_factory: t.Callable[..., AuthUser],
+    education_warehouse_supplier: Supplier,
+) -> AuthUser:
+    """Create a user that belongs to the Education Warehouse supplier."""
+    return auth_user_factory(
+        prefix="education-warehouse",
+        domain=(education_warehouse_supplier.email_domains[0] if education_warehouse_supplier.email_domains else "example.test"),
+        roles=[str(education_warehouse_supplier.gid)],
+    )
+
+
+@pytest.fixture()
+def education_warehouse_admin_user(
+    auth_user_factory: t.Callable[..., AuthUser],
+    education_warehouse_supplier: Supplier,
+) -> AuthUser:
+    """Create a user that receives admin access through the supplier hierarchy."""
+    return auth_user_factory(
+        prefix="education-warehouse",
+        domain=(education_warehouse_supplier.email_domains[0] if education_warehouse_supplier.email_domains else "example.test"),
+        roles=[str(education_warehouse_supplier.gid)],
+    )
+
+
+@pytest.fixture()
+def education_warehouse_supplier_adapter(
+    auth_adapter_factory: t.Callable[..., AuthAdapter],
+    education_warehouse_supplier_user: AuthUser,
+    education_warehouse_supplier: Supplier,
+) -> AuthAdapter:
+    """Create an adapter for an Education Warehouse supplier user."""
+    return auth_adapter_factory(
+        education_warehouse_supplier_user,
+        roles=[ROLE_USER, str(education_warehouse_supplier.gid)],
+    )
+
+
+@pytest.fixture()
+def education_warehouse_admin_adapter(
+    auth_adapter_factory: t.Callable[..., AuthAdapter],
+    education_warehouse_admin_user: AuthUser,
+    education_warehouse_supplier: Supplier,
+) -> AuthAdapter:
+    """Create an adapter for a user who inherits admin through the supplier chain."""
+    return auth_adapter_factory(
+        education_warehouse_admin_user,
+        roles=[ROLE_USER, str(education_warehouse_supplier.gid), ROLE_ADMIN],
+    )
+
 
 
 def _pg_env() -> tuple[dict[str, str], dict[str, str]]:

@@ -34,7 +34,9 @@ They typically contain:
 - `sync_gid`: stable row-level sync/upsert key
 - domain fields such as `name`, `olid`, `description`, and related foreign gids
 
-The shared effective-dating field mixin lives in [shared_code/data_model/mixins/effdt.py](../../shared_code/data_model/mixins/effdt.py).
+The shared effective-dating field mixin lives in [shared_code/data_model/mixins/effdt/mixin.py](../../shared_code/data_model/mixins/effdt/mixin.py).
+
+For the semantics of the `olid` field itself, see [OLID identifiers](olid.md).
 
 ## `_model` Table Semantics
 
@@ -81,3 +83,6 @@ See [shared_code/data_model/setup.py](../../shared_code/data_model/setup.py).
 - If you need current rows for normal app behavior, query `_model`.
 - If you need historical, sync, or precedence data, inspect `_ed`.
 - If a bulk operation bypasses normal incremental updates, rebuild the model tables afterward.
+- Supplier rows also drive RBAC group synchronization and email-domain matching for membership assignment.
+- Organisation rows also drive RBAC group synchronization and email-domain matching for organisation membership assignment.
+- See [Supplier memberships and access control](supplier-memberships.md) and [Auth and RBAC](auth-rbac.md).

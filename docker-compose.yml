@@ -8,7 +8,6 @@ networks:
 services:
   migrate:
     restart: "no"
-    image: remcoboerma/omgeving-migrate:${DOCKER_TAG}
     build:
       context: migrate
       args:
@@ -52,6 +51,7 @@ services:
       MAILGUN_DOMAIN: ${MAILGUN_DOMAIN}
       DEFAULT_FROM_ADDRESS: ${DEFAULT_FROM_ADDRESS}
       APPLICATION_NAME: ${APPLICATION_NAME}
+      SERVICE_NAME: migrate
       EDDIE_EMAIL: ${EDDIE_EMAIL}
       ENTREE_FAKE: ${ENTREE_FAKE:-0}
       ENTREE_CLIENT_ENDPOINT: ${ENTREE_CLIENT_ENDPOINT}
@@ -86,6 +86,8 @@ services:
       AI_API_KEY: ${AI_API_KEY}
       # testing:
       PYTEST_MOCK_EMAIL_DOMAIN: ${PYTEST_MOCK_EMAIL_DOMAIN}
+      SUPERSET_DB_USER: ${SUPERSET_DB_USER}
+      SUPERSET_DB_PASSWORD: ${SUPERSET_DB_PASSWORD}
     volumes:
       - type: bind
         source: ./migrate/data
@@ -116,7 +118,6 @@ services:
         max-file: "2"
 
   py4web:
-    image: remcoboerma/omgeving-py4web-${PROJECT}:${DOCKER_TAG}
     build:
       context: py4web
       args:
@@ -138,7 +139,8 @@ services:
     environment:
       <<: *shared_environment
       PY4WEB_PASSWORD_FILE: /p4w/password.txt # to parameterize the _dashboard app
-      PY4WEB_DASHBOARD_MODE: full # if via uwsgi, the py4web's run method isn't ran, we'll have to use the ENV vars
+      PY4WEB_DASHBOARD_MODE: none
+      PY4WEB_RESTART_SECRET: ${PY4WEB_RESTART_SECRET}
       PY4WEB_SESSION_SECRET: ${PY4WEB_SESSION_SECRET}
       PY4WEB_APPLOG_KEY: ${PY4WEB_APPLOG_KEY}
       PY4WEB_APPLOG_ID: ${PY4WEB_APPLOG_ID}
@@ -152,7 +154,9 @@ services:
       GRIST_API: ${GRIST_API}
       GRIST_HOST: ${GRIST_HOST}
       GRIST_DOCUMENT: ${GRIST_DOCUMENT}
+      SERVICE_NAME: py4web
       COVERAGE_PROCESS_START: ${PY4WEB_COVERAGE_PROCESS_START:-}
+      COVERAGE_FILE: ${PY4WEB_COVERAGE_FILE:-}
     command: python3 py4web_bjoern.py
     volumes:
       - type: bind
@@ -204,7 +208,7 @@ services:
       - "traefik.http.routers.${PROJECT}-py4web-secure.rule=Host(`${PY4WEB_SUBDOMAIN}.${HOSTINGDOMAIN}`) || Host(`www.${PY4WEB_SUBDOMAIN}.${HOSTINGDOMAIN}`) || Host(`${HOSTINGDOMAIN}`)"
       - "traefik.http.routers.${PROJECT}-py4web-secure.middlewares=cors, www-redirect, edwh-std-security, regio-headers"
     healthcheck:
-      test: [ "CMD", "curl", "-sf", "http://localhost:8000/ping" ]
+      test: [ "CMD", "curl", "-sf", "http://localhost:8000/healthcheck" ]
       interval: 1m30s
       timeout: 15s
       retries: 10
@@ -226,6 +230,7 @@ services:
       - backend
     environment:
       <<: *shared_environment
+      SERVICE_NAME: pgq-scrapers
     depends_on:
       pg-0:
         condition: service_healthy
@@ -234,9 +239,7 @@ services:
     deploy:
       replicas: ${PGQ_WORKERS:-3} # workers
     healthcheck:
-      test:
-        - CMD-SHELL
-        - python -c "import os,time,sys; p='/tmp/pgq-heartbeat'; sys.exit(0 if os.path.exists(p) and (time.time() - os.path.getmtime(p) < 120) else 1)"
+      test: [ "CMD", "/opt/heartbeat.sh" ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -259,6 +262,9 @@ services:
 
   pgq-applog:
     <<: *pgq
+    environment:
+      <<: *shared_environment
+      SERVICE_NAME: pgq-applog
     command: pgq run pgq.consumers.applog:main --batch-size 5
     deploy:
       replicas: 1
@@ -271,6 +277,7 @@ services:
         condition: service_healthy
     environment:
       <<: *shared_environment
+      SERVICE_NAME: playwright
       WEB_BASE_URL: ${WEB_BASE_URL:-http://py4web:8000}
     volumes:
       - type: bind

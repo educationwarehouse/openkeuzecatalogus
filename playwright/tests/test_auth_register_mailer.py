@@ -196,7 +196,7 @@ def test_register_sends_verification_mail(page: Page) -> None:
     """Run basic register-login loop test.
 
     Register, assert unverified access fails, verify via fake mail link,
-    then assert login succeeds and session cookie rotates on login/logout.
+    then assert verification auto-logs the user in and session cookie rotates on login/logout.
     """
     suffix = uuid.uuid4().hex[:10]
     email = _get_new_email_address("register-mailer", suffix=suffix)
@@ -245,12 +245,7 @@ def test_register_sends_verification_mail(page: Page) -> None:
     assert verify_url, "No verify_email URL found in fake mail payload"
 
     page.goto(verify_url)
-
-    page.goto(f"{BASE_URL}/auth/login")
-    page.fill("input[name='email']", email)
-    page.fill("input[name='password']", password)
-    page.locator("button[type='submit'], input[type='submit']").first.click()
-
+    # Verification now establishes the session, so protected access should succeed immediately.
     page.goto(f"{BASE_URL}/profile")
     profile_body = page.text_content("body") or ""
     assert email in profile_body
@@ -280,10 +275,10 @@ def test_register_sends_verification_mail(page: Page) -> None:
 
     markers = wait_for_auth_markers(
         email=email,
-        expected_markers={"login", "logout", "change_password", "invalid_login_attempt"},
+        expected_markers={"verify_email", "logout", "change_password", "invalid_login_attempt"},
     )
 
-    assert "login" in markers  # inloggen
+    assert "verify_email" in markers  # e-mail verifiëren en automatisch inloggen
     assert "logout" in markers  # uitloggen
     assert "change_password" in markers  # wachtwoord wijzigen
     assert "invalid_login_attempt" in markers  # verkeerde inlogpoging
@@ -315,6 +310,9 @@ def test_reset_password_with_registered_account(page: Page) -> None:
     verify_url = _extract_verify_url(sent)
     assert verify_url, "No verify_email URL found in fake mail payload"
     page.goto(verify_url)
+
+    # logout before reset password:
+    page.goto(f"{BASE_URL}/auth/logout")
 
     inbox_before_reset_request = len(_read_messages())
 

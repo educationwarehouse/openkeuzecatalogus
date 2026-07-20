@@ -10,16 +10,23 @@ For full architecture details, read [docs/README.md](docs/README.md).
 Core code lives under `shared_code/` and is intentionally framework-light so it can be tested directly.
 
 High-level split:
-- `shared_code/modules/*`: feature-oriented business flows and module-local types.
-- `shared_code/data_model/*`: ORM model definitions.
-- `shared_code/services/*`: side-effecting integrations (mail, storage, remote APIs), with explicit contracts and test doubles where useful.
-- `shared_code/migrations/*`: migration units.
-- `shared_code/tests/*`: automated tests for modules, models, and services.
+- `shared_code/modules/*`: package directories for feature-oriented business flows and module-local types.
+- `shared_code/data_model/*`: package directories for ORM model definitions and related helpers.
+- `shared_code/services/*`: package directories for side-effecting integrations (mail, storage, remote APIs), with explicit contracts and test doubles where useful.
+- `shared_code/infra/*`: package directories for runtime glue, framework-adjacent helpers, and file-backed persistence.
+- `shared_code/util/*`: package directories for pure helpers and cross-cutting utility code.
+- `shared_code/migrations/*`: package directories for migration units.
+- `shared_code/tests/*`: automated tests for modules, models, services, infra, and util code.
 
 Dependency guideline:
 - Modules may use `data_model` and service contracts.
 - `data_model` should not depend on feature modules.
 - Services provide integration implementations used by module wiring.
+- `modules`, `data_model`, `services`, `infra`, and `util` should be organized as package directories, not flat top-level files.
+
+Python syntax guideline:
+- In Python 3.14, add `from __future__ import annotations` only when a file actually needs postponed annotation evaluation for correctness or compatibility.
+- Do not add the future import by default to every file.
 
 Important: names like `products`, `payment_api`, and `lms_api` are placeholders, not final domain boundaries.
 
@@ -51,3 +58,5 @@ Entries:
 - `2026-05-19` - Pytest config location in Dockerized tests: test suites run inside service containers with service-specific mounts/workdirs (`migrate:/pythonpath`, `py4web:/p4w`, `pgq-applog:/pythonpath`), so root `pyproject.toml` will not be visible or applied. Do not suggest root-level pytest config as the default; prefer container-visible suite config (for example `pgq/pytest.toml`) or explicit pytest args in `test.tasks.py`.
 - `2026-05-21` - Tuple readability limit: if a tuple grows beyond ~3 fields, replace it with a named structure (prefer `TypedDict` here) so code remains maintainable and self-documenting.
 - `2026-05-25` - pyDAL `executesql` placeholders: use `%(name)s` placeholders with `placeholders=dict(...)`; do not use `{name}` formatting in SQL strings.
+- `2026-06-11` - Package-directory convention and future imports: `modules`, `data_model`, `services`, `infra`, and `util` should be package directories rather than flat files; in Python 3.14, add `from __future__ import annotations` only when a file actually needs it.
+- `2026-06-25` - Test execution preference: do not run `pytest` yourself in this repo; leave test execution to the user unless they explicitly ask for it.

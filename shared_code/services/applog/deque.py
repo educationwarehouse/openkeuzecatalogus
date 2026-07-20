@@ -1,20 +1,19 @@
 """Diskcache-backed applog implementation."""
 
-from __future__ import annotations
-
 import json
 import os
 
 from diskcache import Deque
 
-from ..time.clock import normalize_timestamp, utcnow
+from shared_code.util.time import normalize_timestamp, utcnow
+
 from .contracts import ApplogEvent, Applogger, ApplogSignal
 
 
 class DequeApplogger(Applogger):
     """Persist applog events to a local deque for async DB processing."""
 
-    def __init__(self, directory: str = "/shared_applog", signal_source: str = "py4web") -> None:
+    def __init__(self, directory: str, signal_source: str) -> None:
         """Create a deque-backed applogger for async signal processing."""
         self.signal_source = signal_source
         self.deque = Deque(directory=directory)
@@ -23,7 +22,7 @@ class DequeApplogger(Applogger):
     def from_env(cls) -> Applogger:
         """Build a deque-backed applogger from environment configuration."""
         directory = os.environ.get("APPLOG_DEQUE_DIR", "/shared_applog")
-        return cls(directory=directory)
+        return cls(directory=directory, signal_source=os.environ.get("SERVICE_NAME", "unknown-service"))
 
     def fire(self, event: ApplogEvent) -> bool:
         """Serialize and enqueue one applog signal payload."""

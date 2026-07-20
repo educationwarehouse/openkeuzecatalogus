@@ -1,23 +1,24 @@
 [build-system]
-requires = ["hatchling"]
+requires = [
+    "hatchling",
+    "hatch-requirements-txt",
+]
 build-backend = "hatchling.build"
 
 [project]
 name = "openkeuzecatalogus"
-dynamic = ["version"]
+dynamic = [
+    "version",
+    "dependencies",
+]
 description = 'Open Keuze Catalogus'
 readme = "README.md"
 requires-python = ">=3.14"
 license = { file = "LICENSE.txt" }
 
-dependencies = [
-    'edwh[pip,bundler,uptime]',
-]
+[tool.hatch.metadata.hooks.requirements_txt]
+files = ["requirements-dev.txt"]
 
-[project.optional-dependencies]
-dev = [
-    "ty",
-]
 
 [project.urls]
 Documentation = "https://github.com/educationwarehouse/openkeuzecatalogus#readme"
@@ -62,13 +63,15 @@ function = "define_tables"
 target-version = "py314"
 line-length = 120
 extend-exclude = [
-    "py4web/apps/_dashboard"
+    "py4web/apps/_dashboard",
+    "shared_code/tests",
 ]
 
 [tool.ruff.lint]
 # Start strict-but-practical
 select = [
     "ANN", # type annotations
+    "C90", # complexity (mccabe)
     "D", # docstrings
     "E", # pycodestyle errors
     "F", # pyflakes
@@ -80,6 +83,7 @@ select = [
     "C4", # comprehensions
     "PIE", # misc good practices
     "RUF", # Ruff-specific rules
+    "S", # bandit security issues
 ]
 
 ignore = [
@@ -89,6 +93,9 @@ ignore = [
     "D404", # docstring may not start with `This` ???
     "D203", # incompatible with D211; keep no-blank-line-before-class
     "D213", # incompatible with D212; keep multi-line-summary-first-line
+    "RUF012", # typing.ClassVar often leads to other typing and runtime issues.
+    "E711", # `== None` is allowed as pydal syntax
+    "S101", # assert is useful for typing and testing reasons (like Rust 'expect')
 ]
 
 [tool.ty.rules]
@@ -98,6 +105,7 @@ invalid-context-manager = "ignore" # ty claims our ViewMigrationManager doesn't 
 exclude = [
     "py4web/apps/_dashboard",
     "venv",
+    "shared_code/tests",
     "**/tests/**",
     "**/test_*.py",
 ]

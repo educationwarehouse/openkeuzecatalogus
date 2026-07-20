@@ -12,50 +12,71 @@ The goal is to keep business logic reusable, easy to test, and minimally coupled
 
 ## High-Level Split
 
+Each top-level area below should be a package directory, not a single flat module file. Concretely, `modules/`, `data_model/`, `services/`, `infra/`, and `util/` should contain subdirectories with `__init__.py` entrypoints where the code is grouped by concern.
+
 ```text
 shared_code/
   modules/
-    products/
+    auth/
       __init__.py
-      module.py
-      types.py
+      password_reset.py
   data_model/
     __init__.py
-    product.py
+    tables/
+      auth_user.py
+      product.py
   services/
     mail/
       contracts.py
       smtp.py
       fake.py
-    storage/
-    payment_api/
-    lms_api/
+    applog/
+    entree/
   migrations/
-    products.py
-    users.py
+    migrations.py
   tests/
-    test_products.py
-    test_product_model.py
-    test_mail.py
+    test_password_reset.py
+    test_service_helpers.py
+  infra/
+    database/
+    error_tickets/
+    web/
+  util/
+    env/
+    time/
+    class_utils/
 ```
 
 ## Layer Responsibilities
 
 ### `modules/`
 Feature-oriented business flows (use-cases/orchestration) and feature-local types.
+- Use package directories per feature or bounded context.
 - `module.py`: orchestration logic for a module/feature.
 - `types.py`: module-level typed structures/contracts.
 
 ### `data_model/`
 ORM-backed data model definitions.
+- Use package directories per table family, mixin family, or related model set.
 - Contains model classes used by the application core.
 - Keeps persistence model code grouped and discoverable.
 
 ### `services/`
-External or side-effecting capabilities (mail, storage, remote APIs).
+External or side-effecting capabilities (mail, applog, remote APIs).
+- Use package directories per service family or adapter boundary.
 - Keep contracts explicit (`contracts.py`) where practical.
 - Put real adapters in implementation files (e.g. `smtp.py`).
 - Provide test doubles/fakes (e.g. `fake.py`) for deterministic tests.
+
+### `infra/`
+Runtime glue, database wiring, framework-adjacent helpers, and file-backed persistence.
+- Use package directories per runtime concern.
+- Keep application/bootstrap code here when it is not a business flow or external adapter.
+
+### `util/`
+Pure helpers with no I/O or side effects.
+- Use package directories for grouped utility families when a helper set is more than one file.
+- Keep stateless helper functions here.
 
 ### `migrations/`
 Schema/data migration units grouped by concern.
@@ -70,6 +91,8 @@ Automated tests for modules, data models, and services.
 - `modules/*` may depend on `data_model` and service contracts.
 - `data_model` should not depend on feature modules.
 - `services/*` provide integrations used by module wiring.
+- `infra/*` may depend on `services/*` and `data_model/*` when it is runtime glue.
+- `util/*` should remain pure and side-effect free.
 - `tests/*` can import any shared core package under test.
 
 ## Placeholder Note
@@ -81,14 +104,19 @@ They do **not** represent final product domains. Replace them with actual bounde
 
 - [Compose runtime overview](architecture/overview.md)
 - [Dependency rules](architecture/dependency-rules.md)
+- [Auth and RBAC](architecture/auth-rbac.md)
 - [Effective-dated `_ed` and `_model` tables](architecture/effective-dated-models.md)
+- [OLID identifiers](architecture/olid.md)
+- [Supplier memberships and access control](architecture/supplier-memberships.md)
 
 ## Development Docs
 
 - [Local setup (`edwh setup` / `edwh build` / `edwh up`)](development/local-setup.md)
+- [Database](development/database.md)
 - [Migrations (`edwh migrate`) runbook](development/migrations.md)
 - [Tooling and commands](development/tooling.md)
 - [Testing](development/testing.md)
+- [Secrets management](development/US-TOOL-02-secrets.md)
 - [Public release mirroring](development/public-release-mirroring.md)
 
 ## Integration Docs

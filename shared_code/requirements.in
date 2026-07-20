@@ -1,0 +1,41 @@
+# Shared direct dependencies for service containers.
+#
+# Compile first with:
+# uv pip compile shared_code/requirements.in --output-file shared_code/requirements.txt
+
+# === Core / Runtime ===
+edwh-auth-rbac>=2.0,<3.0
+edwh-migrate>=1.1.0
+pgskewer>=0.3
+
+# === Data / DB ===
+diskcache
+dill
+endow<2
+psycopg2-binary
+pyjwt[crypto]
+redis
+requests>=2.32
+TypeDAL>=4.2.0
+yayarl
+plumbum < 2
+
+# === Parsing / Content / Metadata ===
+b2sdk<3
+beautifulsoup4
+is-isbn
+iso3166
+markdown2
+more-itertools
+python-slugify~=8.0.1
+pytz
+yatl
+
+# === Tooling / Test ===
+pytest
+pytest-cov
+
+#########################################
+# PINNED VERSIONS FOR SECURITY REASONS: #
+#########################################
+urllib3>=2.0.7

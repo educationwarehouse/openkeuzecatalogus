@@ -1,31 +1,14 @@
+# Shared pinned dependencies.
+-r ../shared_code/requirements.txt
+
 # === Core / Runtime ===
-edwh>=0.38.3
-edwh-auth-rbac >=1.0, <2.0
-edwh-migrate
-# edwh-uuid7
+# edwh>=0.38.3
 
 # === Data / DB ===
-diskcache
-dill
-pgskewer >= 0.3
-# plumbum~=1.8.2
-psycopg2-binary
-pyjwt[crypto]
-redis
-requests > 2.32
-TypeDAL>=4.2.0
-yarl
 
 # === Parsing / Content / Metadata ===
-b2sdk < 3
-beautifulsoup4
-is-isbn
-iso3166
-markdown2
-more-itertools
 onixcheck
 python-dotenv
-python-slugify~=8.0.1
 scrapy~=2.13.0
 scrapy-playwright
 tqdm
@@ -33,6 +16,4 @@ xmltodict
 zeep
 
 # === Tooling / Test ===
-pytest
-pytest-cov
 pytest-asyncio

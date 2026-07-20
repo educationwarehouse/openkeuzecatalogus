@@ -1,0 +1,18 @@
+# Aggregate development dependencies for a full local checkout.
+#
+# compile with:
+# ew pip.compile requirements-dev.in
+# or
+# edwh local.pip-bump-all
+# install with:
+# uv pip install .
+
+-r shared_code/requirements.txt
+-r py4web/requirements.in
+-r pgq/requirements.in
+-r migrate/requirements.in
+-r playwright/requirements.in
+
+# Repo-level tooling.
+edwh[pip,bundler,files,uptime]>=1.10.0
+ty

@@ -3,7 +3,7 @@
 import datetime as dt
 
 from shared_code.data_model.tables import AuthUser
-from shared_code.services.time.clock import ensure_utc, utcnow
+from shared_code.util.time import ensure_utc, utcnow
 
 RESET_PASSWORD_LINK_MAX_AGE_HOURS = 72
 RESET_PASSWORD_LINK_MAX_AGE = dt.timedelta(hours=RESET_PASSWORD_LINK_MAX_AGE_HOURS)

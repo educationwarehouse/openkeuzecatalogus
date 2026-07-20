@@ -1,14 +1,12 @@
 """Mixin helpers for rendering markdown fields as HTML."""
 
-from __future__ import annotations
-
 import html
 import typing as t
 
 from markdown2 import Markdown
 from typedal.mixins import Mixin
 
-if t.TYPE_CHECKING:  # pragma: no cover
+if t.TYPE_CHECKING:
     from yatl import XML
 
 

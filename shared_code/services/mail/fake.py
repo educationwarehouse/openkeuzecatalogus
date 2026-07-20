@@ -6,19 +6,16 @@ import typing as t
 from email.message import EmailMessage
 from pathlib import Path
 
-from typedal import TypeDAL
-
 from shared_code.services.mail.contracts import EmailAddress, Mailer
 
 
 class MockMailer(Mailer):
     """Test mailer that appends delivered emails to a JSONL inbox file."""
 
-    def __init__(self, inbox_path: Path, db: TypeDAL) -> None:
+    def __init__(self, inbox_path: Path) -> None:
         """Initialize the fake mailer with the path of the JSONL inbox."""
         self.inbox_path = inbox_path
         self.sender = "mock@localhost"
-        self.db = db
 
     def send_email_message(self, message: EmailMessage, all_recipients: list[EmailAddress]) -> bool:
         """Serialize and persist a mail payload line for test assertions."""
@@ -50,7 +47,7 @@ class MockMailer(Mailer):
         return True
 
     @classmethod
-    def from_env(cls, db: TypeDAL) -> t.Self:
+    def from_env(cls) -> t.Self:
         """Create a fake mailer using environment-configured inbox path."""
         inbox_path = Path(os.environ.get("SMTP_FAKE_INBOX_PATH", "/shared_cache/mail/mock_inbox.jsonl"))
-        return cls(inbox_path=inbox_path, db=db)
+        return cls(inbox_path=inbox_path)

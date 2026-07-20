@@ -10,16 +10,39 @@ from uuid import UUID
 from typedal import TypeDAL
 from typedal.types import Row
 
+from shared_code.infra.database import database_context
 from shared_code.services.applog import DequeApplogger
 from shared_code.services.applog.contracts import ApplogEvent, Applogger, ApplogSignal
-from shared_code.services.database import database_context
+
+
+class AuditLogRow(t.TypedDict):
+    """Normalized applog row for admin audit-log rendering."""
+
+    id: int
+    ts: dt.datetime
+    name: str
+    source: str
+    session_gid: str | None
+    user_gid: str | None
+    user: str | None
+    related: str | None
+    evidence: ApplogEvent | None
+
+
+class AuditLogStats(t.TypedDict):
+    """Aggregate applog counters for the admin logs overview."""
+
+    total: int
+    last_24h: int
+    admin_actions: int
 
 
 def save_applog_evidence(db: TypeDAL, session: str | UUID | None, source: ApplogEvent) -> Row:
     """Store evidence once per payload hash and return the corresponding row."""
     # bereken de hash_value van de json payload.
     # EDIT DEZE JSON NIET, DIE MOET GESORTEERD ZIJN OM DUPLICATEN TE VOORKOMEN
-    hash_value = hashlib.sha1(json.dumps(source).encode("utf-8")).hexdigest()
+    json_data = json.dumps(source).encode("utf-8")
+    hash_value = hashlib.sha1(json_data).hexdigest()  # noqa: S324 only used to deduplicate; not for secrets hashing
     # zoek bestaand bewijs
     evidence = db(db.evidence.sha1_digest == hash_value).select(limitby=(1, 1)).first()
     if not evidence:
@@ -28,6 +51,58 @@ def save_applog_evidence(db: TypeDAL, session: str | UUID | None, source: Applog
         evidence = db.evidence[new_evidence_id]
 
     return evidence
+
+
+def all_audit_logs(db: TypeDAL, limit: int = 500) -> list[AuditLogRow]:
+    """Return recent applog rows with their evidence payload when present."""
+    rows = db(db.signal.id > 0).select(
+        db.signal.id,
+        db.signal.ts,
+        db.signal.name,
+        db.signal.source,
+        db.signal.session_gid,
+        db.signal.user_gid,
+        db.signal.related,
+        db.evidence.source,
+        left=db.evidence.on(db.evidence.id == db.signal.evidence_id),
+        orderby=~db.signal.ts,
+        limitby=(0, limit),
+    )
+
+    logs: list[AuditLogRow] = []
+    for row in rows:
+        evidence = row.evidence.source if row.evidence else None
+        evidence_user = None
+        if isinstance(evidence, dict):
+            evidence_user = evidence.get("admin_email") or evidence.get("email") or evidence.get("by_eddie_email")
+
+        logs.append(
+            {
+                "id": row.signal.id,
+                "ts": row.signal.ts,
+                "name": row.signal.name,
+                "source": row.signal.source,
+                "session_gid": row.signal.session_gid,
+                "user_gid": row.signal.user_gid,
+                "user": evidence_user or row.signal.user_gid,
+                "related": row.signal.related,
+                "evidence": evidence,
+            }
+        )
+
+    return logs
+
+
+def audit_log_stats(db: TypeDAL) -> AuditLogStats:
+    """Return aggregate applog counters for the admin logs overview."""
+    total = db(db.signal.id > 0).count()
+    last_24h = db(db.signal.ts >= (dt.datetime.now() - dt.timedelta(days=1))).count()
+    admin_actions = db(db.signal.name == "admin-action").count()
+    return {
+        "total": total,
+        "last_24h": last_24h,
+        "admin_actions": admin_actions,
+    }
 
 
 def process_applog_signal(
@@ -69,7 +144,7 @@ def process_applog_buffer(events: list[ApplogSignal]) -> None:
     """Processes all the received events from the events buffer using process_applog_signal."""
     successful_signals = 0
     failed_signals = []
-    with database_context("celery.process_applog_buffer") as db:
+    with database_context("pgq.process_applog_buffer") as db:
         for event in events:
             if not event:
                 continue

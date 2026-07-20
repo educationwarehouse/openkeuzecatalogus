@@ -8,7 +8,7 @@ from typedal import TypeDAL
 
 from shared_code.services.mail import Mailer, MockMailer, SMTPMailer
 
-if t.TYPE_CHECKING:  # pragma: no cover
+if t.TYPE_CHECKING:
     from pytest import MonkeyPatch
 
 MOCK_INBOX_PATH = Path("/shared_cache/mail/mock_inbox.jsonl")
@@ -16,7 +16,7 @@ MOCK_INBOX_PATH = Path("/shared_cache/mail/mock_inbox.jsonl")
 
 def test_mailer_uses_fake_sender_and_writes_inbox(db_psql: TypeDAL) -> None:
     """When SMTP_FAKE is enabled in runner env, mails are written to the JSONL inbox."""
-    sender = Mailer.from_env(db_psql)
+    sender = Mailer.with_injected(db=db_psql)
     assert isinstance(sender, MockMailer)
 
     sent = sender.send(
@@ -47,7 +47,7 @@ def test_smtp_mailer_from_env_splits_host_and_port(monkeypatch: MonkeyPatch, db_
     monkeypatch.setenv("SMTP_TLS", "1")
     monkeypatch.setenv("SMTP_SSL", "0")
 
-    mailer = SMTPMailer.from_env(db_psql)
+    mailer = SMTPMailer.from_env()
 
     assert mailer.host == "smtp.example.com"
     assert mailer.port == 2525
@@ -65,7 +65,7 @@ def test_smtp_mailer_from_env_with_incomplete_config_raises_oserror(monkeypatch:
     monkeypatch.delenv("SMTP_PASSWORD", raising=False)
 
     try:
-        SMTPMailer.from_env(db_psql)
+        SMTPMailer.from_env()
     except OSError as exc:
         assert str(exc) == "Incomplete SMTP Config"
     else:  # pragma: no cover
@@ -75,7 +75,7 @@ def test_smtp_mailer_from_env_with_incomplete_config_raises_oserror(monkeypatch:
 def test_mock_mailer_writes_tuple_body_reply_to_cc_and_headers(tmp_path: Path, db_psql: TypeDAL) -> None:
     """Mock mail payload should include multipart body metadata and extra headers."""
     inbox_path = tmp_path / "mock_inbox.jsonl"
-    mailer = MockMailer(inbox_path=inbox_path, db=db_psql)
+    mailer = MockMailer(inbox_path=inbox_path)
 
     sent = mailer.send(
         to=["to1@example.com", "to2@example.com"],

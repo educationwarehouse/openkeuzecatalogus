@@ -6,12 +6,12 @@ import time
 from typedal import TypeDAL
 
 from shared_code.data_model.tables import AuthUser
-from shared_code.modules.auth import (
+from shared_code.modules.auth.password_reset import (
     mark_reset_password_expiry,
     validate_reset_password_token,
 )
 from shared_code.modules.auth.password_reset import is_reset_password_request_active
-from shared_code.services.time.clock import ensure_utc
+from shared_code.util.time import ensure_utc
 
 FIXED_NOW = dt.datetime.fromtimestamp(0, tz=dt.UTC)
 

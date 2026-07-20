@@ -1,7 +1,5 @@
 """Fake Entree OAuth implementation for tests."""
 
-from __future__ import annotations
-
 import os
 import typing as t
 

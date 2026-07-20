@@ -40,9 +40,12 @@ class MethodModelWithPrio_V1(ViewMigrationManager):
         """Drop view/index objects for the method model."""
         self.db.executesql("""
         DROP TRIGGER IF EXISTS refresh_method_model_trigger ON method_ed;
+        DROP TRIGGER IF EXISTS method_model_update_trigger ON method_ed;
         """)
 
         self.db.executesql("""
-        DROP FUNCTION IF EXISTS get_active_method;
+        DROP FUNCTION IF EXISTS get_active_method(uuid);
+        DROP FUNCTION IF EXISTS apply_change_method_model();
+        DROP FUNCTION IF EXISTS rebuild_method_model();
         """)
         drop_table_or_mv(self.db, "method_model")

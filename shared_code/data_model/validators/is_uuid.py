@@ -4,12 +4,18 @@ import typing as t
 import uuid
 
 
-def is_uuid(something: str | uuid.UUID) -> bool:
+def is_uuid(something: t.Any) -> bool:
     """Return whether the given value can be interpreted as a UUID."""
     if isinstance(something, uuid.UUID):
         return True
+
     try:
-        uuid.UUID(something.strip())
+        if isinstance(something, str):
+            uuid.UUID(something.strip())
+        elif isinstance(something, bytes):
+            uuid.UUID(bytes=something)
+        else:
+            uuid.UUID(str(something))
         return True
     except Exception:
         return False

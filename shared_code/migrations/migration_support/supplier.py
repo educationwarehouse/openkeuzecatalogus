@@ -39,9 +39,12 @@ class SupplierModelWithPrio_V1(ViewMigrationManager):
         """Drop view/index objects for the supplier model."""
         self.db.executesql("""
         DROP TRIGGER IF EXISTS refresh_supplier_model_trigger ON supplier_ed;
+        DROP TRIGGER IF EXISTS supplier_model_update_trigger ON supplier_ed;
         """)
 
         self.db.executesql("""
-        DROP FUNCTION IF EXISTS get_active_supplier;
+        DROP FUNCTION IF EXISTS get_active_supplier(uuid);
+        DROP FUNCTION IF EXISTS apply_change_supplier_model();
+        DROP FUNCTION IF EXISTS rebuild_supplier_model();
         """)
         drop_table_or_mv(self.db, "supplier_model")

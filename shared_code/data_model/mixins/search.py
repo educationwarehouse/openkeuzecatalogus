@@ -11,7 +11,7 @@ from typedal.tables import _TypedTable
 from typedal.types import OrderBy, Query
 
 from shared_code.data_model.validators.is_uuid import is_uuid
-from shared_code.services.time.clock import utcnow
+from shared_code.util.time import utcnow
 
 
 def safe_quoted_split(terms: str) -> t.Generator[str]:

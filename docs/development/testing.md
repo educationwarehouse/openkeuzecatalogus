@@ -96,11 +96,19 @@ Coverage is collected per suite and written as JSON files under:
 - `shared_cache/pytest/cov.02_migrate.json`
 
 For browser-driven tests against the running `py4web` service, runtime coverage can be captured from the web process itself:
-- `edwh test.run` recreates `py4web` with `PY4WEB_COVERAGE_PROCESS_START=/p4w/coverage.py4web.toml` when coverage is enabled
+- `edwh test.run` recreates `py4web` with
+  `PY4WEB_COVERAGE_PROCESS_START=/p4w/coverage.py4web.toml`
+  and `PY4WEB_COVERAGE_FILE=/shared_cache/pytest/.coverage.py4web.runtime`
+  when coverage is enabled
 - do not keep `PY4WEB_COVERAGE_PROCESS_START` permanently set in `.env`; keep it test-managed
 - run browser tests with `edwh test.go-web`
 - export/merge runtime data with `edwh test.py4web-runtime-coverage-report`
 - this updates `shared_cache/pytest/cov.01_py4web.json` (single py4web report)
+
+The shared coverage exclusions live in `shared_code/coverage.toml`.
+They are reused by the containerized suites and the host-side `edwh test.go-tasks` path.
+
+Py4web runtime coverage uses `py4web/coverage.py4web.toml` so web-driven coverage stays scoped to `apps` and `common`, and does not report `shared_code`.
 
 When a file appears in multiple coverage reports, `edwh test.report` keeps the file entry from the highest-priority report based on numeric filename prefix (for example `02_*` overrides `01_*`).
 

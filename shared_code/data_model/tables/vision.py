@@ -8,7 +8,8 @@ from typedal.fields import TextField, TypedField
 from typedal.types import Query
 
 from shared_code.data_model.constants import THEMES
-from shared_code.data_model.mixins import EffdtFields, SearchMixin
+from shared_code.data_model.mixins.effdt.mixin import EffdtFields
+from shared_code.data_model.mixins.search import SearchMixin
 from shared_code.data_model.tables.base import BaseTable
 from shared_code.data_model.tables.method import Method
 from shared_code.data_model.tables.product import Product

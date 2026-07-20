@@ -10,7 +10,7 @@ from typedal import TypeDAL
 
 from shared_code.services.applog import Applogger, DequeApplogger, FileApplogger
 from shared_code.services.applog.handler import process_applog_deque
-from shared_code.services.database import database_context
+from shared_code.infra.database import database_context
 
 
 def test_applogger_from_env_fake_uses_file_logger(monkeypatch: MonkeyPatch, tmp_path: Path, db_psql: TypeDAL) -> None:
@@ -36,6 +36,7 @@ def test_applogger_from_env_fake_uses_file_logger(monkeypatch: MonkeyPatch, tmp_
 def test_applogger_from_env_real_uses_deque_logger(monkeypatch: MonkeyPatch, tmp_path: Path, db_psql: TypeDAL) -> None:
     """APPLOG_FAKE=0 should select deque logger and enqueue auth events."""
     deque_dir = tmp_path / "applog-deque"
+    monkeypatch.setenv("SERVICE_NAME", "migrate-pytest")
     monkeypatch.setenv("APPLOG_FAKE", "0")
     monkeypatch.setenv("APPLOG_DEQUE_DIR", str(deque_dir))
 
@@ -47,7 +48,7 @@ def test_applogger_from_env_real_uses_deque_logger(monkeypatch: MonkeyPatch, tmp
     deque = Deque(directory=str(deque_dir))
     payload = json.loads(deque.pop())
     assert payload["name"] == "auth_action"
-    assert payload["signal_source"] == "py4web"
+    assert payload["signal_source"] == "migrate-pytest"
     assert payload["user_gid"] == str(ugid)
     assert payload["session_gid"] is None
     assert not payload.get("related")

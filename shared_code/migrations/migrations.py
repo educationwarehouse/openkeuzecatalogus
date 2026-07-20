@@ -3,20 +3,40 @@
 import os
 
 import requests
-from edwh_auth_rbac import migrations as _
+from edwh_auth_rbac import migrations as _rbac_migrations  # noqa F401 - importing exposes these migrations
 from edwh_migrate import migration
-from pgskewer import migrations as _  # noqa F401 - importing exposes these migrations
+from pgskewer import migrations as _pgskewer_migrations  # noqa F401 - importing exposes these migrations
 from typedal import TypeDAL
 
 from shared_code.migrations.migration_support import (
     MethodModelWithPrio_V1,
+    OrganisationModelWithPrio_V1,
     ProductModelWithPrio_V1,
     SupplierModelWithPrio_V1,
+    TaggedModelWithPrio_V1,
     VisionModelWithPrio_V1,
     no_triggers,
     rebuild_all_materialized_tables_v1,
 )
-from shared_code.migrations.migration_support.seeding import import_seed_table_v1
+from shared_code.migrations.migration_support.organisation import (
+    backfill_organisation_rbac_identities_v1,
+    backfill_organisation_rbac_permissions_v1,
+)
+from shared_code.migrations.migration_support.seeding import import_seed_relationships_v1, import_seed_table_v1
+from shared_code.util.olid import generate_supplier_olid
+
+
+@migration()
+def create_utcnow_helper_20060000_001(db: TypeDAL) -> bool:
+    """Adds a database helper function `utcnow` for Postgres."""
+    db.executesql("""
+                  create function utcnow() returns timestamp as
+                  $$
+                  select now() at time zone 'utc';
+                  $$ language sql;
+                  """)
+    db.commit()
+    return True
 
 
 @migration
@@ -31,37 +51,37 @@ def create_materialized_view_meta_view_20260423_002(db: TypeDAL) -> bool:
     db.executesql(
         """
         CREATE OR REPLACE VIEW materialized_views(mview, refresh, is_concurrent, is_populated) AS
-            WITH pgdata AS (SELECT pg_settings.setting AS path
-                                FROM pg_settings
-                                WHERE pg_settings.name = 'data_directory')
-               , path AS (SELECT CASE
-                                     WHEN pgdata_1.separator = '/' THEN '/'
-                                     ELSE ''
-                                     END AS separator
-                              FROM (SELECT SUBSTR(pgdata_2.path, 1, 1) AS separator
-                                        FROM pgdata pgdata_2) pgdata_1)
-               , mviews AS (SELECT (ns.nspname || '.' || c.relname)                                                              AS mview
-                                 , (PG_STAT_FILE((pgdata.path || path.separator) ||
-                                                 PG_RELATION_FILEPATH((ns.nspname || '.' || c.relname)::regclass))).modification AS refresh
-                                 , c.oid                                                                                         AS mview_oid
-                                 , c.relispopulated                                                                              AS is_populated
-                                FROM                       pgdata
-                                   ,                       path
-                                   , pg_class              c
-                                         JOIN pg_namespace ns ON c.relnamespace = ns.oid
-                                WHERE c.relkind = 'm')
-               , unique_indexes AS (SELECT i.indrelid             AS mview_oid
-                                         , BOOL_OR(i.indisunique) AS has_unique_index
-                                        FROM pg_index          i
-                                                 JOIN pg_class idx ON i.indexrelid = idx.oid
-                                        WHERE idx.relkind = 'i' -- Indexes only
-                                        GROUP BY i.indrelid)
-            SELECT m.mview
-                 , m.refresh
-                 , COALESCE(ui.has_unique_index, FALSE) AS is_concurrent_refreshable
-                 , m.is_populated
-                FROM mviews                       m
-                         LEFT JOIN unique_indexes ui ON m.mview_oid = ui.mview_oid;
+        WITH pgdata AS (SELECT pg_settings.setting AS path
+                        FROM pg_settings
+                        WHERE pg_settings.name = 'data_directory')
+           , path AS (SELECT CASE
+                                 WHEN pgdata_1.separator = '/' THEN '/'
+                                 ELSE ''
+                                 END AS separator
+                      FROM (SELECT SUBSTR(pgdata_2.path, 1, 1) AS separator
+                            FROM pgdata pgdata_2) pgdata_1)
+           , mviews AS (SELECT (ns.nspname || '.' || c.relname)                                                              AS mview
+                             , (PG_STAT_FILE((pgdata.path || path.separator) ||
+                                             PG_RELATION_FILEPATH((ns.nspname || '.' || c.relname)::regclass))).modification AS refresh
+                             , c.oid                                                                                         AS mview_oid
+                             , c.relispopulated                                                                              AS is_populated
+                        FROM pgdata
+                           , path
+                           , pg_class c
+                                 JOIN pg_namespace ns ON c.relnamespace = ns.oid
+                        WHERE c.relkind = 'm')
+           , unique_indexes AS (SELECT i.indrelid             AS mview_oid
+                                     , BOOL_OR(i.indisunique) AS has_unique_index
+                                FROM pg_index i
+                                         JOIN pg_class idx ON i.indexrelid = idx.oid
+                                WHERE idx.relkind = 'i' -- Indexes only
+                                GROUP BY i.indrelid)
+        SELECT m.mview
+             , m.refresh
+             , COALESCE(ui.has_unique_index, FALSE) AS is_concurrent_refreshable
+             , m.is_populated
+        FROM mviews m
+                 LEFT JOIN unique_indexes ui ON m.mview_oid = ui.mview_oid;
         """,  # noqa E501
     )
 
@@ -75,51 +95,52 @@ def create_product_ed_20260519_001(db: TypeDAL) -> bool:
     with ProductModelWithPrio_V1(db):
         db.executesql("""
                       -- auto-generated definition
-                      CREATE TABLE product_ed (
-                                                  id                    serial PRIMARY KEY,
-                                                  gid                   uuid NOT NULL DEFAULT uuidv4(),
-                                                  isbn                  varchar(20),
-                                                  name                  varchar(255),
-                                                  method_gid            uuid,
-                                                  supplier_gid          uuid,
-                                                  levels                text,
-                                                  subjects              text,
-                                                  image_url             varchar(500),
-                                                  description           text,
-                                                  available             varchar(255),
-                                                  edition               integer,
-                                                  authors               text,
-                                                  language              varchar(100),
-                                                  license_duration      varchar(255),
-                                                  level_x_year          text,
-                                                  sample_copies_link    varchar(500),
-                                                  more_information      varchar(500),
-                                                  recommended_price     numeric(10, 2),
-                                                  physical_digital_mix  varchar(255),
-                                                  digital_folio_mix     text,
-                                                  browser               text,
-                                                  devices               text,
-                                                  operating_systems     text,
-                                                  elo_integration       text,
-                                                  weight                numeric(8, 2),
-                                                  dimensions            varchar(100),
-                                                  demo_environment_link varchar(500),
-                                                  olid                  varchar(255),
-                                                  created_at            timestamp     DEFAULT CURRENT_TIMESTAMP,
-                                                  updated_at            timestamp     DEFAULT CURRENT_TIMESTAMP,
-                                                  priority              integer       DEFAULT 0,
-                                                  composition           varchar(10)   DEFAULT 'single',
-                                                  tto                   boolean,
-                                                  bouw                  varchar(50)   DEFAULT '||',
-                                                  effdt                 timestamp,
-                                                  effstatus             boolean,
-                                                  prio                  integer       DEFAULT 0,
-                                                  last_saved_by         varchar,
-                                                  sync_gid              uuid          DEFAULT uuidv7() NOT NULL
-                                                      CONSTRAINT product_ed_unique_sync_gid
-                                                          UNIQUE,
-                                                  import_error_codes    text
-                                              );
+                      CREATE TABLE product_ed
+                      (
+                          id                    serial PRIMARY KEY,
+                          gid                   uuid NOT NULL DEFAULT uuidv4(),
+                          isbn                  varchar(20),
+                          name                  varchar(255),
+                          method_gid            uuid NOT NULL,
+                          supplier_gid          uuid NOT NULL,
+                          levels                text,
+                          subjects              text,
+                          image_url             varchar(500),
+                          description           text,
+                          available             varchar(255),
+                          edition               integer,
+                          authors               text,
+                          language              varchar(100),
+                          license_duration      varchar(255),
+                          level_x_year          text,
+                          sample_copies_link    varchar(500),
+                          more_information      varchar(500),
+                          recommended_price     numeric(10, 2),
+                          physical_digital_mix  varchar(255),
+                          digital_folio_mix     text,
+                          browser               text,
+                          devices               text,
+                          operating_systems     text,
+                          elo_integration       text,
+                          weight                numeric(8, 2),
+                          dimensions            varchar(100),
+                          demo_environment_link varchar(500),
+                          olid                  varchar(255),
+                          created_at            timestamp     DEFAULT CURRENT_TIMESTAMP,
+                          updated_at            timestamp     DEFAULT CURRENT_TIMESTAMP,
+                          priority              integer       DEFAULT 0,
+                          composition           varchar(10)   DEFAULT 'single',
+                          tto                   boolean,
+                          bouw                  varchar(50)   DEFAULT '||',
+                          effdt                 timestamp     default utcnow(),
+                          effstatus             boolean       DEFAULT TRUE,
+                          prio                  integer       DEFAULT 0,
+                          last_saved_by         varchar,
+                          sync_gid              uuid          DEFAULT uuidv7() NOT NULL
+                              CONSTRAINT product_ed_unique_sync_gid
+                                  UNIQUE,
+                          import_error_codes    text
+                      );
 
                       CREATE INDEX product_ed_id_effdt
                           ON product_ed (gid ASC, effdt DESC, id ASC);
@@ -137,25 +158,26 @@ def create_supplier_ed_20260521_001(db: TypeDAL) -> bool:
     with SupplierModelWithPrio_V1(db):
         db.executesql("""
                       -- auto-generated definition
-                      CREATE TABLE supplier_ed (
-                                                   id             serial
-                                                       PRIMARY KEY,
-                                                   gid            uuid NOT NULL DEFAULT uuidv4(),
-                                                   name           varchar(255),
-                                                   logo_url       varchar(500),
-                                                   olid           varchar(255),
-                                                   created_at     timestamp     DEFAULT CURRENT_TIMESTAMP,
-                                                   updated_at     timestamp     DEFAULT CURRENT_TIMESTAMP,
-                                                   status_visions varchar(25)
-                                                                                DEFAULT 'nog niet gedeeld',
-                                                   effdt          timestamp,
-                                                   effstatus      boolean,
-                                                   prio           integer       DEFAULT 0,
-                                                   last_saved_by  varchar,
-                                                   sync_gid       uuid          DEFAULT uuidv7() NOT NULL
-                                                       CONSTRAINT supplier_ed_unique_sync_gid
-                                                           UNIQUE
-                                               );
+                      CREATE TABLE supplier_ed
+                      (
+                          id             serial
+                              PRIMARY KEY,
+                          gid            uuid NOT NULL DEFAULT uuidv4(),
+                          name           varchar(255),
+                          logo_url       varchar(500),
+                          olid           varchar(255),
+                          created_at     timestamp     DEFAULT CURRENT_TIMESTAMP,
+                          updated_at     timestamp     DEFAULT CURRENT_TIMESTAMP,
+                          status_visions varchar(25)
+                                                       DEFAULT 'nog niet gedeeld',
+                          effdt          timestamp     default utcnow(),
+                          effstatus      boolean       DEFAULT TRUE,
+                          prio           integer       DEFAULT 0,
+                          last_saved_by  varchar,
+                          sync_gid       uuid          DEFAULT uuidv7() NOT NULL
+                              CONSTRAINT supplier_ed_unique_sync_gid
+                                  UNIQUE
+                      );
 
                       CREATE INDEX supplier_ed_id_effdt
                           ON supplier_ed (gid ASC, effdt DESC, id ASC);
@@ -176,45 +198,46 @@ def create_method_ed_20260521_001(db: TypeDAL) -> bool:
     with MethodModelWithPrio_V1(db):
         db.executesql("""
                       -- auto-generated definition
-                      CREATE TABLE method_ed (
-                                                 id                          serial PRIMARY KEY,
-                                                 gid                         uuid NOT NULL DEFAULT uuidv4(),
-                                                 name                        varchar(255),
-                                                 supplier_gid                uuid,
-                                                 image_url                   varchar(500),
-                                                 levels                      text,
-                                                 subjects                    text,
-                                                 description                 text,
-                                                 available                   varchar(255),
-                                                 edition                     integer,
-                                                 authors                     text,
-                                                 language                    varchar(100),
-                                                 license_duration            varchar(255),
-                                                 more_information            varchar(500),
-                                                 guide_price                 numeric(10, 2),
-                                                 physical_digital_mix        varchar(255),
-                                                 digital_folio_mix           text,
-                                                 browser                     text,
-                                                 devices                     text,
-                                                 operating_systems           text,
-                                                 elo_integration             text,
-                                                 sample_copies               varchar(255),
-                                                 preview_digital_environment varchar(500),
-                                                 olid                        varchar(255),
-                                                 created_at                  timestamp     DEFAULT CURRENT_TIMESTAMP,
-                                                 updated_at                  timestamp     DEFAULT CURRENT_TIMESTAMP,
-                                                 priority                    integer       DEFAULT 0,
-                                                 tto                         boolean,
-                                                 bouw                        varchar(50)   DEFAULT '||',
-                                                 effdt                       timestamp,
-                                                 effstatus                   boolean,
-                                                 prio                        integer       DEFAULT 0,
-                                                 last_saved_by               varchar,
-                                                 sync_gid                    uuid          DEFAULT uuidv7() NOT NULL
-                                                     CONSTRAINT method_ed_unique_sync_gid
-                                                         UNIQUE,
-                                                 import_error_codes          text
-                                             );
+                      CREATE TABLE method_ed
+                      (
+                          id                          serial PRIMARY KEY,
+                          gid                         uuid NOT NULL DEFAULT uuidv4(),
+                          name                        varchar(255),
+                          supplier_gid                uuid not null,
+                          image_url                   varchar(500),
+                          levels                      text,
+                          subjects                    text,
+                          description                 text,
+                          available                   varchar(255),
+                          edition                     integer,
+                          authors                     text,
+                          language                    varchar(100),
+                          license_duration            varchar(255),
+                          more_information            varchar(500),
+                          guide_price                 numeric(10, 2),
+                          physical_digital_mix        varchar(255),
+                          digital_folio_mix           text,
+                          browser                     text,
+                          devices                     text,
+                          operating_systems           text,
+                          elo_integration             text,
+                          sample_copies               varchar(255),
+                          preview_digital_environment varchar(500),
+                          olid                        varchar(255),
+                          created_at                  timestamp     DEFAULT CURRENT_TIMESTAMP,
+                          updated_at                  timestamp     DEFAULT CURRENT_TIMESTAMP,
+                          priority                    integer       DEFAULT 0,
+                          tto                         boolean,
+                          bouw                        varchar(50)   DEFAULT '||',
+                          effdt                       timestamp     default utcnow(),
+                          effstatus                   boolean       DEFAULT TRUE,
+                          prio                        integer       DEFAULT 0,
+                          last_saved_by               varchar,
+                          sync_gid                    uuid          DEFAULT uuidv7() NOT NULL
+                              CONSTRAINT method_ed_unique_sync_gid
+                                  UNIQUE,
+                          import_error_codes          text
+                      );
 
                       CREATE INDEX method_ed_id_effdt
                           ON method_ed (gid ASC, effdt DESC, id ASC);
@@ -235,23 +258,24 @@ def create_vision_ed_20260525_001(db: TypeDAL) -> bool:
     with VisionModelWithPrio_V1(db):
         db.executesql("""
                       -- auto-generated definition
-                      CREATE TABLE vision_ed (
-                                                 id                 serial PRIMARY KEY,
-                                                 gid                uuid      DEFAULT uuidv4()   NOT NULL,
-                                                 olid               varchar(100),
-                                                 onderwijskwaliteit varchar(100),
-                                                 visie              text,
-                                                 effdt              timestamp,
-                                                 effstatus          boolean,
-                                                 prio               integer   DEFAULT 0,
-                                                 last_saved_by      varchar,
-                                                 created_at         timestamp DEFAULT CURRENT_TIMESTAMP,
-                                                 updated_at         timestamp DEFAULT CURRENT_TIMESTAMP,
-                                                 sync_gid           uuid      DEFAULT uuidv7()   NOT NULL
-                                                     CONSTRAINT vision_ed_unique_sync_gid
-                                                         UNIQUE,
-                                                 property_bag       json      DEFAULT '{}'::json NOT NULL
-                                             );
+                      CREATE TABLE vision_ed
+                      (
+                          id                 serial PRIMARY KEY,
+                          gid                uuid      DEFAULT uuidv4()   NOT NULL,
+                          olid               varchar(100),
+                          onderwijskwaliteit varchar(100),
+                          visie              text,
+                          effdt              timestamp default utcnow(),
+                          effstatus          boolean   DEFAULT TRUE,
+                          prio               integer   DEFAULT 0,
+                          last_saved_by      varchar,
+                          created_at         timestamp DEFAULT CURRENT_TIMESTAMP,
+                          updated_at         timestamp DEFAULT CURRENT_TIMESTAMP,
+                          sync_gid           uuid      DEFAULT uuidv7()   NOT NULL
+                              CONSTRAINT vision_ed_unique_sync_gid
+                                  UNIQUE,
+                          property_bag       json      DEFAULT '{}'::json NOT NULL
+                      );
 
                       CREATE INDEX idx_vision_ed_effdt_lookup
                           ON vision_ed (effdt DESC, gid ASC, prio DESC, effdt DESC) INCLUDE (id);
@@ -287,25 +311,26 @@ def create_auth_user_20260528_001(db: TypeDAL) -> bool:
     """Create the initial `auth_user` table and supporting unique index."""
     db.executesql("""
                   -- auto-generated definition
-                  CREATE TABLE auth_user (
-                                             id                   serial PRIMARY KEY,
-                                             first_name           varchar(512)            NOT NULL,
-                                             last_name            varchar(512)            NOT NULL,
-                                             email                varchar(512)            NOT NULL,
-                                             password             varchar(512)            NOT NULL,
-                                             sso_id               varchar(512),
-                                             action_token         varchar(512),
-                                             last_password_change timestamp,
-                                             registration_key     varchar(512),
-                                             reset_password_key   varchar(512),
-                                             registration_id      varchar(512),
-                                             onderwijs_rol        varchar(512),
-                                             onderwijs_rol_anders varchar(512),
-                                             onderwijs_sector     varchar(512),
-                                             gid                  uuid,
-                                             past_passwords_hash  text DEFAULT '||'::text NOT NULL,
-                                             api_key_hash         varchar(64)
-                                         );
+                  CREATE TABLE auth_user
+                  (
+                      id                   serial PRIMARY KEY,
+                      first_name           varchar(512)            NOT NULL,
+                      last_name            varchar(512)            NOT NULL,
+                      email                varchar(512)            NOT NULL,
+                      password             varchar(512)            NOT NULL,
+                      sso_id               varchar(512),
+                      action_token         varchar(512),
+                      last_password_change timestamp,
+                      registration_key     varchar(512),
+                      reset_password_key   varchar(512),
+                      registration_id      varchar(512),
+                      onderwijs_rol        varchar(512),
+                      onderwijs_rol_anders varchar(512),
+                      onderwijs_sector     varchar(512),
+                      gid                  uuid,
+                      past_passwords_hash  text DEFAULT '||'::text NOT NULL,
+                      api_key_hash         varchar(64)
+                  );
 
                   ALTER TABLE auth_user
                       OWNER TO postgres;
@@ -395,7 +420,7 @@ def add_applog_statistics_tables_20260601_001(db: TypeDAL) -> bool:
         CREATE INDEX IF NOT EXISTS evidence_sha1_digest_index
             ON public.evidence (sha1_digest ASC);
         CREATE INDEX IF NOT EXISTS evidence_source_gid
-            ON public.evidence ((source->>'gid'));
+            ON public.evidence ((source ->> 'gid'));
 
         CREATE INDEX IF NOT EXISTS idx_signal_ts
             ON public.signal (ts DESC);
@@ -414,7 +439,390 @@ def add_applog_statistics_tables_20260601_001(db: TypeDAL) -> bool:
             ON public.counts_per_minute (ts DESC);
         CREATE INDEX IF NOT EXISTS idx_counts_per_minute_name_ts
             ON public.counts_per_minute (name, ts DESC);
-        """
+        """,
     )
+    db.commit()
+    return True
+
+
+@migration()
+def add_endpoint_fields_to_supplier(db: TypeDAL) -> bool:
+    """Add external supplier fields.
+
+    Adds:
+    - email_domain: used for automatic RBAC role assignment for new users.
+    - endpoint_type: marks whether the supplier has an Edu-V endpoint or no endpoint.
+    - endpoint_base_url: base URL used for external data imports, without resource paths like /products.
+    """
+    with SupplierModelWithPrio_V1(db):
+        db.executesql("""
+        ALTER TABLE supplier_ed
+            ADD COLUMN email_domain varchar(255),
+            ADD COLUMN endpoint_type varchar(32) NOT NULL DEFAULT 'none',
+            ADD COLUMN endpoint_base_url varchar(512);
+        """)
+
+        db.commit()
+        return True
+
+
+# todo: add rbac group for each supplier
+# todo: add SIVON and Education Warehouse as suppliers with 'admin' group relation
+
+
+@migration()
+def setup_supplier_rbac_groups_20260618_002(db: TypeDAL) -> bool:
+    """Seed special suppliers and backfill per-supplier RBAC groups."""
+    from edwh_auth_rbac import AuthRbac
+
+    rbac = AuthRbac(db)
+    rbac.define_model(allowed_types=["user", "group"], redefine=True, migrate=False)
+
+    supplier_role = rbac.add_group("supplier@internal", "Suppliers", [], allow_existing=True)
+
+    admin_suppliers = {
+        "7e9de1e0-ccc2-47e4-9d67-4c8c28d8d657": {
+            "name": "Education Warehouse",
+            "email_domain": "educationwarehouse.nl",
+        },
+        "fed7d467-849f-4134-af92-7b7d4959de0f": {
+            "name": "SIVON",
+            "email_domain": "sivon.nl",
+        },
+    }
+
+    for gid, supplier in admin_suppliers.items():
+        existing = db.executesql(
+            """
+            SELECT 1
+            FROM supplier_model
+            WHERE lower(email_domain) = %(email_domain)s
+            LIMIT 1
+            """,
+            placeholders={"email_domain": supplier["email_domain"]},
+        )
+        if existing:
+            continue
+
+        db.executesql(
+            """
+            INSERT INTO supplier_ed (gid, name, olid, email_domain, endpoint_type)
+            VALUES (%(gid)s, %(name)s, %(olid)s, %(email_domain)s, 'none')
+            """,
+            placeholders={
+                "gid": gid,
+                "name": supplier["name"],
+                "olid": generate_supplier_olid(gid),
+                "email_domain": supplier["email_domain"],
+            },
+        )
+
+    # backfill rbac groups:
+
+    for supplier in db.executesql(
+        """
+        SELECT gid, name, email_domain
+        FROM supplier_model
+        ORDER BY id
+        """,
+        colnames=("gid", "name", "email_domain"),
+    ):
+        rbac.add_group(
+            f"{supplier['gid']}@supplier",
+            supplier["name"] or "Supplier",
+            [supplier_role["object_id"]],
+            gid=supplier["gid"],
+            allow_existing=True,
+        )
+
+        if supplier["gid"] in admin_suppliers:
+            rbac.add_membership(supplier["gid"], "admin@internal")
+
+    db.commit()
+    return True
+
+
+@migration()
+def create_tagged_ed_20260622_001(db: TypeDAL) -> bool:
+    """Create and initialize the `tagged_ed` source table and model view."""
+    with TaggedModelWithPrio_V1(db):
+        db.executesql("""
+                      CREATE TABLE tagged_ed
+                      (
+                          id            serial PRIMARY KEY,
+                          gid           uuid      NOT NULL DEFAULT uuidv4(),
+                          subject_gid   uuid      NOT NULL,
+                          predicate     varchar(64) NOT NULL,
+                          object_gid    uuid      NOT NULL,
+                          comment       text,
+                          created_at    timestamp DEFAULT CURRENT_TIMESTAMP,
+                          updated_at    timestamp DEFAULT CURRENT_TIMESTAMP,
+                          effdt         timestamp DEFAULT utcnow(),
+                          effstatus     boolean   DEFAULT TRUE,
+                          prio          integer   DEFAULT 0,
+                          last_saved_by varchar,
+                          sync_gid      uuid      DEFAULT uuidv7() NOT NULL
+                              CONSTRAINT tagged_ed_unique_sync_gid UNIQUE
+                      );
+
+                      CREATE INDEX tagged_ed_id_effdt
+                          ON tagged_ed (gid ASC, effdt DESC, id ASC);
+
+                      CREATE INDEX idx_tagged_ed_effdt_lookup
+                          ON tagged_ed (effdt DESC, gid ASC, prio DESC, effdt DESC) INCLUDE (id);
+                      """)
+
+    db.commit()
+    return True
+
+
+@migration()
+def create_organisation_ed_20260622_001(db: TypeDAL) -> bool:
+    """Create and initialize the `organisation_ed` source table and model view."""
+    with OrganisationModelWithPrio_V1(db):
+        db.executesql("""
+                      CREATE TABLE organisation_ed
+                      (
+                          id                serial PRIMARY KEY,
+                          gid               uuid      NOT NULL DEFAULT uuidv4(),
+                          name              varchar(255) NOT NULL,
+                          short_name        varchar(255),
+                          organisation_type varchar(32)  NOT NULL,
+                          brin              varchar(8),
+                          vestigingscode    varchar(8),
+                          email_domains     text      DEFAULT '||'::text NOT NULL,
+                          website           varchar(500),
+                          street            text,
+                          number            text,
+                          postalcode        varchar(20),
+                          city              text,
+                          created_at        timestamp DEFAULT CURRENT_TIMESTAMP,
+                          updated_at        timestamp DEFAULT CURRENT_TIMESTAMP,
+                          effdt             timestamp DEFAULT utcnow(),
+                          effstatus         boolean   DEFAULT TRUE,
+           prio              integer   DEFAULT 0,
+                          last_saved_by     varchar,
+                          sync_gid          uuid      DEFAULT uuidv7() NOT NULL
+                              CONSTRAINT organisation_ed_unique_sync_gid UNIQUE
+                      );
+
+                      CREATE INDEX organisation_ed_id_effdt
+                          ON organisation_ed (gid ASC, effdt DESC, id ASC);
+
+                      CREATE INDEX idx_organisation_ed_effdt_lookup
+                          ON organisation_ed (effdt DESC, gid ASC, prio DESC, effdt DESC) INCLUDE (id);
+                      """)
+
+    db.commit()
+    return True
+
+
+@migration()
+def setup_organisation_rbac_groups_20260622_002(db: TypeDAL) -> bool:
+    """Ensure required organisation RBAC roles exist."""
+    from edwh_auth_rbac import AuthRbac
+
+    rbac = AuthRbac(db)
+    rbac.define_model(allowed_types=["user", "group"], redefine=True, migrate=False)
+
+    users = rbac.add_group("users@internal", "Users", [], allow_existing=True)
+    organisation = rbac.add_group("organisation@internal", "Organisaties", [users], allow_existing=True)
+    rbac.add_group("board@internal", "Besturen", [organisation["object_id"]], allow_existing=True)
+    rbac.add_group("school@internal", "Scholen", [organisation["object_id"]], allow_existing=True)
+    rbac.add_group("location@internal", "Vestigingen", [organisation["object_id"]], allow_existing=True)
+
+    db.commit()
+    return True
+
+
+@migration()
+def seed_organisation_data_from_old_server_json_20260622_003(db: TypeDAL) -> bool:
+    """Load optional organisation seed rows and relations from JSON endpoints."""
+    base_url = os.getenv("MIGRATE_SEED_BASE_URL", "")
+    if not base_url:
+        print("[migrate] missing MIGRATE_SEED_BASE_URL; skipping organisation seed migration")
+        return True
+
+    with requests.Session() as session:
+        with no_triggers(db):
+            import_seed_table_v1(db, base_url=base_url, table_name="organisation_ed", session=session)
+
+        rebuild_all_materialized_tables_v1(db, extra=["recursive_tables"])
+
+        with no_triggers(db):
+            backfill_organisation_rbac_identities_v1(db)
+
+        rebuild_all_materialized_tables_v1(db, extra=["recursive_tables"])
+
+        with no_triggers(db):
+            import_seed_relationships_v1(db, base_url=base_url, session=session)
+
+        rebuild_all_materialized_tables_v1(db, extra=["recursive_tables"])
+
+    db.commit()
+    return True
+
+
+@migration()
+def create_importer_run_reporting_tables_20260622_004(db: TypeDAL) -> bool:
+    """Create durable importer-run reporting tables."""
+    db.executesql(
+        """
+        CREATE TABLE importer_run
+        (
+            id              serial PRIMARY KEY,
+            gid             uuid         NOT NULL DEFAULT uuidv4(),
+            source          varchar(80)  NOT NULL,
+            endpoint_type   varchar(40),
+            supplier_gid    uuid,
+            supplier_name   varchar(255),
+            job_key         varchar(255),
+            started_at      timestamp    NOT NULL,
+            finished_at     timestamp    NOT NULL,
+            duration_ms     integer      NOT NULL DEFAULT 0,
+            success         boolean      NOT NULL DEFAULT TRUE,
+            failure_message text,
+            payload_json    json         NOT NULL DEFAULT '{}'::json,
+            created_at      timestamp    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at      timestamp    NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE UNIQUE INDEX importer_run_gid_unique
+            ON importer_run (gid);
+        CREATE UNIQUE INDEX importer_run_job_key_unique
+            ON importer_run (job_key)
+            WHERE job_key IS NOT NULL;
+        CREATE INDEX idx_importer_run_source_started_at
+            ON importer_run (source, started_at DESC);
+        CREATE INDEX idx_importer_run_supplier_started_at
+            ON importer_run (supplier_gid, started_at DESC);
+
+        CREATE TABLE importer_run_count_stat
+        (
+            id            serial PRIMARY KEY,
+            gid           uuid         NOT NULL DEFAULT uuidv4(),
+            run_gid       uuid         NOT NULL REFERENCES importer_run (gid) ON DELETE CASCADE,
+            supplier_gid  uuid,
+            supplier_name varchar(255),
+            count_type    varchar(40)  NOT NULL,
+            count_key     varchar(255) NOT NULL,
+            count_label   varchar(255),
+            metric        varchar(40)  NOT NULL,
+            value         integer      NOT NULL DEFAULT 0,
+            created_at    timestamp    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at    timestamp    NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE UNIQUE INDEX importer_run_count_stat_gid_unique
+            ON importer_run_count_stat (gid);
+        CREATE INDEX idx_importer_run_count_stat_run_gid
+            ON importer_run_count_stat (run_gid);
+        CREATE INDEX idx_importer_run_count_stat_lookup
+            ON importer_run_count_stat (supplier_gid, count_type, metric);
+
+        CREATE TABLE importer_run_error_stat
+        (
+            id                serial PRIMARY KEY,
+            gid               uuid         NOT NULL DEFAULT uuidv4(),
+            run_gid           uuid         NOT NULL REFERENCES importer_run (gid) ON DELETE CASCADE,
+            supplier_gid      uuid,
+            supplier_name     varchar(255),
+            entity_type       varchar(20)  NOT NULL,
+            entity_gid        uuid,
+            entity_olid       varchar(255),
+            entity_name       varchar(255),
+            method_gid        uuid,
+            method_name       varchar(255),
+            error_code        varchar(80)  NOT NULL,
+            validation_failed boolean      NOT NULL DEFAULT FALSE,
+            created_at        timestamp    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at        timestamp    NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE UNIQUE INDEX importer_run_error_stat_gid_unique
+            ON importer_run_error_stat (gid);
+        CREATE INDEX idx_importer_run_error_stat_run_gid
+            ON importer_run_error_stat (run_gid);
+        CREATE INDEX idx_importer_run_error_stat_supplier_error
+            ON importer_run_error_stat (supplier_gid, error_code);
+        CREATE INDEX idx_importer_run_error_stat_entity
+            ON importer_run_error_stat (entity_type, entity_gid);
+        """,
+    )
+    db.commit()
+    return True
+
+
+@migration()
+def backfill_organisation_rbac_permissions_20260623_001(db: TypeDAL) -> bool:
+    """Backfill explicit organisation permissions from seeded hierarchy relations."""
+    backfill_organisation_rbac_permissions_v1(db)
+    db.commit()
+    return True
+
+
+@migration()
+def convert_supplier_email_domain_to_email_domains_20260623_002(db: TypeDAL) -> bool:
+    """Replace the single supplier email domain field with a list:string field."""
+    with SupplierModelWithPrio_V1(db):
+        db.executesql("""
+        ALTER TABLE supplier_ed
+            ADD COLUMN email_domains text DEFAULT '||'::text NOT NULL;
+
+        UPDATE supplier_ed
+        SET email_domains = CONCAT('|', lower(email_domain), '|')
+        WHERE email_domain IS NOT NULL
+          AND email_domain <> '';
+
+        ALTER TABLE supplier_ed
+            DROP COLUMN email_domain;
+        """)
+    db.commit()
+    return True
+
+
+@migration(requires=add_applog_statistics_tables_20260601_001)
+def create_superset_readonly_user_20260622_001(db: TypeDAL) -> bool:
+    """Create a read-only PostgreSQL user for Superset."""
+    user = os.environ.get("SUPERSET_DB_USER", "superset_readonly")
+    password = os.environ["SUPERSET_DB_PASSWORD"]
+
+    if not user.isidentifier() or not user.islower():
+        raise ValueError(f"Invalid SUPERSET_DB_USER: {user!r}")
+
+    # user can already exist if running in a test-environment
+    # (which only removes tables, instead of a full database wipe)
+    role_exists = db.executesql(
+        "SELECT 1 FROM pg_roles WHERE rolname = %(user)s",
+        placeholders={"user": user},
+    )
+    if not role_exists:
+        db.executesql(
+            f"""
+            CREATE ROLE {user}
+                WITH LOGIN
+                NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+            """,  # no S608: all identifiers are in our control)
+        )
+
+    db.executesql(
+        f"""
+        ALTER ROLE {user}
+            WITH LOGIN PASSWORD '{password}'
+            NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+
+        GRANT CONNECT ON DATABASE backend TO {user};
+        GRANT USAGE ON SCHEMA public TO {user};
+        GRANT SELECT ON ALL TABLES IN SCHEMA public TO {user};
+        GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO {user};
+
+        ALTER DEFAULT PRIVILEGES IN SCHEMA public
+            GRANT SELECT ON TABLES TO {user};
+
+        ALTER DEFAULT PRIVILEGES IN SCHEMA public
+            GRANT SELECT ON SEQUENCES TO {user};
+        """,  # no S608: all parameters are in our control so no SQL injection possible)
+    )
+
     db.commit()
     return True
