@@ -10,7 +10,7 @@ Runtime behavior:
 
 Queue processing:
 - PGQ consumer entrypoint: `send_email_message` in `pgq/consumers/applog.py`.
-- The consumer resolves `Mailer.from_env(db)` and calls `send_email_message(...)`.
+- The consumer resolves `Mailer.with_injected(db=db)` and calls `mailer.send_email_message(...)`.
 
 ## Transport Selection
 

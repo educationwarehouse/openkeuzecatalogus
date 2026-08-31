@@ -6,8 +6,8 @@ Auth is implemented with py4web `Auth` and a project-specific wrapper in
 `py4web/common/models/backend/auth_cls.py`.
 
 Classes:
-- `AppAuth(Auth)`: custom auth adapter.
-- `LoggingAuthForms(DefaultAuthForms)`: logs auth actions to applog.
+- `AppAuth(Auth)`: custom auth adapter (`auth_cls.py`).
+- `LoggingAuthForms(DefaultAuthForms)`: logs auth actions to applog (`auth_forms.py`).
 
 The web integration delegates shared authorization behavior to:
 

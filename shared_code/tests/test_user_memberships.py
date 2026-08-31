@@ -13,6 +13,7 @@ from shared_code.modules.auth.user_memberships import (
     build_user_query,
     count_members,
     membership_label,
+    pending_membership_invites,
     user_organisation_memberships,
 )
 
@@ -59,6 +60,43 @@ def test_count_members_and_build_user_query_filter_direct_memberships(
 
     assert row_gids == {str(member_one.gid), str(member_two.gid)}
     assert str(outsider.gid) not in row_gids
+
+
+def test_count_members_counts_distinct_subjects_despite_duplicate_membership_rows(
+    migrated_db_per_file: None,
+    db_per_file: TypeDAL,
+    supplier_factory: t.Callable[..., Supplier],
+    auth_user_factory: t.Callable[..., AuthUser],
+    seeded_rbac: AuthRbac,
+) -> None:
+    """A duplicated membership row must not inflate the member count.
+
+    `count_members` used to select every membership row and take `len()` of the grouped result.
+    It now counts distinct subjects in the database, so this test inserts a duplicate row
+    directly: without a DISTINCT the count would come back as 3 instead of 2.
+    """
+    assert migrated_db_per_file is None
+
+    supplier = supplier_factory(name="Duplicate Supplier", email_domains=["duplicate-members.example.test"])
+    member_one = auth_user_factory(prefix="dup-member-one")
+    member_two = auth_user_factory(prefix="dup-member-two")
+
+    seeded_rbac.add_membership(str(member_one.gid), str(supplier.gid))
+    seeded_rbac.add_membership(str(member_two.gid), str(supplier.gid))
+    db_per_file.commit()
+
+    membership_query = db_per_file.membership.member_of == str(supplier.gid)
+    assert count_members(str(supplier.gid)) == 2
+
+    db_per_file.membership.insert(subject=str(member_one.gid), member_of=str(supplier.gid))
+    db_per_file.commit()
+
+    assert db_per_file(membership_query).count() == 3, "duplicate row should exist"
+    assert count_members(str(supplier.gid)) == 2
+
+    # The filter built from the same membership rows must stay de-duplicated too.
+    rows = AuthUser.where(build_user_query(membership_gid=str(supplier.gid))).select(AuthUser.gid).collect()
+    assert {str(row.gid) for row in rows} == {str(member_one.gid), str(member_two.gid)}
 
 
 def test_build_user_query_returns_empty_query_for_unknown_membership(
@@ -133,3 +171,43 @@ def test_membership_label_prefers_known_supplier_or_organisation_name(
     missing_gid = uuid.uuid4()
     assert membership_label(missing_gid) == str(missing_gid)
     assert membership_label(None) is None
+
+
+def test_pending_membership_invites_excludes_subjects_with_auth_user_rows(
+    migrated_db_per_file: None,
+    db_per_file: TypeDAL,
+    supplier_factory: t.Callable[..., Supplier],
+    auth_user_factory: t.Callable[..., AuthUser],
+    seeded_rbac: AuthRbac,
+) -> None:
+    """Pending invite list should contain only unclaimed identity memberships."""
+    assert migrated_db_per_file is None
+
+    supplier = supplier_factory(name="Invite Membership Supplier", email_domains=["invite-members.example.test"])
+    accepted_user = auth_user_factory(prefix="accepted-invite-member")
+    pending_identity_gid = str(uuid.uuid4())
+    pending_identity_email = f"pending.{uuid.uuid4().hex}@example.test"
+
+    seeded_rbac.add_membership(str(accepted_user.gid), str(supplier.gid))
+    seeded_rbac.add_user(
+        email=pending_identity_email,
+        firstname="Pending",
+        fullname="",
+        password="",
+        member_of=[],
+        gid=pending_identity_gid,
+    )
+    seeded_rbac.add_membership(pending_identity_gid, str(supplier.gid))
+    db_per_file.commit()
+
+    pending = pending_membership_invites(str(supplier.gid))
+
+    assert pending == [
+        {
+            "subject_id": pending_identity_gid,
+            "email": pending_identity_email,
+            "full_name": "Pending",
+            "source": "identity",
+            "already_member": True,
+        }
+    ]

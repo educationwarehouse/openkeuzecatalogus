@@ -108,6 +108,7 @@ class ImportRunErrorStat:
     method_gid: str | None = None
     method_name: str | None = None
     validation_failed: bool = False
+    error_details: JsonObject | None = None
 
 
 @dc.dataclass
@@ -121,6 +122,14 @@ class ImportRunCountStat:
     supplier_gid: str | None = None
     supplier_name: str | None = None
     count_label: str | None = None
+
+
+@dc.dataclass
+class ImportRunWarningStat:
+    """One importer warning stored with a run."""
+
+    warning_code: str
+    message: str
 
 
 @dc.dataclass
@@ -141,6 +150,16 @@ class ImportAuxStats:
 
 
 @dc.dataclass
+class CdnImageUploadStats:
+    """Counts storage operations while mirroring product images to the CDN."""
+
+    attempted: int = 0
+    uploaded: int = 0
+    failed: int = 0
+    skipped: int = 0
+
+
+@dc.dataclass
 class ChangeResult:
     """Result of comparing an incoming row against stored data."""
 
@@ -156,7 +175,9 @@ class ImportStats:
     products: ImportTypeStats = dc.field(default_factory=ImportTypeStats)
     suppliers: ImportAuxStats = dc.field(default_factory=ImportAuxStats)
     visions: ImportAuxStats = dc.field(default_factory=ImportAuxStats)
+    image_uploads: CdnImageUploadStats = dc.field(default_factory=CdnImageUploadStats)
     error_stats: list[ImportRunErrorStat] = dc.field(default_factory=list)
+    warning_stats: list[ImportRunWarningStat] = dc.field(default_factory=list)
     count_stats: list[ImportRunCountStat] = dc.field(default_factory=list)
 
     def _iter_rows(self) -> list[tuple[str, ImportTypeStats]]:

@@ -17,7 +17,6 @@ async def main() -> ImprovedQueuer:
         print(f"[importer] start 'edu-v' {job}")
         data = parse_payload(job.payload, strict=True, as_type=ImportRunExtras)
         print(f"[importer] {data}")
-        data["sync_cdn"] = True
 
         result = await unblock(lambda: EduVImporter.run(**data))
 

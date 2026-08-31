@@ -14,7 +14,16 @@ from urllib.parse import urlparse
 import pytest
 from edwh_auth_rbac import AuthRbac
 
-from shared_code.data_model import AuthUser, Supplier, SupplierEd
+from shared_code.data_model import (
+    AuthUser,
+    DynamicFilter,
+    DynamicSort,
+    MethodEd,
+    ProductEd,
+    Supplier,
+    SupplierEd,
+    VisionEd,
+)
 from shared_code.data_model.constants import ROLE_ADMIN, ROLE_BOARD, ROLE_LOCATION, ROLE_ORGANISATION, ROLE_SCHOOL, ROLE_SUPPLIER, ROLE_USER
 from shared_code.modules.auth import AuthAdapter
 from shared_code.modules.auth.contract import AuthActor, AuthContext
@@ -24,6 +33,7 @@ from shared_code.services.applog import Applogger
 
 
 DEFAULT_SNAPSHOT_NAME = "testing.snapshot"
+MOCK_INBOX_PATH = Path(os.environ.get("SMTP_FAKE_INBOX_PATH", "/shared_cache/mail/mock_inbox.jsonl"))
 
 # Snapshot directory: bind-mounted from ./migrate/data → /data in the container.
 SNAPSHOTS_DIR = Path("/data")
@@ -125,6 +135,7 @@ def _run_migrate_subprocess() -> None:
         env=env,
         capture_output=True,
     )
+
     if result.returncode != 0:
         stderr = result.stderr.decode(errors="replace")
         raise RuntimeError(f"migration subprocess failed:\n{stderr}")
@@ -184,6 +195,14 @@ def db_psql() -> t.Iterator[TypeDAL]:
         database.close()
 
 
+@pytest.fixture(autouse=True)
+def clear_fake_mail_inbox() -> None:
+    """Prevent cross-test interference from the shared fake SMTP inbox file."""
+    MOCK_INBOX_PATH.parent.mkdir(parents=True, exist_ok=True)
+    MOCK_INBOX_PATH.unlink(missing_ok=True)
+    MOCK_INBOX_PATH.touch()
+
+
 @pytest.fixture()
 def db(db_psql: TypeDAL) -> TypeDAL:
     """TypeDAL instance with all shared data-model tables defined.
@@ -241,6 +260,13 @@ def db_per_file(migrated_db_per_file: None) -> t.Iterator[TypeDAL]:
 def _unique_email(prefix: str, domain: str = "example.test") -> str:
     """Return a unique email address for test users."""
     return f"{prefix}-{uuid.uuid4().hex}@{domain}"
+
+
+def _unique_slug(prefix: str) -> str:
+    """Return a unique slug that fits the dynamic config table limits."""
+    suffix = uuid.uuid4().hex[:8]
+    trimmed_prefix = prefix[:31]
+    return f"{trimmed_prefix}-{suffix}"
 
 
 def _seed_rbac_roles(db: TypeDAL) -> AuthRbac:
@@ -416,6 +442,189 @@ def supplier(supplier_factory: t.Callable[..., Supplier]) -> Supplier:
         name="Supplier Test",
         email_domains=["supplier.example.test"],
     )
+
+
+@pytest.fixture()
+def method_factory(db_per_file: TypeDAL) -> t.Iterator[t.Callable[..., MethodEd]]:
+    """Build and tear down method rows created during one test."""
+    created_method_ids: list[int] = []
+
+    def create_method(
+        *,
+        supplier_gid: str,
+        olid: str,
+        name: str,
+        available: str = "leverbaar",
+        guide_price: float | None = None,
+    ) -> MethodEd:
+        row = MethodEd.insert(
+            supplier_gid=supplier_gid,
+            olid=olid,
+            name=name,
+            available=available,
+            guide_price=guide_price,
+        )
+        assert row is not None
+        db_per_file.commit()
+        created_method_ids.append(row.id)
+        return row
+
+    yield create_method
+
+    for method_id in reversed(created_method_ids):
+        row = MethodEd(method_id)
+        if row:
+            row.delete_record()
+    db_per_file.commit()
+
+
+@pytest.fixture()
+def product_factory(db_per_file: TypeDAL) -> t.Iterator[t.Callable[..., ProductEd]]:
+    """Build and tear down product rows created during one test."""
+    created_product_ids: list[int] = []
+
+    def create_product(
+        *,
+        supplier_gid: str,
+        method_gid: str,
+        olid: str,
+        name: str,
+        levels: list[str] | None = None,
+        available: str = "leverbaar",
+        composition: str = "single",
+        description: str | None = None,
+        recommended_price: float | None = None,
+        tto: bool | None = None,
+    ) -> ProductEd:
+        row = ProductEd.insert(
+            supplier_gid=supplier_gid,
+            method_gid=method_gid,
+            olid=olid,
+            name=name,
+            levels=levels or [],
+            available=available,
+            composition=composition,
+            description=description,
+            recommended_price=recommended_price,
+            tto=tto,
+        )
+        assert row is not None
+        db_per_file.commit()
+        created_product_ids.append(row.id)
+        return row
+
+    yield create_product
+
+    for product_id in reversed(created_product_ids):
+        row = ProductEd(product_id)
+        if row:
+            row.delete_record()
+    db_per_file.commit()
+
+
+@pytest.fixture()
+def vision_factory(db_per_file: TypeDAL) -> t.Iterator[t.Callable[..., VisionEd]]:
+    """Build and tear down vision rows created during one test."""
+    created_vision_ids: list[int] = []
+
+    def create_vision(*, olid: str, onderwijskwaliteit: str, visie: str) -> VisionEd:
+        row = VisionEd.insert(
+            olid=olid,
+            onderwijskwaliteit=onderwijskwaliteit,
+            visie=visie,
+        )
+        assert row is not None
+        db_per_file.commit()
+        created_vision_ids.append(row.id)
+        return row
+
+    yield create_vision
+
+    for vision_id in reversed(created_vision_ids):
+        row = VisionEd(vision_id)
+        if row:
+            row.delete_record()
+    db_per_file.commit()
+
+
+@pytest.fixture()
+def dynamic_filter_factory(db_per_file: TypeDAL) -> t.Iterator[t.Callable[..., DynamicFilter]]:
+    """Build and tear down dynamic filter rows created during one test."""
+    created_filter_ids: list[int] = []
+
+    def create_filter(
+        *,
+        slug: str,
+        label: str,
+        filter_kind: str,
+        applies_to: str,
+        sort_order: int,
+        field_name: str | None = None,
+        match_mode: str = "contains",
+        handler_key: str | None = None,
+        widget_kind: str | None = None,
+    ) -> DynamicFilter:
+        row = DynamicFilter.insert(
+            slug=_unique_slug(slug),
+            label=label,
+            filter_kind=filter_kind,
+            field_name=field_name,
+            match_mode=match_mode,
+            applies_to=applies_to,
+            handler_key=handler_key,
+            widget_kind=widget_kind,
+            is_active=True,
+            sort_order=sort_order,
+        )
+        assert row is not None
+        db_per_file.commit()
+        created_filter_ids.append(row.id)
+        return row
+
+    yield create_filter
+
+    for filter_id in reversed(created_filter_ids):
+        row = DynamicFilter(filter_id)
+        if row:
+            row.delete_record()
+    db_per_file.commit()
+
+
+@pytest.fixture()
+def dynamic_sort_factory(db_per_file: TypeDAL) -> t.Iterator[t.Callable[..., DynamicSort]]:
+    """Build and tear down dynamic sort rows created during one test."""
+    created_sort_ids: list[int] = []
+
+    def create_sort(
+        *,
+        slug: str,
+        label: str,
+        applies_to: str,
+        order_expression: str,
+        sort_order: int,
+        is_default: bool = False,
+    ) -> DynamicSort:
+        row = DynamicSort.insert(
+            slug=_unique_slug(slug),
+            label=label,
+            applies_to=applies_to,
+            order_expression=order_expression,
+            is_default=is_default,
+            is_active=True,
+            sort_order=sort_order,
+        )
+        assert row is not None
+        db_per_file.commit()
+        created_sort_ids.append(row.id)
+        return row
+
+    yield create_sort
+
+    for sort_id in reversed(created_sort_ids):
+        row = DynamicSort(sort_id)
+        if row:
+            row.delete_record()
+    db_per_file.commit()
 
 
 @pytest.fixture()

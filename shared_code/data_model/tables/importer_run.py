@@ -4,7 +4,7 @@ import typing as t
 import uuid
 from datetime import datetime
 
-from typedal import TypedTable
+from typedal import TypedTable, relationship
 from typedal.fields import TypedField, UUIDField
 
 
@@ -23,6 +23,12 @@ class ImporterRun(TypedTable):
     success = TypedField(bool, required=True, default=True)
     failure_message = TypedField(str)
     payload_json = TypedField(dict[str, t.Any], type="json")
+    warnings_json = TypedField(list[dict[str, str]], type="json")
+    error_stats = relationship(
+        list["ImporterRunErrorStat"],
+        condition=lambda run, error_stat: error_stat.run_gid == run.gid,
+        join="left",
+    )
 
 
 class ImporterRunCountStat(TypedTable):
@@ -54,3 +60,4 @@ class ImporterRunErrorStat(TypedTable):
     method_name = TypedField(str, length=255)
     error_code = TypedField(str, required=True, length=80)
     validation_failed = TypedField(bool, required=True, default=False)
+    error_details = TypedField(dict[str, t.Any], type="json")

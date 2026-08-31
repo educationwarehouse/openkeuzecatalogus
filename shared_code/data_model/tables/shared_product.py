@@ -1,5 +1,6 @@
 """Base table definitions and shared fields."""
 
+import datetime as dt
 import typing as t
 
 from pydal.validators import IS_IN_SET, IS_INT_IN_RANGE, IS_NULL_OR
@@ -48,6 +49,7 @@ class SharedProductField(EffdtFields):
     )
     import_error_codes = TypedField(list[str], label="Importfouten", represent=comma_separated)
     edition = TypedField(int, label="Editie", requires=IS_NULL_OR(IS_INT_IN_RANGE()))
+    publication_date = TypedField(dt.date | None, label="Publicatiedatum")
     authors = TypedField(list[str], label="Auteurs", represent=comma_separated)
     language = TypedField(str, label="Taal")
     license_duration = TypedField(str, label="Licentieduur")

@@ -4,6 +4,7 @@ import enum
 import os
 import pathlib
 import random
+import re
 import secrets
 import shlex
 import shutil
@@ -22,6 +23,7 @@ from edwh import DOCKER_COMPOSE
 from edwh.__about__ import __version__ as EDWH_VERSION
 from edwh.tasks import LintOutput, OutputMode, run_command_with_output, warn_plugin_version_check
 from ewok import Context, task
+from termcolor import cprint
 from tqdm import tqdm
 
 MINIMAL_REQUIRED_EDWH_VERSION = "1.10.0"
@@ -31,6 +33,8 @@ warn_plugin_version_check(EDWH_VERSION, MINIMAL_REQUIRED_EDWH_VERSION, "edwh")
 SHARED_CODE = Path("shared_code")
 BOOTSTRAP_PATH = SHARED_CODE / "modules/css/bootstrap/"
 DEFAULT_UNSAFE_PASSWORD = "test"  # noqa: S105 only used locally on dev machines
+NON_IDENTIFIER_CHARS_RE = re.compile(r"[^0-9A-Za-z_]+")
+DUPLICATE_UNDERSCORES_RE = re.compile(r"_+")
 
 
 class classproperty[T](property):
@@ -162,6 +166,7 @@ def uptimerobot_autoadd(c: Context) -> None:
 @task()
 def pip_bump_all(c: Context) -> None:
     """Bump all .txt files using `edwh pip.upgrade`."""
+    c.run("uv cache clean")
     c.run("edwh pip.upgrade shared_code/requirements.in")
     c.run("edwh pip.upgrade py4web,migrate,pgq,playwright")
     c.run("edwh pip.upgrade requirements-dev.in")
@@ -198,6 +203,66 @@ def setup_smtp(_: Context, dotenv_path: Path, sod: str = "") -> None:
     edwh.check_env("SMTP_PASSWORD", "", "SMTP Login Password")
     edwh.check_env("SMTP_TLS", "0", "Use (start)TLS? (1 for yunohost)")
     edwh.check_env("SMTP_SSL", "0", "Use SSL? (0 for yunohost)")
+
+
+@task()
+def setup_image_storage(c: Context, sod: StateOfDevelopment, use_default: bool = False) -> None:
+    """Ask for local mock or Hetzner S3-compatible image-storage settings."""
+    is_fake = (
+        edwh.check_env(
+            "IMAGE_STORAGE_FAKE",
+            "1" if sod.is_ontwikkel() else "0",
+            "Set to 1 to store images locally instead of in Hetzner Object Storage.",
+            force_default=use_default,
+        )
+        == "1"
+    )
+    edwh.check_env(
+        "IMAGE_STORAGE_HASH_SALT",
+        edwh.tasks.generate_password(c, silent=True),
+        "Salt used to create stable, non-guessable image filenames.",
+        force_default=use_default,
+    )
+
+    if is_fake:
+        edwh.check_env(
+            "IMAGE_STORAGE_MOCK_PATH",
+            "/shared_cache/image_uploads",
+            "Local path for mock image uploads.",
+            force_default=use_default,
+        )
+        return
+
+    endpoint = edwh.check_env(
+        "IMAGE_STORAGE_ENDPOINT_URL",
+        "fsn1.your-objectstorage.com",
+        "Hetzner Object Storage endpoint (without a bucket name).",
+        force_default=use_default,
+    )
+    bucket = edwh.check_env(
+        "IMAGE_STORAGE_BUCKET",
+        "openkeuzecatalogus-images",
+        "Public Hetzner Object Storage bucket for product images.",
+        force_default=use_default,
+    )
+    edwh.check_env(
+        "IMAGE_STORAGE_ACCESS_KEY_ID",
+        "",
+        "Hetzner Object Storage access key.",
+        force_default=use_default,
+    )
+    edwh.check_env(
+        "IMAGE_STORAGE_SECRET_ACCESS_KEY",
+        "",
+        "Hetzner Object Storage secret key.",
+        force_default=use_default,
+    )
+    edwh.check_env(
+        "IMAGE_STORAGE_PUBLIC_BASE_URL",
+        f"https://{bucket}.{endpoint.removeprefix('https://').removeprefix('http://').rstrip('/')}",
+        "Public base URL for the Hetzner bucket.",
+        force_default=use_default,
+    )
 
 
 @task()
@@ -379,6 +444,69 @@ def ensure_bootstrap(_: Context) -> None:
     """Ensure the Bootstrap SCSS sources exist locally before builds run."""
     if not (BOOTSTRAP_PATH / "bootstrap.scss").exists():
         get_bootstrap(_)
+
+
+def default_eduv_output_path(input_path: str) -> Path:
+    """Build the default generated EDU-V module path from the input spec filename."""
+    module_name = NON_IDENTIFIER_CHARS_RE.sub("_", Path(input_path).stem)
+    module_name = DUPLICATE_UNDERSCORES_RE.sub("_", module_name).strip("_")
+    return Path("shared_code/modules/scrapers/eduv/generated") / f"{module_name}.py"
+
+
+@task()
+def generate_eduv_models(
+    c: Context,
+    input_path: str,
+    output_path: str = "",
+    extra_args: str = "",
+) -> None:
+    """Generate EDU-V OpenAPI models into the scraper generated directory."""
+    resolved_input_path = Path(input_path)
+    resolved_output_path = Path(output_path) if output_path else default_eduv_output_path(input_path)
+
+    if not resolved_input_path.is_file():
+        raise FileNotFoundError(f"Input spec not found: {resolved_input_path}")
+
+    resolved_output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    command_parts = [
+        "uvenv",
+        "run",
+        "datamodel-code-generator",
+        "--",
+        "--input",
+        str(resolved_input_path),
+        "--input-file-type",
+        "openapi",
+        "--output",
+        str(resolved_output_path),
+        "--formatters",
+        "builtin",
+        "--disable-timestamp",
+        "--target-python-version",
+        "3.14",
+        "--disable-future-imports",
+        "--field-constraints",
+        "--snake-case-field",
+    ]
+    if extra_args.strip():
+        command_parts.extend(shlex.split(extra_args))
+
+    c.run(shlex.join(command_parts))
+    cprint(f"Successfully wrote EDU-V models to: {resolved_output_path}", "green")
+
+
+@task()
+def discover_publishers(c: Context) -> None:
+    """List unique publishers from both EDU-V product catalogue versions with their version."""
+    c.run(
+        "curl -fsSL https://catalogus.edu-v.kennisnet.nl/v1/products "
+        "| jq -r '[.[].publisher | select(. != null)] | unique[] | [., \"v1\"] | @tsv'"
+    )
+    c.run(
+        "curl -fsSL https://catalogus.edu-v.kennisnet.nl/v2/products "
+        "| jq -r '[.[].publisher | select(. != null)] | unique[] | [., \"v2\"] | @tsv'"
+    )
 
 
 @task()
@@ -734,6 +862,7 @@ def setup(c: Context) -> None:
     setup_py4web_password(c, use_default=use_default)
 
     setup_smtp(c, dotenv_path, str(state_of_development))
+    setup_image_storage(c, state_of_development, use_default=use_default)
     uptimerobot_autoadd(c)
 
     # Permissions and setup
@@ -774,20 +903,13 @@ def lint_ruff_fmt(ctx: Context, mode: OutputMode = "cli") -> bool:
     return ruff_imports_success and ruff_format_success
 
 
-def lint_ty(ctx: Context, mode: OutputMode = "cli") -> bool:
-    """Run ty type checks."""
-    ty = find_ty()
-
-    return run_command_with_output(ctx, f"{ty} check . --color always", mode=mode, tool="ty")
-
-
 def lint_fixmes(ctx: Context, mode: OutputMode = "cli") -> bool:
     """Fail when source comments contain FIXME markers."""
     return run_command_with_output(
         ctx,
         (
-            "! git grep -n -i -E '(^|[[:space:]])(#|//|/\\*|\\*)[[:space:]]*.*\\<FIXME\\>' "
-            "-- '*.py' '*.js' '*.jsx' '*.ts'"
+            "! git grep -n -i -E '(^|[[:space:]])(#|//|/\\*|\\*|<!--)[[:space:]]*.*\\<FIXME\\>' "
+            "-- '*.py' '*.js' '*.jsx' '*.ts' '*.html'"
         ),
         mode=mode,
         tool="fixme",
@@ -802,8 +924,8 @@ def lint(ctx: Context) -> LintOutput:
 
     success = dict(result["results"]) | {
         "formatting (ruff)": lint_ruff_fmt(ctx, mode=mode),
-        "typing (ty)": lint_ty(ctx, mode=mode),
         "fixme": lint_fixmes(ctx, mode=mode),
+        "custom rules": run_command_with_output(ctx, "edwh linting.custom", mode=mode, tool="custom rules"),
     }
 
     return {"mode": mode, "results": success}

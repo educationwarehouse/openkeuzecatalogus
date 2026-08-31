@@ -60,6 +60,7 @@ class SerializedImporterRun(t.TypedDict):
     success: bool
     status: RunStatus
     failure_message: str | None
+    warnings: list[dict[str, str]]
     count_groups: list[ImportCountGroup]
     error_groups: list[ImportErrorGroup]
 
@@ -90,6 +91,7 @@ def start_import_for_supplier(supplier: Supplier) -> str:
         payload={
             "supplier_gid": str(supplier.gid),
             "base_url": supplier.endpoint_base_url,
+            "endpoint_publisher": supplier.endpoint_publisher,
             "endpoint_type": supplier.endpoint_type,
             # not passed directly via pgq for some reason:
             "job_key": job_key,
@@ -209,7 +211,8 @@ def serialize_run(run: ImporterRun) -> SerializedImporterRun:
         )
         for row in error_rows
     ]
-    status = run_status(success=bool(run.success), error_groups=error_groups)
+    warnings = [warning for warning in (run.warnings_json or []) if isinstance(warning, dict)]
+    status = run_status(success=bool(run.success), error_groups=error_groups, warnings=warnings)
 
     return {
         "gid": str(run.gid),
@@ -219,16 +222,17 @@ def serialize_run(run: ImporterRun) -> SerializedImporterRun:
         "success": bool(run.success),
         "status": status,
         "failure_message": str(run.failure_message) if run.failure_message else None,
+        "warnings": warnings,
         "count_groups": group_count_rows(count_rows),
         "error_groups": error_groups,
     }
 
 
-def run_status(*, success: bool, error_groups: list[ImportErrorGroup]) -> RunStatus:
+def run_status(success: bool, error_groups: list[ImportErrorGroup], warnings: list[dict[str, str]]) -> RunStatus:
     """Resolve the display status for one importer run."""
     if not success:
         return {"label": "Mislukt", "badge_class": "text-bg-danger"}
-    elif error_groups:
+    elif error_groups or warnings:
         return {"label": "Onvolledig", "badge_class": "text-bg-warning"}
     else:
         return {"label": "Succes", "badge_class": "text-bg-success"}
@@ -262,6 +266,9 @@ def metric_label(metric: str) -> str:
         "removed": "Verwijderd",
         "issues": "Issues",
         "imported": "Geimporteerd",
+        "attempted": "Geprobeerd",
+        "uploaded": "Geüpload",
+        "failed": "Mislukt",
         "product_count": "Producten nu",
         "method_count": "Methodes nu",
     }.get(metric, metric.replace("_", " "))

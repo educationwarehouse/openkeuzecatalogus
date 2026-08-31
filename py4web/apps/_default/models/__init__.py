@@ -1,3 +1,3 @@
-from common.models import auth, db, session
+from common.models import auth, backend, db, session
 
-__all__ = ["auth", "db", "session"]
+__all__ = ["auth", "backend", "db", "session"]

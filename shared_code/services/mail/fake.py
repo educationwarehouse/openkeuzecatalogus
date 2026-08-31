@@ -3,8 +3,11 @@
 import json
 import os
 import typing as t
+import uuid
 from email.message import EmailMessage
 from pathlib import Path
+
+from pgskewer.helpers import EnqueuedJob
 
 from shared_code.services.mail.contracts import EmailAddress, Mailer
 
@@ -45,6 +48,11 @@ class MockMailer(Mailer):
             fp.write("\n")
 
         return True
+
+    def enqueue_email_message(self, message: EmailMessage, all_recipients: list[EmailAddress]) -> EnqueuedJob:
+        """Deliver immediately in tests while returning a queue-like acknowledgement."""
+        self.send_email_message(message, all_recipients=all_recipients)
+        return EnqueuedJob(id=0, key=uuid.uuid4())
 
     @classmethod
     def from_env(cls) -> t.Self:

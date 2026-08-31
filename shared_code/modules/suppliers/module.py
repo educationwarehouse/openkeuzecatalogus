@@ -3,7 +3,7 @@
 import typing as t
 
 from endow import Domain
-from typedal import QueryBuilder
+from typedal import PaginatedRows, QueryBuilder
 
 from shared_code.data_model.tables import AuthUser, Supplier
 from shared_code.infra.database.policy import TypeDALPolicyMixin
@@ -42,6 +42,15 @@ class SupplierBackend(Domain, TypeDALPolicyMixin[Supplier]):
 
         return Supplier.where(Supplier.email_domains.contains(domain)).first()
 
-    def list_suppliers(self) -> QueryBuilder[Supplier]:
+    def list_my_suppliers(self) -> QueryBuilder[Supplier]:
         """Return suppliers visible to the current actor."""
         return self.request_read()
+
+    def list_public_suppliers(self) -> PaginatedRows[Supplier]:
+        """Return (active) subppliers, selecting only public fields."""
+        return Supplier.select(
+            Supplier.name,
+            Supplier.olid,
+            Supplier.logo_url,
+            Supplier.status_visions,
+        ).paginate(limit=0, page=1)

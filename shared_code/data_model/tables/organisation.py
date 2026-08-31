@@ -70,16 +70,12 @@ def keep_organisation_group_in_sync(cls: type[OrganisationEd]) -> t.Callable[[Op
 
         rbac.add_permission(row.gid, row.gid, "*")
 
-        db.commit()
-
     return wrapper
 
 
 class OrganisationEd(
     BaseTable,
     EffdtFields,
-    SearchMixin,
-    search_fields=("name", "short_name", "gid", "brin", "vestigingscode", "city"),
 ):
     """Effective-dated organisation source table."""
 
@@ -107,5 +103,9 @@ class OrganisationEd(
         cls.after_insert(keep_organisation_group_in_sync(cls))
 
 
-class Organisation(OrganisationEd):
+class Organisation(
+    OrganisationEd,
+    SearchMixin,
+    search_fields=("name", "short_name", "gid", "brin", "vestigingscode", "city"),
+):
     """Current organisation model view."""

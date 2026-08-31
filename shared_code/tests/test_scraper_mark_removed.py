@@ -4,7 +4,7 @@ import uuid
 from typedal import TypeDAL
 
 from shared_code.data_model import Method, Product, SupplierEd
-from shared_code.modules.scrapers.flow import import_methods_and_products
+from shared_code.modules.scrapers.flow import ImportFlow
 from shared_code.modules.scrapers.types import ImportPriority
 from shared_code.util.olid import generate, generate_supplier_olid
 
@@ -14,6 +14,7 @@ def test_import_methods_and_products_marks_missing_rows_as_removed(
     db_per_file: TypeDAL,
 ) -> None:
     """Importer flow should mark previously active rows as removed when omitted."""
+    flow = ImportFlow.with_injected(db=db_per_file)
     supplier_gid = str(uuid.uuid4())
     supplier = SupplierEd.insert(
         gid=supplier_gid,
@@ -34,8 +35,7 @@ def test_import_methods_and_products_marks_missing_rows_as_removed(
     kept_product_olid = generate("product", kept_product_gid)
     removed_product_olid = generate("product", removed_product_gid)
 
-    initial_stats = import_methods_and_products(
-        db_per_file,
+    initial_stats = flow.import_methods_and_products(
         methods=[
             {
                 "gid": kept_method_gid,
@@ -82,8 +82,7 @@ def test_import_methods_and_products_marks_missing_rows_as_removed(
     assert initial_stats.methods.removed == 0
     assert initial_stats.products.removed == 0
 
-    removal_stats = import_methods_and_products(
-        db_per_file,
+    removal_stats = flow.import_methods_and_products(
         methods=[
             {
                 "gid": kept_method_gid,

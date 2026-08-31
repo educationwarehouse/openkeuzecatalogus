@@ -1,0 +1,74 @@
+<div class="vstack gap-4">
+    [[pagination = rows.pagination]]
+    [[current_page = pagination['current_page']]]
+    [[total_pages = pagination['total_pages']]]
+    [[prev_page = pagination['prev_page']]]
+    [[next_page = pagination['next_page']]]
+
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h2 class="h4 mb-1">Productresultaten</h2>
+            <p class="text-secondary mb-0">Openbaar overzicht van beschikbare producten.</p>
+        </div>
+        <div class="d-flex align-items-center flex-wrap gap-3">
+            <span class="small text-secondary">
+                [[=len(rows)]] producten in beeld[[if active_filter_count:]] na [[=active_filter_count]] filter(s)[[pass]]
+            </span>
+            [[include 'components/catalog_view_toggle.html']]
+        </div>
+    </div>
+
+    <div class="row g-3 catalog-results-grid [[='catalog-results-grid--list' if view_mode == 'list' else 'catalog-results-grid--grid']]">
+        [[for row in rows:]]
+        <div class="col-12 col-md-6 catalog-result-item">
+            <div class="card h-100 border-0 shadow-sm">
+                [[if row.image_url:]]
+                <img
+                        class="card-img-top object-fit-cover"
+                        src="[[=row.image_url]]"
+                        alt="Omslag van [[=row.name or 'onbenoemd product']]"
+                        loading="lazy"
+                        style="height: 12rem;"
+                >
+                [[pass]]
+                <div class="card-body p-4">
+                    <span class="badge text-bg-warning-subtle text-warning-emphasis mb-3">[[=row.composition_label]]</span>
+                    <h3 class="h5">[[=row.name or 'Onbenoemd product']]</h3>
+                    <p class="text-secondary">[[=row.description or 'Geen beschrijving beschikbaar.']]</p>
+                    <div class="d-flex justify-content-between small text-secondary">
+                        <span>[[=row.isbn or 'Geen ISBN']]</span>
+                        <strong class="text-body">
+                            [[=row.recommended_price if row.recommended_price is not None else 'Op aanvraag']]
+                        </strong>
+                    </div>
+                    <div class="small text-secondary mt-3">
+                        <div>
+                            <strong class="text-body">Onderwijslaag:</strong>
+                            [[=', '.join(row.levels) if row.levels else 'Niet opgegeven']]
+                        </div>
+                        <div>
+                            <strong class="text-body">Demo:</strong>
+                            [[=row.demo_environment_link or 'Niet beschikbaar']]
+                        </div>
+                    </div>
+                    <pre class="bg-body-tertiary border rounded p-3 mt-3 mb-0 small overflow-auto">[[=row.as_json()]]</pre>
+                </div>
+                <div class="card-footer bg-transparent border-0 pt-0 pb-4 px-4">
+                    <button class="btn btn-outline-dark btn-sm" type="button">Bekijk product</button>
+                </div>
+            </div>
+        </div>
+        [[pass]]
+        [[if not rows:]]
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4 text-secondary">
+                    Er zijn nog geen openbare producten beschikbaar.
+                </div>
+            </div>
+        </div>
+        [[pass]]
+    </div>
+
+    [[include 'components/pagination.html']]
+</div>

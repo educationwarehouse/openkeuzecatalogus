@@ -133,4 +133,4 @@ If combined coverage is below the threshold, the command exits non-zero.
 - Container-related failures: make sure the local environment and services are up (`edwh setup`, `edwh up`).
 - Cache cleanup/permissions issues: `test.run` clears `shared_cache/pytest` and may need elevated permissions in your environment.
 - Production safeguard: `test.*` tasks are blocked when `STATE_OF_DEVELOPMENT` is production-level.
-- Database reset behavior: `test.run` invokes `test.go-migrate`, which removes `migrate/flags/migrate-*.complete` and recreates the `pg-0` volume (`docker compose down -v pg-0`), then boots `pg-0` and `redis-master` before running migrations.
+- Database reset behavior: `test.run` temporarily points Compose at a disposable Postgres volume via `POSTGRES_DATA_NAME`, runs `test.go-migrate` inside that throwaway volume, and tears the test stack down with `docker compose down -v` when the run finishes. The normal development Postgres volume remains untouched.

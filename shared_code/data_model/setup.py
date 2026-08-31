@@ -6,6 +6,8 @@ from shared_code.data_model.mixins.effdt import setup_record_operators
 from shared_code.data_model.tables import (
     AuthUser,
     CountsPerMinute,
+    DynamicFilter,
+    DynamicSort,
     Evidence,
     ImporterRun,
     ImporterRunCountStat,
@@ -75,6 +77,24 @@ def define_tables(db: TypeDAL) -> TypeDAL:
         format="%(name)s",
         singular="CountsPerMinute",
         plural="CountsPerMinute",
+        redefine=True,
+        migrate=False,
+    )
+    db.define(
+        DynamicFilter,
+        rname="dynamic_filter",
+        format="%(slug)s",
+        singular="DynamicFilter",
+        plural="DynamicFilters",
+        redefine=True,
+        migrate=False,
+    )
+    db.define(
+        DynamicSort,
+        rname="dynamic_sort",
+        format="%(slug)s",
+        singular="DynamicSort",
+        plural="DynamicSorts",
         redefine=True,
         migrate=False,
     )

@@ -1,0 +1,13 @@
+<h3>Importvoorbeeld</h3>
+[[=preview]]
+<div>
+    <a href="[[=endpoint]]" class="btn btn-outline-secondary">Annuleren</a>
+    [[if not has_errors:]]
+    <form method="post" class="d-inline ms-2">
+        <input type="hidden" name="payload_json" value="[[=payload_json]]">
+        <input type="hidden" name="filename" value="[[=filename]]">
+        <input type="hidden" name="confirm" value="1">
+        <button type="submit" class="btn btn-success">Import bevestigen</button>
+    </form>
+    [[pass]]
+</div>

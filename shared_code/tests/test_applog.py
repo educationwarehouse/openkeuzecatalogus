@@ -10,7 +10,6 @@ from typedal import TypeDAL
 
 from shared_code.services.applog import Applogger, DequeApplogger, FileApplogger
 from shared_code.services.applog.handler import process_applog_deque
-from shared_code.infra.database import database_context
 
 
 def test_applogger_from_env_fake_uses_file_logger(monkeypatch: MonkeyPatch, tmp_path: Path, db_psql: TypeDAL) -> None:
@@ -61,7 +60,10 @@ def _count_rows(db: TypeDAL, table_name: str) -> int:
 
 
 def test_applog_wrapper_to_pgq_consumer_to_db(
-    monkeypatch: MonkeyPatch, tmp_path: Path, migrated_db_per_file: None
+    monkeypatch: MonkeyPatch,
+    tmp_path: Path,
+    migrated_db_per_file: None,
+    db_per_file: TypeDAL,
 ) -> None:
     """Persist an applog wrapper event all the way through consumer processing."""
     assert migrated_db_per_file is None
@@ -82,10 +84,9 @@ def test_applog_wrapper_to_pgq_consumer_to_db(
     )
 
     # Avoid debounce sleep/refresh side effects while still exercising handler path.
-    processed_count = process_applog_deque(batch_size=50)
+    processed_count = process_applog_deque(db_per_file, batch_size=50)
 
     assert processed_count == 1
 
-    with database_context("test.applog_e2e") as db:
-        assert _count_rows(db, "signal") == 1
-        assert _count_rows(db, "evidence") == 1
+    assert _count_rows(db_per_file, "signal") == 1
+    assert _count_rows(db_per_file, "evidence") == 1

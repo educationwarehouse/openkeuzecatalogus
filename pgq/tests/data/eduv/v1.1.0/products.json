@@ -1,0 +1,198 @@
+{
+  "products": [
+    {
+      "productId": "9789402054958",
+      "publisher": "Malmberg",
+      "reseller": "Iddink",
+      "type": "combi",
+      "status": "available",
+      "forSale": true,
+      "saleUnitSize": 1,
+      "isConsumptionProduct": false,
+      "name": "Biologie voor jou 4 havo/vwo leerboek",
+      "productFamilyName": "Biologie voor jou",
+      "edition": "4e druk",
+      "productUsages": ["leerboek"],
+      "intendedEndUserRole": "student",
+      "courseReferences": [
+        {
+          "courseId": "course-bio-havo4-001",
+          "title": "Biologie havo 4",
+          "description": "Biologie voor havo leerjaar 4 – cellen, erfelijkheid en ecologie"
+        }
+      ],
+      "studies": [
+        {
+          "studyName": "havo",
+          "studyCode": "HAVO",
+          "studyLevels": [
+            {
+              "studyLevelId": "cb61531d-61eb-4412-a52f-ca065ca37e39",
+              "studyLevelPrefix": "4205",
+              "studyLevelName": "havo 4"
+            },
+            {
+              "studyLevelId": "d72a4b2e-83fc-4c21-b631-fa176db48d01",
+              "studyLevelPrefix": "4206",
+              "studyLevelName": "havo 5"
+            }
+          ]
+        }
+      ],
+      "subjects": [
+        {
+          "subjectPrefix": "bi",
+          "subjectName": "Biologie"
+        }
+      ],
+      "price": [
+        {
+          "priceExcl": 28.18,
+          "priceIncl": 29.87,
+          "priceCurrency": "EUR",
+          "validFrom": "2024-08-01"
+        },
+        {
+          "priceExcl": 29.65,
+          "priceIncl": 31.43,
+          "priceCurrency": "EUR",
+          "validFrom": "2025-08-01"
+        }
+      ],
+      "paymentModels": ["pre-paid", "post-paid"],
+      "licensePeriod": {
+        "licenseVariant": "schoolyear"
+      },
+      "activationPeriod": {
+        "activationVariant": "schoolyear"
+      },
+      "deliveryTypes": [
+        "school-all",
+        "school-studies",
+        "school-subjects"
+      ],
+      "trialAccessUrl": "https://demo.malmberg.nl/biologie-voor-jou/trial",
+      "defaultAccessUrl": "https://www.malmberg.nl/biologie-voor-jou/activate",
+      "specificAccessUrls": [
+        {
+          "accessUrl": "https://oidc.malmberg.nl/biologie-voor-jou",
+          "accessUrlType": "OIDC"
+        }
+      ],
+      "shortDescription": "Combi leerboek biologie voor havo 4 en 5.",
+      "longDescription": "Biologie voor jou biedt een complete leerervaring voor havo-leerlingen met interactieve digitale oefeningen, heldere uitleg en actuele biologische contexten. Het combi-pakket bevat zowel het fysieke leerboek als de digitale licentie.",
+      "copyrightType": "yes",
+      "authors": {
+        "individuals": [
+          {
+            "givenName": "Jan",
+            "familyName": "Smits",
+            "familyNamePrefix": "de"
+          }
+        ],
+        "organisations": ["Malmberg"]
+      },
+      "media": {
+        "publisherThumbnailUrl": {
+          "url": "file:///pythonpath/pgq/tests/data/eduv/static/publisher.png",
+          "description": "Malmberg logo",
+          "width": 200,
+          "height": 80
+        },
+        "mainThumbnailUrl": {
+          "url": "file:///pythonpath/pgq/tests/data/eduv/static/thumbnail.png",
+          "description": "Coverafbeelding Biologie voor jou 4",
+          "width": 300,
+          "height": 400
+        },
+        "productImageUrls": [
+          {
+            "url": "file:///pythonpath/pgq/tests/data/eduv/static/cover.png",
+            "description": "Voorkant leerboek",
+            "width": 800,
+            "height": 1100
+          }
+        ],
+        "productVideoUrls": [
+          {
+            "url": "https://cdn.malmberg.nl/products/bio-jou-4-intro.mp4",
+            "description": "Introductievideo Biologie voor jou"
+          }
+        ]
+      },
+      "bundledProducts": [
+        "9789402054965",
+        "3b951e8f-de9e-4d0a-be3e-0caea2467ec8"
+      ],
+      "relatedProducts": [
+        "9789402054972"
+      ],
+      "firstPublishedDate": "2021-08-01",
+      "deprecationDate": "2026-08-01",
+      "dateCreated": "2021-06-01T09:00:00Z",
+      "dateLastModified": "2024-03-15T14:22:00Z"
+    }
+  ],
+  "productsInfo": [
+    {
+      "productId": "9789402054958",
+      "publisher": "Malmberg",
+      "type": "combi",
+      "status": "available",
+      "name": "Biologie voor jou 4 havo/vwo leerboek",
+      "productFamilyName": "Biologie voor jou",
+      "courseReferences": [
+        {
+          "courseId": "course-bio-havo4-001",
+          "title": "Biologie havo 4",
+          "description": "Biologie voor havo leerjaar 4"
+        }
+      ],
+      "studies": [
+        {
+          "studyName": "havo",
+          "studyCode": "HAVO",
+          "studyLevels": [
+            {
+              "studyLevelId": "cb61531d-61eb-4412-a52f-ca065ca37e39",
+              "studyLevelPrefix": "4205",
+              "studyLevelName": "havo 4"
+            }
+          ]
+        }
+      ],
+      "subjects": [
+        {
+          "subjectPrefix": "bi",
+          "subjectName": "Biologie"
+        }
+      ],
+      "infoLink": "https://www.malmberg.nl/biologie-voor-jou",
+      "trialAccessUrl": "https://demo.malmberg.nl/biologie-voor-jou/trial",
+      "defaultAccessUrl": "https://www.malmberg.nl/biologie-voor-jou/activate",
+      "shortDescription": "Combi leerboek biologie voor havo 4 en 5.",
+      "longDescription": "Biologie voor jou biedt een complete leerervaring voor havo-leerlingen.",
+      "media": {
+        "publisherThumbnailUrl": {
+          "url": "file:///pythonpath/pgq/tests/data/eduv/static/publisher.png",
+          "description": "Malmberg logo",
+          "width": 200,
+          "height": 80
+        },
+        "mainThumbnailUrl": {
+          "url": "file:///pythonpath/pgq/tests/data/eduv/static/thumbnail.png",
+          "description": "Coverafbeelding Biologie voor jou 4",
+          "width": 300,
+          "height": 400
+        }
+      },
+      "bundledProducts": [
+        "9789402054965",
+        "3b951e8f-de9e-4d0a-be3e-0caea2467ec8"
+      ],
+      "firstPublishedDate": "2021-08-01",
+      "dateCreated": "2021-06-01T09:00:00Z",
+      "dateLastModified": "2024-03-15T14:22:00Z"
+    }
+  ]
+}

@@ -16,8 +16,8 @@ from shared_code.data_model.tables.product import Product
 from shared_code.data_model.tables.supplier import Supplier
 
 
-class Vision(BaseTable, EffdtFields, SearchMixin, search_fields=("olid", "onderwijskwaliteit", "visie")):
-    """Current vision model view."""
+class VisionEd(BaseTable, EffdtFields):
+    """Effective-dated vision source table."""
 
     olid = TypedField(str, label="OLID")
     onderwijskwaliteit = TypedField(
@@ -27,6 +27,10 @@ class Vision(BaseTable, EffdtFields, SearchMixin, search_fields=("olid", "onderw
     )
     visie = TextField(label="Visie")
     property_bag = TypedField(object, default=lambda: {}, label="Property Bag")  # noqa: PIE807 - pydal complains if you use default=dict
+
+
+class Vision(VisionEd, SearchMixin, search_fields=("olid", "onderwijskwaliteit", "visie")):
+    """Current vision model view."""
 
     @classmethod
     def apply_search(cls, search: str, builder: QueryBuilder[t.Self]) -> QueryBuilder[t.Self]:
@@ -49,7 +53,3 @@ class Vision(BaseTable, EffdtFields, SearchMixin, search_fields=("olid", "onderw
             ]
 
         return cls._apply_search(search, builder, extra_conditions_fn=extra_conditions)
-
-
-class VisionEd(Vision):
-    """Effective-dated vision source table."""

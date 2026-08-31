@@ -26,3 +26,15 @@ class DatabaseContext(TypeDAL, Injectable):
             # migrate=DB_MIGRATE,
             # fake_migrate=DB_FAKE_MIGRATE,
         )
+
+    def close(self) -> None:
+        """Close the database and release hook/dialect references."""
+        # platform-specific:
+        auth_context = getattr(self, "auth", None)
+        raw_rbac = getattr(auth_context, "_rbac", None)
+
+        if auth_context and raw_rbac:
+            raw_rbac.db = None
+            auth_context._rbac = None
+
+        super().close()

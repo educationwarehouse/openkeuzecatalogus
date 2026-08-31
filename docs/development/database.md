@@ -2,6 +2,12 @@
 
 This project uses `TypeDAL`/`pyDAL` style database access.
 
+## Postgres Image (`postgres/`)
+
+The `postgres` Compose service is built from `postgres/Dockerfile` (base: `postgres:18`, adds `pgaudit` and extension build deps).
+`postgres/extensions.sql` is mounted into `docker-entrypoint-initdb.d` and runs once on database init, enabling `pgcrypto`, `unaccent`, and `pg_trgm`.
+`postgres/addendum.conf` supplies extra `postgresql.conf` settings layered onto the base image config.
+
 ## References
 
 - `pyDAL`: https://www.web2py.com/books/default/chapter/29/06/the-database-abstraction-layer

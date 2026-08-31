@@ -26,7 +26,7 @@ Current flow:
 
 The applog queue consumer lives in `pgq/consumers/applog.py`:
 - Schedule: `process_applog_deque_every_minute` (`* * * * *`)
-- Worker function: `process_applog_deque(batch_size=50, ...)`
+- Worker function: `process_applog_deque(db, batch_size=50, ...)`, with the PGQ job's database context passed in by the consumer.
 
 Batch behavior:
 - Reads up to `batch_size` records from deque.

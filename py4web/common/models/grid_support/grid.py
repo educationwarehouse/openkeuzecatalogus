@@ -19,12 +19,14 @@ from shared_code.data_model import update_effectivedated
 from shared_code.data_model.mixins.effdt import EffdtTable, ed_restore_by_id, latest_ed
 from shared_code.data_model.representers.uuid import short_uuid
 from shared_code.data_model.tables import BaseTable
+from shared_code.data_model.tables.base import TableWithGid
 from shared_code.data_model.validators.is_uuid import is_uuid
 from shared_code.util.class_utils import class_deepcopy
 from shared_code.util.exceptions import throw
 
 from .actions import BUTTON_CLASS, GridActionButton
 from .archive import build_archive_table
+from .json_import import JsonImport, JsonImportConfig
 from .py4web_grid import (
     ExtraFormHtml,
     ExtraFormHtmlItem,
@@ -88,7 +90,7 @@ class GridTranslator:
         return self.TRANSLATIONS.get(string, string)
 
 
-class SmartGrid[T: TypedTable](Grid):
+class SmartGrid[T: TableWithGid](Grid):
     """Grid wrapper that adds Eddie-specific search, archive, and action logic."""
 
     # todo: can use a clean-up but if we base it on the forked Grid then it should work for now
@@ -101,6 +103,7 @@ class SmartGrid[T: TypedTable](Grid):
         path: str,
         query: Query | bool | None = None,
         *,
+        archive_query: Query | bool | None = None,
         widgets: dict[str, t.Any] | None = None,
         # functions to make it easier to define callbacks that don't affect other places
         # (like `Model.after_insert()` would)
@@ -122,6 +125,7 @@ class SmartGrid[T: TypedTable](Grid):
         left: GridLeft = None,
         headings: t.Sequence[str] | None = None,
         create: bool | str = True,
+        details: bool = False,
         editable: bool | str = True,
         deletable: bool | str = True,
         validation: GridValidation = None,
@@ -132,6 +136,7 @@ class SmartGrid[T: TypedTable](Grid):
         header_elements: GridHeaderFooterElements = None,
         footer_elements: GridHeaderFooterElements = None,
         groupby: GridGroupBy = None,
+        json_import: JsonImportConfig | None = None,
     ) -> None:
         """Initialize grid state, callbacks, filters, and request-specific wiring."""
         self.callbacks = {
@@ -161,6 +166,8 @@ class SmartGrid[T: TypedTable](Grid):
 
         # overwrite with changes from search form:
         query = search.query
+        self.query = query
+        self.archive_query = archive_query
 
         # add unique class:
         if search.grid_id not in grid_class_style.classes["grid-wrapper"]:
@@ -174,6 +181,8 @@ class SmartGrid[T: TypedTable](Grid):
         self._setup_widgets(widgets, formstyle)
 
         self.table = table
+        self.json_import_config = json_import
+        self.json_import: JsonImport | None = None
         super().__init__(
             path=path,
             query=query,
@@ -186,7 +195,7 @@ class SmartGrid[T: TypedTable](Grid):
             left=left,
             headings=headings,
             create=create,
-            details=False,
+            details=details,
             editable=editable,
             deletable=deletable,
             validation=validation,
@@ -219,6 +228,18 @@ class SmartGrid[T: TypedTable](Grid):
 
         header_elements = list(header_elements or [])
         footer_elements = list(footer_elements or [])
+        if self.json_import_config:
+            header_elements.append(
+                lambda: A(
+                    SPAN(
+                        I(_class="fas fa-file-import px-1"),
+                        "JSON import",
+                        **self.param.grid_class_style.get("grid-header-button"),
+                    ),
+                    _class="grid-new-button ms-3",
+                    _href=URL(self.endpoint, "import"),
+                )
+            )
         if self.archive:
             header_elements.append(lambda: self.archive_button("ms-3"))
 
@@ -246,7 +267,7 @@ class SmartGrid[T: TypedTable](Grid):
 
         formstyle.widgets.update(widgets)
 
-    def _setup_orderby(self, search: EddieSearch, table: type[TypedTable]) -> GridOrderBy:
+    def _setup_orderby(self, search: EddieSearch, table: type[T]) -> GridOrderBy:
         if search.orderby:
             return search.orderby
         elif getattr(table, "sync_gid", None):
@@ -258,7 +279,7 @@ class SmartGrid[T: TypedTable](Grid):
         else:
             return [~table.id]
 
-    def _setup_gid_represent(self, path: str, table: type[TypedTable]) -> Field | None:
+    def _setup_gid_represent(self, path: str, table: type[TableWithGid]) -> Field | None:
         if getattr(table, "gid", None) and table.gid and table.gid.readable:
             field_id = table.gid
             assert field_id
@@ -266,7 +287,8 @@ class SmartGrid[T: TypedTable](Grid):
             # replace gid in grid with clipboard icon if 'select'
             # default to just showing the gid (e.g. 'select/archive' page)
             field_id.represent = short_uuid if path.strip("/") == "select" else lambda val, _=None: str(val)
-            return field_id
+            return t.cast(Field, field_id)
+
         return None
 
     @classmethod
@@ -320,6 +342,8 @@ class SmartGrid[T: TypedTable](Grid):
         if self.action == "archive":
             # custom rendering
             return self.render_archive()
+        elif self.action == "import" and self.json_import:
+            return self.json_import.render()
         else:
             table_or_form = super().render()
 
@@ -336,10 +360,12 @@ class SmartGrid[T: TypedTable](Grid):
         table = self.table_ed
         assert table and table.effdt
 
-        if self.parts[-1] == "archive":
+        if self.parts[-1] in ("archive", "select"):
+            archive_endpoint = request.fullpath.removesuffix("/select")
             grid = SmartGrid(
                 table,
                 path="select/archive",
+                query=self.archive_query,
                 create=False,
                 editable=False,
                 deletable=False,
@@ -348,16 +374,17 @@ class SmartGrid[T: TypedTable](Grid):
                 pre_action_buttons=[
                     lambda row: GridActionButton(
                         "Versie Terugzetten",
-                        URL(request.path, "restore", row.id),
+                        URL(archive_endpoint, "restore", row.id),
                         additional_classes=[BUTTON_CLASS, "grid-button"],
                     ),
                     lambda row: GridActionButton(
                         "Archief voor deze rij",
-                        URL(request.path, row.gid),
+                        URL(archive_endpoint, row.gid),
                         additional_classes=[BUTTON_CLASS, "grid-button"],
                     ),
                 ],
             )
+            grid.endpoint = archive_endpoint
             return grid.render()
         elif self.parts[-2] == "restore":
             # .../restore/<id>
@@ -413,7 +440,7 @@ class SmartGrid[T: TypedTable](Grid):
                 **self.param.grid_class_style.get("grid-header-button"),
             ),
             _class="grid-new-button " + " ".join(classes),
-            _href=url,
+            _href=URL(url, vars=dict(request.query)),
         )
 
     # todo: we had a custom _make_table_pager; do we still need that?
@@ -493,9 +520,28 @@ class SmartGrid[T: TypedTable](Grid):
         table = self.table
         assert table, "grid used without table?"
         row = None
+        parts = self.parts
+        action = parts[0] if parts else "select"
+        self.action = action
+
+        if action == "import" and self.json_import_config:
+            user = self.auth_user
+            actor = str(getattr(user, "email", None) or "admin")
+            self.json_import = JsonImport(
+                self.db,
+                table=self.table,
+                config=self.json_import_config,
+                endpoint=self.endpoint,
+                actor=actor,
+                query=self.query,
+                after_insert=self.callbacks["insert"],
+                after_update=self.callbacks["update"],
+                after_delete=self.callbacks["delete"],
+            )
+            return self.json_import.process(is_template=len(parts) > 1 and parts[1] == "template")
 
         # Grid loves integer ids so let's convert it
-        if (parts := self.parts) and len(parts) > 1:
+        if parts and len(parts) > 1:
             if row := self.gid_to_row(parts[1]):
                 parts[1] = str(row.id)
                 self.path = "/".join(parts)
@@ -503,8 +549,6 @@ class SmartGrid[T: TypedTable](Grid):
             else:
                 row = table(parts[1])
 
-        action = parts[0] if parts else "select"
-        self.action = action
         if self.is_effdt:
             if action == "new" and request.method == "POST":
                 return self.effdt_new()

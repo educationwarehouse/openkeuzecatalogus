@@ -56,6 +56,16 @@ def _extract_reset_password_url(
     return match.group(0).replace("&amp;", "&")
 
 
+def _extract_magic_login_url(
+    message: dict, pattern: re.Pattern[str] = re.compile(r"https?://[^\s\"'<>]+/auth/magic_login[^\s\"'<>]*")
+) -> str | None:
+    text = f"{message.get('text_body') or ''}\n{message.get('html_body') or ''}"
+    match = pattern.search(text)
+    if not match:
+        return None
+    return match.group(0).replace("&amp;", "&")
+
+
 def get_cookies(page: Page, name: str = "shared_session") -> list[dict]:
     """Collect cookies with a specific name from the active Playwright context."""
     return [cookie for cookie in page.context.cookies() if cookie.get("name") == name]
@@ -190,6 +200,54 @@ def test_entree_mock_login_works_and_logs_success(page: Page) -> None:
     )
     assert "login" in markers
     assert "registration" not in markers
+
+
+def test_sso_user_can_request_and_use_magic_login_link(page: Page) -> None:
+    """Use mocked Entree login, then authenticate through the SSO magic-link fallback."""
+    sso_email = f"kennisnet:mock-entree-user@{MOCK_EMAIL_DOMAIN}"
+    request_email = f"mock-entree-user@{MOCK_EMAIL_DOMAIN}"
+    inbox_start = len(_read_messages())
+    applog_start = len(_read_applog_events())
+
+    page.goto(f"{BASE_URL}/auth/login")
+    entree_login_button = page.locator("a[href*='oauth2kennisnet']").first
+    assert entree_login_button.is_visible(), "Kennisnet Entree Login button is not visible"
+    entree_login_button.click()
+
+    page.goto(f"{BASE_URL}/auth/logout")
+    page.goto(f"{BASE_URL}/auth/login")
+    page.fill("input[name='email']", sso_email)
+    page.fill("input[name='password']", "NotTheSSOPassword123!")
+    page.locator("button[type='submit'], input[type='submit']").first.click()
+    page.wait_for_url("**/auth/login**")
+
+    magic_request_link = page.locator("a[href*='/auth/request_magic_login']").first
+    magic_request_link.wait_for(state="visible", timeout=5000)
+    magic_request_link.click()
+    page.wait_for_url("**/auth/login")
+
+    magic_mail = wait_for_specific_email(
+        email=request_email,
+        pattern=re.compile(r"/auth/magic_login"),
+        start_at=inbox_start,
+    )
+    assert magic_mail is not None
+    assert magic_mail.get("subject") == "Magic login-link"
+
+    magic_url = _extract_magic_login_url(magic_mail)
+    assert magic_url, "No magic_login URL found in fake mail payload"
+
+    page.goto(magic_url)
+    page.goto(f"{BASE_URL}/profile")
+    profile_body = page.text_content("body") or ""
+    assert sso_email in profile_body
+
+    markers = wait_for_auth_markers(
+        email=sso_email,
+        expected_markers={"magic_login"},
+        start_at=applog_start,
+    )
+    assert "magic_login" in markers
 
 
 def test_register_sends_verification_mail(page: Page) -> None:

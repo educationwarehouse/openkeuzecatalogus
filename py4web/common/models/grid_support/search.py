@@ -224,11 +224,10 @@ class EddieSearch:
         self.search_form = self.build_search_form()
 
         if isinstance(table, type) and issubclass(table, TypedTable):
-            builder = QueryBuilder(table)
+            builder = QueryBuilder(table).where(self.query)
 
             # process request:
             if (search_query := self.data.get("q", "").strip()) and issubclass(table, SearchMixin):
-                builder = builder.where(self.query)  # current query, to be extended by the class' .search logic
                 builder = table.search(search_query, builder=builder)
 
             # not using self.search_filters here, because that includes stuff like 'q' and 'limit'
@@ -298,7 +297,7 @@ class EddieSearch:
             # we can assume at least 1
             options = [limit_value for limit_value in limit if isinstance(limit_value, int)]
             return LimitConfig(
-                options=dict.fromkeys(options, f"{options} per page"),
+                options={value: f"{value} per pagina" for value in options},
                 default=options[0],
                 param=LIMIT_PARAM,
             )

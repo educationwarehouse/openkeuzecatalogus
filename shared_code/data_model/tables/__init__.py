@@ -3,6 +3,8 @@
 from .applog import CountsPerMinute, Evidence, Signal
 from .auth_user import AuthUser
 from .base import BaseTable
+from .dynamic_filter import DynamicFilter
+from .dynamic_sort import DynamicSort
 from .importer_run import ImporterRun, ImporterRunCountStat, ImporterRunErrorStat
 from .method import Method, MethodEd
 from .organisation import Organisation, OrganisationEd
@@ -15,6 +17,8 @@ __all__ = [
     "AuthUser",
     "BaseTable",
     "CountsPerMinute",
+    "DynamicFilter",
+    "DynamicSort",
     "Evidence",
     "ImporterRun",
     "ImporterRunCountStat",

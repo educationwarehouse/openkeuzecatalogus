@@ -13,7 +13,7 @@ from shared_code.infra.error_tickets import (
     delete_ticket,
     list_tickets,
     load_ticket,
-    store_ticket,
+    store_ticket, try_store_ticket,
 )
 import typing as t
 
@@ -22,7 +22,7 @@ def _raise_and_store_ticket(context: dict[str, t.Any], snapshot=None) -> str:
     try:
         raise RuntimeError("boom")
     except RuntimeError:
-        return store_ticket(context, snapshot=snapshot)
+        return try_store_ticket(context, snapshot=snapshot)
 
 
 def _ticket_env(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:

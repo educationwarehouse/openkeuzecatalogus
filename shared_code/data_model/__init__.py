@@ -7,6 +7,8 @@ from .setup import define_tables
 from .tables import (
     AuthUser,
     CountsPerMinute,
+    DynamicFilter,
+    DynamicSort,
     Evidence,
     ImporterRun,
     ImporterRunCountStat,
@@ -30,6 +32,8 @@ __all__ = [
     "AnyDict",
     "AuthUser",
     "CountsPerMinute",
+    "DynamicFilter",
+    "DynamicSort",
     "Evidence",
     "ImporterRun",
     "ImporterRunCountStat",

@@ -192,6 +192,20 @@ def store_ticket(
     return ticket_id
 
 
+def try_store_ticket(
+    context: AnyDict,
+    project: str | None = None,
+    snapshot: SnapshotDict | None = None,
+) -> str | None:
+    """Try to store an error ticket, but catch the error and return None instead of a ticket ID on failure."""
+    try:
+        return store_ticket(context, project=project, snapshot=snapshot)
+    except Exception as e:
+        print(f"[error-ticket] failed with {type(e)}({e})")
+        print("[error-ticket]", "".join(traceback.format_exception(e)))
+        return None
+
+
 def delete_ticket(ticket_id: str) -> None:
     """Delete a single stored error ticket."""
     (_error_cache_path() / f"{ticket_id}.toml").unlink(missing_ok=True)
@@ -241,4 +255,5 @@ __all__ = [
     "load_ticket",
     "redact_request_info",
     "store_ticket",
+    "try_store_ticket",
 ]

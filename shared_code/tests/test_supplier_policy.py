@@ -116,7 +116,7 @@ def test_supplier_backend_list_suppliers_returns_only_visible_rows_for_member(
     backend.grant_memberships(user)
     db_per_file.commit()
 
-    rows = backend.list_suppliers().collect()
+    rows = backend.list_my_suppliers().collect()
     row_gids = {str(row.gid) for row in rows}
 
     assert row_gids == {str(visible_supplier.gid)}
@@ -167,7 +167,7 @@ def test_supplier_backend_list_suppliers_returns_all_rows_for_admin(
     assert seeded_rbac.has_membership(str(education_warehouse_admin_user.gid), str(education_warehouse_supplier.gid))
     assert seeded_rbac.has_membership(str(education_warehouse_admin_user.gid), ROLE_ADMIN)
 
-    rows = backend.list_suppliers().collect()
+    rows = backend.list_my_suppliers().collect()
     row_gids = {str(row.gid) for row in rows}
 
     assert {str(first_supplier.gid), str(second_supplier.gid)}.issubset(row_gids), "missing expected supplier"

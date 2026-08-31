@@ -37,8 +37,6 @@ HOST_SHARED_COVERAGE_CONFIG = "shared_code/coverage.toml"
 CONTAINER_SHARED_COVERAGE_CONFIG = "/pythonpath/shared_code/coverage.toml"
 CONTAINER_PY4WEB_COVERAGE_CONFIG = "/p4w/coverage.py4web.toml"
 CONTAINER_PY4WEB_RUNTIME_COVERAGE_FILE = str(CACHE_DIR / ".coverage.py4web.runtime")
-TEST_RUN_SNAPSHOT_NAME = "test_run.autorestore"
-DEVDB_SNAPSHOTS_DIR = Path("migrate/data")
 TEST_RUN_LOCK_FILE = HOST_CACHE_BASE_DIR / "pytest.run.lock"
 MOCK_INBOX_PATH = HOST_CACHE_BASE_DIR / "mail/mock_inbox.jsonl"
 TEST_MIGRATE_SEED_BASE_URL = "file:///data/seeding"
@@ -114,6 +112,23 @@ def deny_in_productie() -> None:
         raise RuntimeError("test.tasks is blocked for production-level STATE_OF_DEVELOPMENT.")
 
 
+def in_virtualenv() -> bool:
+    """Return whether the current interpreter runs inside a virtual environment."""
+    return bool(os.environ.get("VIRTUAL_ENV"))
+
+
+@task()
+def require_virtualenv(_: Context) -> None:
+    """Abort early when test.run starts outside an active virtual environment."""
+    if not in_virtualenv():
+        cprint(
+            "test.run must be started from an active virtualenv.",
+            "red",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
+
 def status_color(status: str) -> termcolor._types.Color:
     """Map status values to termcolor color names."""
     options: dict[str, termcolor._types.Color] = {
@@ -181,15 +196,18 @@ def resolve_local_pytest_command() -> str | None:
     return None
 
 
-@task(iterable=("pytest_args",))
+@task(flags={"keyword_search": ("keyword-search", "k")}, iterable=("pytest_args",), pre=[edwh.tasks.setup])
 def go_shared_code(
     c: Context,
     pytest_args: t.Iterable[str] = (),
     environment: AnyDict | None = None,
     coverage: bool = True,
+    keyword_search: str = "",
 ) -> Result:
     """Test our abstract backend code in shared code."""
     updated_pytest_args = list(pytest_args) or default_pytest_args()
+    if keyword_search:
+        updated_pytest_args.extend(("-k", keyword_search))
     environment = copy(environment or default_testing_env())
     environment["WORKDIR"] = "/pythonpath"
 
@@ -199,25 +217,29 @@ def go_shared_code(
         environment["COVERAGE_FILE"] = CACHE_DIR / ".coverage.shared_code"
         updated_pytest_args.extend(coverage_args("shared_code", "01_shared_code"))
 
-    result = go.body(
-        c,
-        container="migrate",
-        tests_path="shared_code",
-        pytest_args=updated_pytest_args,
-        environment=environment,
-    )
+    with isolated_test_database(c):
+        result = go.body(
+            c,
+            container="migrate",
+            tests_path="shared_code",
+            pytest_args=updated_pytest_args,
+            environment=environment,
+        )
     return result
 
 
-@task(iterable=("pytest_args",))
+@task(flags={"keyword_search": ("keyword-search", "k")}, iterable=("pytest_args",), pre=[edwh.tasks.setup])
 def go_py4web(
     c: Context,
     pytest_args: t.Iterable[str] = (),
     environment: AnyDict | None = None,
     coverage: bool = True,
+    keyword_search: str = "",
 ) -> Result:
     """Test py4web code in the py4web container."""
     updated_pytest_args = list(pytest_args) or default_pytest_args()
+    if keyword_search:
+        updated_pytest_args.extend(("-k", keyword_search))
     environment = copy(environment or default_testing_env())
     environment["WORKDIR"] = "/p4w"
     environment["PYTHONPATH"] = "/p4w:/pythonpath"
@@ -228,22 +250,23 @@ def go_py4web(
         updated_pytest_args.extend(coverage_args("apps", "01_py4web", CONTAINER_PY4WEB_COVERAGE_CONFIG))
         updated_pytest_args.append("--cov=common")
 
-    result = go.body(
-        c,
-        container="py4web",
-        tests_path="tests",
-        pytest_args=updated_pytest_args,
-        environment=environment,
-    )
-    if coverage:
-        write_coverage_html(
+    with isolated_test_database(c):
+        result = go.body(
             c,
             container="py4web",
+            tests_path="tests",
+            pytest_args=updated_pytest_args,
             environment=environment,
-            coverage_data_file=f"{CACHE_DIR}/.coverage.py4web.pytest",
-            suite_name="py4web",
-            rcfile=CONTAINER_PY4WEB_COVERAGE_CONFIG,
         )
+        if coverage:
+            write_coverage_html(
+                c,
+                container="py4web",
+                environment=environment,
+                coverage_data_file=f"{CACHE_DIR}/.coverage.py4web.pytest",
+                suite_name="py4web",
+                rcfile=CONTAINER_PY4WEB_COVERAGE_CONFIG,
+            )
     return result
 
 
@@ -314,77 +337,88 @@ def recreate_py4web(c: Context, runtime_coverage: bool = True) -> None:
     )
 
 
-@task(iterable=("pytest_args",))
+@task(flags={"keyword_search": ("keyword-search", "k")}, iterable=("pytest_args",), pre=[edwh.tasks.setup])
 def go_web(
     c: Context,
     pytest_args: t.Iterable[str] = (),
     environment: AnyDict | None = None,
     coverage: bool = True,
+    keyword_search: str = "",
 ) -> Result | None:
     """Run browser-driven Playwright tests against the running py4web service."""
-    recreate_py4web(c, runtime_coverage=coverage)
+    migration_environment = default_testing_env() | {"MIGRATE_SEED_CATALOG_CONFIGURATION": "1"}
+    if os.environ.get("TEST_DATABASE_ISOLATED") == "1":
+        go_migrate(c, coverage=False, environment=migration_environment)
 
-    if coverage:
-        restart_py4web(c)
-        docker_compose(c, "up -d pgq-applog")
-        edwh.tasks.wait_until_healthy(c, ["py4web", "pgq-applog"])
+    with isolated_test_database(c, migration_environment=migration_environment):
+        recreate_py4web(c, runtime_coverage=coverage)
 
-        try:
-            bash_check_coverage_used = shlex.quote(
-                f'[ "${{COVERAGE_PROCESS_START:-}}" = "{CONTAINER_PY4WEB_COVERAGE_CONFIG}" ]'
-                f' && [ "${{COVERAGE_FILE:-}}" = "{CONTAINER_PY4WEB_RUNTIME_COVERAGE_FILE}" ]'
-            )
-            docker_compose(c, f"exec -T py4web sh -lc {bash_check_coverage_used}")
-        except UnexpectedExit as e:
-            raise RuntimeError(
-                "PY4WEB runtime coverage is disabled (COVERAGE_PROCESS_START or COVERAGE_FILE mismatch)."
-            ) from e
+        if coverage:
+            restart_py4web(c)
+            docker_compose(c, "up -d pgq-applog")
+            edwh.tasks.wait_until_healthy(c, ["py4web", "pgq-applog"])
 
-    wait_for_py4web(c)
-    clear_mock_inbox(c)
+            try:
+                bash_check_coverage_used = shlex.quote(
+                    f'[ "${{COVERAGE_PROCESS_START:-}}" = "{CONTAINER_PY4WEB_COVERAGE_CONFIG}" ]'
+                    f' && [ "${{COVERAGE_FILE:-}}" = "{CONTAINER_PY4WEB_RUNTIME_COVERAGE_FILE}" ]'
+                )
+                docker_compose(c, f"exec -T py4web sh -lc {bash_check_coverage_used}")
+            except UnexpectedExit as e:
+                raise RuntimeError(
+                    "PY4WEB runtime coverage is disabled (COVERAGE_PROCESS_START or COVERAGE_FILE mismatch)."
+                ) from e
 
-    updated_pytest_args = list(pytest_args) or default_pytest_args()
-    environment = copy(environment or default_testing_env())
-    environment["WORKDIR"] = "/work"
+        wait_for_py4web(c)
+        clear_mock_inbox(c)
 
-    environment.setdefault("WEB_BASE_URL", "http://py4web:8000")
-    result = docker_compose_run(
-        c,
-        container="playwright",
-        inner_cmd=f"pytest {' '.join(updated_pytest_args)} tests",
-        environment=environment,
-        with_dependencies=False,
-    )
+        updated_pytest_args = list(pytest_args) or default_pytest_args()
+        if keyword_search:
+            updated_pytest_args.extend(("-k", keyword_search))
+        environment = copy(environment or default_testing_env())
+        environment["WORKDIR"] = "/work"
 
-    if coverage:
-        flush_cmd = dedent(
-            """
-            resp="$(curl -fsS http://py4web:8000/_flush-runtime-coverage)"
-            [ "$resp" = "flushed" ] || { echo "unexpected flush response: $resp" >&2; exit 1; }
-            """
-        ).strip()
-        docker_compose_run(
+        environment.setdefault("WEB_BASE_URL", "http://py4web:8000")
+        result = docker_compose_run(
             c,
             container="playwright",
-            inner_cmd=f"sh -lc {shlex.quote(flush_cmd)}",
-            environment={"WORKDIR": "/work"},
+            inner_cmd=f"pytest {' '.join(updated_pytest_args)} tests",
+            environment=environment,
             with_dependencies=False,
         )
-        restart_py4web(c)
-        py4web_runtime_coverage_report(c)
+
+        if coverage:
+            flush_cmd = dedent(
+                """
+                resp="$(curl -fsS http://py4web:8000/_flush-runtime-coverage)"
+                [ "$resp" = "flushed" ] || { echo "unexpected flush response: $resp" >&2; exit 1; }
+                """
+            ).strip()
+            docker_compose_run(
+                c,
+                container="playwright",
+                inner_cmd=f"sh -lc {shlex.quote(flush_cmd)}",
+                environment={"WORKDIR": "/work"},
+                with_dependencies=False,
+            )
+            restart_py4web(c)
+            py4web_runtime_coverage_report(c)
 
     return result
 
 
-@task(iterable=("pytest_args",))
+@task(flags={"keyword_search": ("keyword-search", "k")}, iterable=("pytest_args",), pre=[edwh.tasks.setup])
 def go_pgq(
     c: Context,
     pytest_args: t.Iterable[str] = (),
     environment: AnyDict | None = None,
     coverage: bool = True,
+    keyword_search: str = "",
 ) -> Result:
     """Test pgq code in the pgq container."""
     updated_pytest_args = list(pytest_args) or default_pytest_args()
+    if keyword_search:
+        updated_pytest_args.extend(("-k", keyword_search))
     environment = copy(environment or default_testing_env())
     environment["WORKDIR"] = "/pythonpath"
 
@@ -398,30 +432,32 @@ def go_pgq(
             ]
         )
 
-    result = go.body(
-        c,
-        container="pgq-applog",
-        tests_path="pgq",
-        pytest_args=updated_pytest_args,
-        environment=environment,
-    )
-    if coverage:
-        write_coverage_html(
+    with isolated_test_database(c):
+        result = go.body(
             c,
             container="pgq-applog",
+            tests_path="pgq",
+            pytest_args=updated_pytest_args,
             environment=environment,
-            coverage_data_file=f"{CACHE_DIR}/.coverage.pgq",
-            suite_name="pgq",
         )
+        if coverage:
+            write_coverage_html(
+                c,
+                container="pgq-applog",
+                environment=environment,
+                coverage_data_file=f"{CACHE_DIR}/.coverage.pgq",
+                suite_name="pgq",
+            )
     return result
 
 
-@task(iterable=("pytest_args",))
+@task(flags={"keyword_search": ("keyword-search", "k")}, iterable=("pytest_args",), pre=[edwh.tasks.setup])
 def go_tasks(
     c: Context,
     pytest_args: t.Iterable[str] = (),
     _environment: AnyDict | None = None,
     _coverage: bool = True,
+    keyword_search: str = "",
 ) -> Result | None:
     """Test invoke task definitions locally (outside docker)."""
     pytest_cmd = resolve_local_pytest_command()
@@ -445,6 +481,8 @@ def go_tasks(
         arg for arg in (list(pytest_args) or default_pytest_args()) if not arg.startswith("-o cache_dir=")
     ]
     updated_pytest_args.append(f"-o cache_dir={host_cache}")
+    if keyword_search:
+        updated_pytest_args.extend(("-k", keyword_search))
 
     coverage_file = host_cache / ".coverage.tasks"
     if coverage:
@@ -479,18 +517,26 @@ def go_tasks(
     return result
 
 
-@task()
+@task(flags={"keyword_search": ("keyword-search", "k")}, pre=[edwh.tasks.setup])
 def go_migrate(
-    c: Context, _pytest_args: t.Iterable[str] = (), environment: AnyDict | None = None, coverage: bool = True
+    c: Context,
+    _pytest_args: t.Iterable[str] = (),
+    environment: AnyDict | None = None,
+    coverage: bool = True,
+    keyword_search: str = "",
 ) -> Result | None:
     """Reset database, run migrations, and collect migration-run coverage."""
-    environment = copy(environment or default_testing_env())
+    environment = default_testing_env() | copy(environment or {})
     environment["WORKDIR"] = "/pythonpath"
     if coverage:
         environment["COVERAGE_FILE"] = CACHE_DIR / ".coverage.migrate"
 
     c.run("rm -f migrate/flags/migrate-*.complete", pty=True)
-    docker_compose(c, "down -v pg-0")
+
+    docker_compose(c, "rm -fsv pg-0")
+    if os.environ.get("TEST_DATABASE_ISOLATED") == "1" and (volume_name := os.environ.get("POSTGRES_DATA_NAME")):
+        c.run(f"docker volume rm -f {shlex.quote(volume_name)}", pty=True)
+
     docker_compose(c, "up -d pg-0 redis-master")
 
     wait_for_pg_cmd = (
@@ -530,27 +576,33 @@ def coverage_args(
     ]
 
 
-def snapshot_db_for_test_run(c: Context, name: str = TEST_RUN_SNAPSHOT_NAME) -> None:
-    """Create a temporary devdb snapshot before test.run."""
-    c.run(f"edwh devdb.snapshot --name {shlex.quote(name)}", pty=True)
-
-
-def restore_db_for_test_run(c: Context, name: str = TEST_RUN_SNAPSHOT_NAME) -> None:
-    """Recover database state from the temporary test.run snapshot."""
-    c.run(f"edwh devdb.reset -y --name {shlex.quote(name)}", pty=True)
-    snapshot_path = DEVDB_SNAPSHOTS_DIR / name
-    if snapshot_path.is_dir():
-        shutil.rmtree(snapshot_path, ignore_errors=True)
-
-
 @contextmanager
-def restore_database_after_tests(c: Context, name: str = TEST_RUN_SNAPSHOT_NAME) -> t.Iterator[None]:
-    """Take a DB snapshot before tests and always restore it afterwards."""
-    snapshot_db_for_test_run(c, name=name)
+def restore_database_after_tests(c: Context) -> t.Iterator[None]:
+    """Run tests against a disposable postgres volume and remove it afterwards."""
+    volume_name = f"{os.environ['PROJECT']}_postgres_data_test_run"
+    os.environ["POSTGRES_DATA_NAME"] = volume_name
     try:
         yield
     finally:
-        restore_db_for_test_run(c, name=name)
+        docker_compose(c, "rm -fsv pg-0")
+        c.run(f"docker volume rm -f {shlex.quote(volume_name)}", pty=True)
+        os.environ.pop("POSTGRES_DATA_NAME", None)
+
+
+@contextmanager
+def isolated_test_database(c: Context, migration_environment: AnyDict | None = None) -> t.Iterator[None]:
+    """Provide a migrated disposable test database unless one is already active."""
+    if os.environ.get("TEST_DATABASE_ISOLATED") == "1":
+        yield
+        return
+
+    os.environ["TEST_DATABASE_ISOLATED"] = "1"
+    try:
+        with restore_database_after_tests(c):
+            go_migrate(c, coverage=False, environment=migration_environment)
+            yield
+    finally:
+        os.environ.pop("TEST_DATABASE_ISOLATED", None)
 
 
 @contextmanager
@@ -579,9 +631,11 @@ def lock_test_run(lock_file: Path = TEST_RUN_LOCK_FILE, wait: bool = True, verbo
 def default_testing_env() -> dict[str, t.Any]:
     """Return baseline environment variables for test commands."""
     return {
+        "STATE_OF_DEVELOPMENT": "test",
         "PYTHONWARNINGS": "ignore::SyntaxWarning",
         "MIGRATE_SEED_BASE_URL": TEST_MIGRATE_SEED_BASE_URL,
         "SMTP_FAKE": "1",
+        "IMAGE_STORAGE_FAKE": "1",
         "APPLOG_FAKE": "1",
         "ENTREE_FAKE": "1",
         "ENTREE_CLIENT_ENDPOINT": "http://py4web:8000/auth/entree_mock_authorize",
@@ -717,7 +771,7 @@ def run_full_suite(
 
     results: dict[str, str] = {}
 
-    with restore_database_after_tests(c):
+    with isolated_test_database(c):
         for test_name, test in tests.items():
             results[test_name] = run_suite_task(
                 c,
@@ -760,7 +814,7 @@ def run_full_suite(
         "no_wait_for_lock": ("no-wait-for-lock",),
     },
     iterable=("apps",),
-    pre=[edwh.tasks.setup, edwh.tasks.stop],
+    pre=[require_virtualenv, edwh.tasks.setup, edwh.tasks.stop],
 )
 def run(
     c: Context,

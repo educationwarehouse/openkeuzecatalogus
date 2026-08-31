@@ -64,11 +64,15 @@ target-version = "py314"
 line-length = 120
 extend-exclude = [
     "py4web/apps/_dashboard",
+    "shared_code/modules/scrapers/eduv/generated",
     "shared_code/tests",
 ]
 
 [tool.ruff.lint]
 # Start strict-but-practical
+external = [
+    "EW", # project-specific lint rules
+]
 select = [
     "ANN", # type annotations
     "C90", # complexity (mccabe)
@@ -95,6 +99,7 @@ ignore = [
     "D213", # incompatible with D212; keep multi-line-summary-first-line
     "RUF012", # typing.ClassVar often leads to other typing and runtime issues.
     "E711", # `== None` is allowed as pydal syntax
+    "E712", # `== True` is allowed as pydal syntax
     "S101", # assert is useful for typing and testing reasons (like Rust 'expect')
 ]
 
@@ -105,6 +110,7 @@ invalid-context-manager = "ignore" # ty claims our ViewMigrationManager doesn't 
 exclude = [
     "py4web/apps/_dashboard",
     "venv",
+    "shared_code/modules/scrapers/eduv/generated",
     "shared_code/tests",
     "**/tests/**",
     "**/test_*.py",

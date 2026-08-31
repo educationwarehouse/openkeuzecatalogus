@@ -190,6 +190,10 @@ def import_seed_table_v1(
             if data_type in ("json", "jsonb") and value is not None:
                 value = json.dumps(value)
 
+            if data_type == "text" and isinstance(value, (set, list, tuple)):
+                value = "|".join(value)
+                value = f"|{value}|"
+
             placeholders_map[col] = value
 
         return placeholders_map
@@ -197,7 +201,6 @@ def import_seed_table_v1(
     for row in payload:
         try:
             placeholders = prepare_placeholders(row)
-
             db.executesql(query, placeholders=placeholders)
         except Exception as e:
             print("failed on", row)

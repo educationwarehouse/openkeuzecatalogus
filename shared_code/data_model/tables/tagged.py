@@ -5,12 +5,13 @@ from typedal import QueryBuilder
 from typedal.fields import TypedField
 
 from shared_code.data_model.constants import Predicate
+from shared_code.data_model.fields import InternalUUIDField
 from shared_code.data_model.mixins.effdt.mixin import EffdtFields
-from shared_code.data_model.tables.base import BaseTable, InternalUUIDField
+from shared_code.data_model.tables.base import BaseTable
 
 
-class Tagged(BaseTable, EffdtFields):
-    """Current tagged relationship model view."""
+class TaggedEd(BaseTable, EffdtFields):
+    """Effective-dated tagged relationship source table."""
 
     # subject_gid = UUIDField(filter_out=str, label="Subject GID")
     subject_gid = InternalUUIDField(label="Subject GID")
@@ -21,6 +22,10 @@ class Tagged(BaseTable, EffdtFields):
     object_gid = InternalUUIDField(label="Object GID")
 
     comment = TypedField(str | None, label="Opmerking")
+
+
+class Tagged(TaggedEd):
+    """Current tagged relationship model view."""
 
     @classmethod
     def lookup(
@@ -61,6 +66,7 @@ class Tagged(BaseTable, EffdtFields):
         *,
         last_saved_by: str,
         comment: str = "",
+        prio: int = 0,
     ) -> bool:
         """Insert a tagged relation once, returning whether a new row was created."""
         if cls.where(subject_gid=subject_gid, predicate=predicate, object_gid=object_gid).count():
@@ -72,9 +78,6 @@ class Tagged(BaseTable, EffdtFields):
             object_gid=object_gid,
             comment=comment,
             last_saved_by=last_saved_by,
+            prio=prio,
         )
         return True
-
-
-class TaggedEd(Tagged):
-    """Effective-dated tagged relationship source table."""

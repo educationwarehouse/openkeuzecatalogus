@@ -2,6 +2,10 @@
 
 This project runs database migrations through [edwh-migrate](https://github.com/educationwarehouse/migrate) inside the Compose `migrate` service.
 
+`migrate/` (repo root) and `shared_code/migrations/` are two different things:
+- `migrate/` is the Compose service definition: `Dockerfile`, `requirements.txt`, and the bind-mounted `data/` (restore snapshots) and `flags/` (lock files) directories. It has no migration logic of its own.
+- `shared_code/migrations/migrations.py` is the actual migration registration file (`MIGRATIONS_FILE`, see below); this is where `@migration()`-decorated functions live.
+
 ## Where Migrations Run
 
 - In Docker Compose, the `migrate` service runs `command: migrate`.

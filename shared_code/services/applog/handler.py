@@ -10,9 +10,9 @@ from uuid import UUID
 from typedal import TypeDAL
 from typedal.types import Row
 
-from shared_code.infra.database import database_context
-from shared_code.services.applog import DequeApplogger
 from shared_code.services.applog.contracts import ApplogEvent, Applogger, ApplogSignal
+from shared_code.services.applog.deque import DequeApplogger
+from shared_code.util.email import normalize_email_for_lookup
 
 
 class AuditLogRow(t.TypedDict):
@@ -93,6 +93,87 @@ def all_audit_logs(db: TypeDAL, limit: int = 500) -> list[AuditLogRow]:
     return logs
 
 
+def user_audit_logs(
+    db: TypeDAL,
+    *,
+    user_gid: str | UUID,
+    user_email: str | None,
+    limit: int = 500,
+    scan_limit: int = 5000,
+) -> list[AuditLogRow]:
+    """Return recent applog rows tied to one user by gid, related gid, or auth email."""
+    gid = str(user_gid)
+    normalized_email = normalize_email_for_lookup(user_email)
+
+    rows = db(db.signal.id > 0).select(
+        db.signal.id,
+        db.signal.ts,
+        db.signal.name,
+        db.signal.source,
+        db.signal.session_gid,
+        db.signal.user_gid,
+        db.signal.related,
+        db.evidence.source,
+        left=db.evidence.on(db.evidence.id == db.signal.evidence_id),
+        orderby=~db.signal.ts,
+        limitby=(0, max(scan_limit, limit)),
+    )
+
+    logs: list[AuditLogRow] = []
+    for row in rows:
+        evidence = row.evidence.source if row.evidence else None
+        evidence_user = None
+        evidence_gid = None
+        evidence_email = ""
+        detail_gid_matches_user = False
+        detail_email_matches_user = False
+
+        if isinstance(evidence, dict):
+            evidence_user = evidence.get("admin_email") or evidence.get("email") or evidence.get("by_eddie_email")
+            evidence_gid = evidence.get("user_gid")
+            evidence_email = normalize_email_for_lookup(str(evidence.get("email") or ""))
+
+            details = evidence.get("details")
+            if isinstance(details, dict):
+                detail_gid_matches_user = any(
+                    str(details.get(key) or "") == gid
+                    for key in ("target_user_gid", "subject_gid", "user_gid", "related_gid")
+                )
+                detail_email_matches_user = any(
+                    normalize_email_for_lookup(str(details.get(key) or "")) == normalized_email
+                    for key in ("candidate_email", "target_email", "email")
+                )
+
+        if not (
+            str(row.signal.user_gid or "") == gid
+            or str(row.signal.related or "") == gid
+            or str(evidence_gid or "") == gid
+            or (bool(normalized_email) and evidence_email == normalized_email)
+            or detail_gid_matches_user
+            or (bool(normalized_email) and detail_email_matches_user)
+        ):
+            continue
+
+        logs.append(
+            {
+                "id": row.signal.id,
+                "ts": row.signal.ts,
+                "name": row.signal.name,
+                "source": row.signal.source,
+                "session_gid": row.signal.session_gid,
+                "user_gid": row.signal.user_gid,
+                "user": evidence_user or row.signal.user_gid,
+                "related": row.signal.related,
+                "evidence": evidence,
+            }
+        )
+
+        if len(logs) >= limit:
+            break
+
+    return logs
+
+
 def audit_log_stats(db: TypeDAL) -> AuditLogStats:
     """Return aggregate applog counters for the admin logs overview."""
     total = db(db.signal.id > 0).count()
@@ -140,41 +221,40 @@ def process_applog_signal(
     db.signal.insert(**signal_fields)
 
 
-def process_applog_buffer(events: list[ApplogSignal]) -> None:
-    """Processes all the received events from the events buffer using process_applog_signal."""
+def process_applog_buffer(db: TypeDAL, events: list[ApplogSignal]) -> None:
+    """Persist buffered applog events using the caller-owned database context."""
     successful_signals = 0
     failed_signals = []
-    with database_context("pgq.process_applog_buffer") as db:
-        for event in events:
-            if not event:
-                continue
+    for event in events:
+        if not event:
+            continue
 
-            try:
-                short_related = str(related)[:8] if (related := event.get("related")) else None
+        try:
+            short_related = str(related)[:8] if (related := event.get("related")) else None
 
-                print("{signal_source}/{name} ({short_related}...)".format(**event, short_related=short_related))
-                process_applog_signal(
-                    db,
-                    name=event["name"],
-                    signal_source=event["signal_source"],
-                    evidence=event.get("evidence"),
-                    session_gid=event.get("session_gid"),
-                    user_gid=event.get("user_gid"),
-                    ts=event.get("ts"),
-                    related=event.get("related"),
-                )
-                successful_signals += 1
-            except Exception as e:
-                db.rollback()
-                # waarschijnlijk invalide data
-                print("[stats]", "Incorrecte Data", event, e)
-                failed_signals.append(event)
+            print("{signal_source}/{name} ({short_related}...)".format(**event, short_related=short_related))
+            process_applog_signal(
+                db,
+                name=event["name"],
+                signal_source=event["signal_source"],
+                evidence=event.get("evidence"),
+                session_gid=event.get("session_gid"),
+                user_gid=event.get("user_gid"),
+                ts=event.get("ts"),
+                related=event.get("related"),
+            )
+            successful_signals += 1
+        except Exception as e:
+            db.rollback()
+            # waarschijnlijk invalide data
+            print("[stats]", "Incorrecte Data", event, e)
+            failed_signals.append(event)
 
     print(f"Successful: {successful_signals}, failed: {failed_signals!r}")
 
 
-def process_applog_deque(batch_size: int = 50, applog: Applogger | None = None) -> int:
-    """Process up to `batch_size` queued applog signals from the configured deque."""
+def process_applog_deque(db: TypeDAL, batch_size: int = 50, applog: Applogger | None = None) -> int:
+    """Process queued applog signals with the caller-owned database context."""
     applog = applog or DequeApplogger.from_env()
     if not isinstance(applog, DequeApplogger):
         return -1
@@ -190,5 +270,5 @@ def process_applog_deque(batch_size: int = 50, applog: Applogger | None = None) 
     if not buffer:
         return 0
 
-    process_applog_buffer(buffer)
+    process_applog_buffer(db, buffer)
     return len(buffer)

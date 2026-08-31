@@ -3,7 +3,7 @@
 from urllib.parse import urlencode
 
 import pytest
-from apps.admin.controllers.errors import find_next
+from common.models.redirects import find_next
 
 from py4web import request
 

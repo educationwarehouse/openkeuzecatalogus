@@ -1,6 +1,5 @@
 """Shared error rendering helpers for py4web."""
 
-import sys
 import typing as t
 from pathlib import Path
 
@@ -12,7 +11,7 @@ import py4web
 from common.fixtures import error_ticket_helper
 from py4web import URL
 from shared_code.data_model import AnyDict
-from shared_code.infra.error_tickets import store_ticket
+from shared_code.infra.error_tickets import try_store_ticket
 
 ERROR_CACHE_PATH = Path("/shared_cache") / "errors"
 COMMON_PATH = Path("/p4w/common")
@@ -60,14 +59,9 @@ def error_renderer_5xx(context: ContextDict) -> str:
     except Exception:
         has_authenticated_user = False
 
-    try:
-        # note: since py4web 30a558f (release 20250607.2) we don't have access to fixtures (auth/session)
-        #  anymore during error rendering.
-        ticket_id = store_ticket(t.cast(AnyDict, context), snapshot=error_snapshot)
-    except Exception as e:
-        # something failed :(
-        print("Error storing ticket", e, file=sys.stderr)
-        ticket_id = None
+    # note: since py4web 30a558f (release 20250607.2) we don't have access to fixtures (auth/session)
+    #  anymore during error rendering.
+    ticket_id = try_store_ticket(t.cast(AnyDict, context), snapshot=error_snapshot)
 
     # todo: ntfy ?
 

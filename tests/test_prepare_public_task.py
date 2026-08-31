@@ -27,7 +27,7 @@ def test_prepare_public_builds_rsync_command(
     (fake_repo / "py4web/apps/private_two/secret2.txt").write_text("private\n")
     (fake_repo / "py4web/apps/public_one/public.txt").write_text("public\n")
 
-    monkeypatch.setattr(tasks, "__file__", str(fake_repo / "tasks.py"))  # needed for proper usage of inv
+    monkeypatch.setattr(tasks, "__file__", str(fake_repo / "tasks.py"))  # noqa: EW001
     monkeypatch.delenv("PUBLIC_TARGET", raising=False)
     monkeypatch.setenv("PRIVATE_APPS", "private_one,private_two")
 

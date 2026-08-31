@@ -1,0 +1,22 @@
+<div class="btn-group btn-group-sm catalog-view-toggle" role="group" aria-label="Weergave wisselen">
+    <button
+            class="btn btn-outline-dark [[='active' if view_mode == 'list' else '']]"
+            type="button"
+            name="view_mode_toggle"
+            value="list"
+            aria-pressed="[[='true' if view_mode == 'list' else 'false']]"
+            _="on click send ew:change_view(view: 'list') to closest .edwh-messagebus"
+    >
+        Lijst
+    </button>
+    <button
+            class="btn btn-outline-dark [[='active' if view_mode == 'grid' else '']]"
+            type="button"
+            name="view_mode_toggle"
+            value="grid"
+            aria-pressed="[[='true' if view_mode == 'grid' else 'false']]"
+            _="on click send ew:change_view(view: 'grid') to closest .edwh-messagebus"
+    >
+        Tegels
+    </button>
+</div>

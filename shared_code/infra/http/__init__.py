@@ -22,6 +22,9 @@ def fetch_json_payload(
             payload_path = payload_path.with_suffix(".json")
         return json.loads(payload_path.read_text(encoding="utf-8"))
 
+    if headers is None:
+        headers = {"Accept": "application/json"}
+
     response = url.get(
         timeout=timeout,
         headers=headers,

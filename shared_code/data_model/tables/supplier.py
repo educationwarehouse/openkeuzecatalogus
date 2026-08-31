@@ -61,12 +61,10 @@ def keep_supplier_group_in_sync(cls: type[SupplierEd]) -> t.Callable[[OpRow, int
 
         rbac.add_permission(row.gid, row.gid, "*")
 
-        db.commit()
-
     return wrapper
 
 
-class SupplierEd(BaseTable, EffdtFields, SearchMixin, search_fields=("name", "gid", "olid")):
+class SupplierEd(BaseTable, EffdtFields):
     """Effective-dated supplier source table."""
 
     name = TypedField(str, label="Naam", required=True)
@@ -102,7 +100,13 @@ class SupplierEd(BaseTable, EffdtFields, SearchMixin, search_fields=("name", "gi
         str | None,
         requires=IS_EMPTY_OR(IS_URL()),
         label="Basis-URL endpoint voor data-import",
-        comment="Zonder resource-pad, bijvoorbeeld: https://app.cumulus.co/api/edu-v/v1/",
+        comment="Zonder resource-pad, bijvoorbeeld: https://catalogus.edu-v.kennisnet.nl/v2/",
+    )
+
+    endpoint_publisher = TypedField(
+        str | None,
+        label="Edu-V publisher filter",
+        comment="Alleen invullen voor gedeelde Kennisnet-catalogus URL's; leeg laten voor leverancier-eigen endpoint.",
     )
 
     @classmethod
@@ -122,5 +126,5 @@ class SupplierEd(BaseTable, EffdtFields, SearchMixin, search_fields=("name", "gi
         cls.after_insert(keep_supplier_group_in_sync(cls))
 
 
-class Supplier(SupplierEd):
+class Supplier(SupplierEd, SearchMixin, search_fields=("name", "gid", "olid")):
     """Current supplier model view."""

@@ -24,13 +24,10 @@ class ReusablePolicy(BasePolicy, abc.ABC):
         """Return the authorization result for a read request."""
         ...
 
-    def _request_read_from_recursive_memberships[T: BaseTable](
-        self,
-        table_name: str,
-    ) -> AuthorizationResult[QueryBuilder[T]]:
-        """Build a read scope from recursive RBAC memberships for a model table."""
+    def _membership_object_ids_for_table(self, table_name: str) -> list[str]:
+        """Return recursive membership object ids for the current actor and table."""
         if self.auth.is_service() or self.auth.is_admin():
-            return Allow(apply=lambda query: query)
+            return []
 
         user = self.auth.id
         assert user, "Read requests require a user or service actor identifier"
@@ -45,10 +42,34 @@ class ReusablePolicy(BasePolicy, abc.ABC):
             placeholders={"user": user},
         )
 
-        memberships = [row[0] for row in membership_rows]
+        return [row[0] for row in membership_rows]
 
+    def _request_read_from_recursive_memberships[T: BaseTable](
+        self,
+        table_name: str,
+    ) -> AuthorizationResult[QueryBuilder[T]]:
+        """Build a read scope from recursive RBAC memberships for a model table."""
+        if self.auth.is_service() or self.auth.is_admin():
+            return Allow(apply=lambda query: query)
+
+        memberships = self._membership_object_ids_for_table(table_name)
         return Allow(
             apply=lambda qb: qb.where(lambda table: table.gid.belongs(memberships)),
+        )
+
+    def _request_read_from_supplier_memberships[T: BaseTable](
+        self,
+        supplier_gid_field: str = "supplier_gid",
+    ) -> AuthorizationResult[QueryBuilder[T]]:
+        """Build a read scope from recursive supplier memberships."""
+        if self.auth.is_service() or self.auth.is_admin():
+            return Allow(apply=lambda query: query)
+
+        memberships = self._membership_object_ids_for_table("supplier_model")
+        return Allow(
+            apply=lambda qb: qb.where(
+                lambda table: table[supplier_gid_field].belongs(memberships),
+            ),
         )
 
     def require_read(self) -> Allow:

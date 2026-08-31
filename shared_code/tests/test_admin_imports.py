@@ -225,9 +225,9 @@ def test_serialize_run_and_build_supplier_runs_context_include_stats(
 
 def test_run_status_covers_failure_incomplete_and_success() -> None:
     """Run status labels should reflect failure and partial-error states."""
-    assert run_status(success=False, error_groups=[]) == {"label": "Mislukt", "badge_class": "text-bg-danger"}
-    assert run_status(success=True, error_groups=[{"error_code": "x", "count": 1}]) == {
+    assert run_status(success=False, error_groups=[], warnings=[]) == {"label": "Mislukt", "badge_class": "text-bg-danger"}
+    assert run_status(success=True, error_groups=[{"error_code": "x", "count": 1}], warnings=[]) == {
         "label": "Onvolledig",
         "badge_class": "text-bg-warning",
     }
-    assert run_status(success=True, error_groups=[]) == {"label": "Succes", "badge_class": "text-bg-success"}
+    assert run_status(success=True, error_groups=[], warnings=[]) == {"label": "Succes", "badge_class": "text-bg-success"}

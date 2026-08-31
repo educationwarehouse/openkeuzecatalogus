@@ -1,0 +1,63 @@
+[[if total_pages > 1:]]
+<nav aria-label="Paginering">
+    <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-lg-end">
+        [[if pagination['has_prev_page'] and prev_page is not None:]]
+        <button
+                class="btn btn-sm btn-outline-dark"
+                type="button"
+                _="on click send ew:change_page(page: [[=prev_page]]) to closest .edwh-messagebus"
+        >Vorige
+        </button>
+        [[pass]]
+
+        [[if current_page > 1:]]
+        <button
+                class="btn btn-sm btn-outline-dark"
+                type="button"
+                _="on click send ew:change_page(page: 1) to closest .edwh-messagebus"
+        >1
+        </button>
+        [[pass]]
+
+        [[if current_page - 1 > 1:]]
+        <button
+                class="btn btn-sm btn-outline-dark"
+                type="button"
+                _="on click send ew:change_page(page: [[=current_page - 1]]) to closest .edwh-messagebus"
+        >[[=current_page - 1]]
+        </button>
+        [[pass]]
+
+        <button class="btn btn-sm btn-dark" type="button" disabled aria-current="page">
+            [[=current_page]]
+        </button>
+
+        [[if current_page + 1 < total_pages:]]
+        <button
+                class="btn btn-sm btn-outline-dark"
+                type="button"
+                _="on click send ew:change_page(page: [[=current_page + 1]]) to closest .edwh-messagebus"
+        >[[=current_page + 1]]
+        </button>
+        [[pass]]
+
+        [[if current_page < total_pages:]]
+        <button
+                class="btn btn-sm btn-outline-dark"
+                type="button"
+                _="on click send ew:change_page(page: [[=total_pages]]) to closest .edwh-messagebus"
+        >[[=total_pages]]
+        </button>
+        [[pass]]
+
+        [[if pagination['has_next_page'] and next_page is not None:]]
+        <button
+                class="btn btn-sm btn-outline-dark"
+                type="button"
+                _="on click send ew:change_page(page: [[=next_page]]) to closest .edwh-messagebus"
+        >Volgende
+        </button>
+        [[pass]]
+    </div>
+</nav>
+[[pass]]

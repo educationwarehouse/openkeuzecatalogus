@@ -105,9 +105,13 @@ They do **not** represent final product domains. Replace them with actual bounde
 - [Compose runtime overview](architecture/overview.md)
 - [Dependency rules](architecture/dependency-rules.md)
 - [Auth and RBAC](architecture/auth-rbac.md)
+- [Catalogue filtering](architecture/catalog-filters.md)
+- [Scraper import architecture](architecture/scraper-imports.md)
 - [Effective-dated `_ed` and `_model` tables](architecture/effective-dated-models.md)
 - [OLID identifiers](architecture/olid.md)
 - [Supplier memberships and access control](architecture/supplier-memberships.md)
+- [Queue processing (`pgq/`)](architecture/queue-processing.md)
+- [Database context ownership](architecture/database-contexts.md)
 
 ## Development Docs
 

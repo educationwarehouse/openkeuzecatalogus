@@ -1,6 +1,7 @@
 """Authentication wiring and auth-form extensions for the py4web app."""
 
 import typing as t
+import uuid
 
 from edwh_auth_rbac.model import IdentityKey
 from py4web.utils.auth import Auth
@@ -13,14 +14,18 @@ from common.fixtures.requires_fixture import Condition, OrElse, RequiresFixture
 from py4web import URL, redirect, request
 from shared_code.data_model import AnyDict
 from shared_code.data_model.tables import AuthUser
+from shared_code.data_model.validators.is_existing_sso_account import build_normalized_email_match_query
 from shared_code.modules.auth import (
     AuthContext,
 )
 from shared_code.modules.auth.password_reset import (
     RESET_PASSWORD_LINK_MAX_AGE_HOURS,
+    is_reset_password_request_active,
     mark_reset_password_expiry,
+    reset_password_expires_at,
     validate_reset_password_token,
 )
+from shared_code.util.email import normalize_email_for_lookup
 
 from ... import settings
 from ...fixtures import PoppableSession
@@ -32,7 +37,9 @@ from .backend_base import Py4webBackend
 ALLOWED_ACTIONS = [
     "login",
     "logout",
+    "request_magic_login",
     "request_reset_password",
+    "magic_login",
     "reset_password",
     "change_password",
     "profile",
@@ -47,6 +54,7 @@ class AppAuth(Auth):
     db: TypeDAL
     form_source: LoggingAuthForms
     auth_context: AuthContext
+    param: t.Any
 
     MESSAGES = {
         "verify_email": {
@@ -57,6 +65,13 @@ class AppAuth(Auth):
             "subject": "Wachtwoord opnieuw instellen",
             "body": (
                 "Hallo {first_name}, klik {link} om je wachtwoord opnieuw in te stellen. "
+                f"Deze link is slechts {RESET_PASSWORD_LINK_MAX_AGE_HOURS} uur geldig."
+            ),
+        },
+        "magic_login": {
+            "subject": "Magic login-link",
+            "body": (
+                "Hallo {first_name}, klik {link} om direct in te loggen. "
                 f"Deze link is slechts {RESET_PASSWORD_LINK_MAX_AGE_HOURS} uur geldig."
             ),
         },
@@ -77,6 +92,8 @@ class AppAuth(Auth):
                 "Registratie succesvol. Er wordt een verificatiemail gestuurd. Controleer ook je spam."
             ),
             "password-reset-link-sent": "Er is een link verstuurd om je wachtwoord opnieuw in te stellen.",
+            "magic-login-link-sent": "Als dit e-mailadres bestaat is er een magic login-link verstuurd.",
+            "magic-login-success": "Je bent ingelogd via een magic login-link.",
             "password-changed": "Je wachtwoord is gewijzigd.",
             "profile-saved": "Je profiel is opgeslagen.",
             "user-logout": "Je bent uitgelogd.",
@@ -170,6 +187,9 @@ class AppAuth(Auth):
 
         auth.param.formstyle = FormStyleBootstrap5  # will be replaced via EddieFormStyle.bind_auth() later
         auth.fix_actions()
+        for custom_action in ("request_magic_login", "magic_login"):
+            if custom_action not in auth.param.allowed_actions:
+                auth.param.allowed_actions.append(custom_action)
         auth.on_accept["verify_email"] = auth.grant_roles_after_email_verification
 
         auth.sender = backend.mailer
@@ -188,8 +208,13 @@ class AppAuth(Auth):
 
         return builder.first()
 
+    def _normalize_auth_email_input(self, email: str) -> str:
+        """Normalize email input for auth flows that perform lookups."""
+        return normalize_email_for_lookup(email)
+
     def login(self, email: str, password: str) -> tuple[Row, None] | tuple[None, str]:
         """Log successful and failed login attempts."""
+        email = self._normalize_auth_email_input(email)
         user, error = super().login(email, password)
         if user:
             self.form_source.log_auth_action("login", success=True, user=user, email=email)
@@ -244,10 +269,74 @@ class AppAuth(Auth):
         route: str | None = None,
     ) -> str | None:
         """Create a reset token and persist its expiry when one is generated."""
+        email = self._normalize_auth_email_input(email)
         token = super().request_reset_password(email, send=send, next=next, route=route)
         if token:
             mark_reset_password_expiry(token)
         return token
+
+    def request_magic_login(
+        self,
+        email: str,
+        send: bool = True,
+        route: str | None = None,
+    ) -> str | None:
+        """Create a one-click magic login token and send it via email."""
+        normalized_email = self._normalize_auth_email_input(email)
+        user_query = build_normalized_email_match_query(AuthUser.email, normalized_email)
+        user = AuthUser.where(user_query).select(AuthUser.id, AuthUser.first_name, AuthUser.action_token).first()
+
+        if not user or user.action_token == "account-blocked":  # noqa S105 - this is not a password
+            return None
+
+        token = str(uuid.uuid4())
+        user.update_record(
+            action_token=f"magic-login-request:{token}",
+            reset_password_expires_at=reset_password_expires_at(),
+        )
+
+        if send:
+            link = URL(
+                route or self.route,
+                "magic_login",
+                vars={"token": token},
+                scheme=True,
+                use_appname=self.param.use_appname_in_redirects,
+            )
+            self.send(
+                "magic_login",
+                {
+                    "email": normalized_email,
+                    "first_name": user.first_name or "gebruiker",
+                },
+                link=link,
+            )
+
+        return token
+
+    def consume_magic_login_token(self, token: str | None) -> tuple[AuthUser | None, str | None]:
+        """Resolve a magic login token and consume it when valid."""
+        if not token:
+            return None, "link-invalid"
+
+        user = (
+            AuthUser.where(action_token=f"magic-login-request:{token}")
+            .select(
+                AuthUser.id,
+                AuthUser.gid,
+                AuthUser.email,
+                AuthUser.reset_password_expires_at,
+            )
+            .first()
+        )
+
+        if not user:
+            return None, "link-invalid"
+        elif not is_reset_password_request_active(expires_at=user.reset_password_expires_at):
+            return None, "link-expired"
+
+        user.update_record(action_token=None, reset_password_expires_at=None)
+        return user, None
 
     def grant_memberships(self, user: AuthUser) -> None:
         """Grant the matching supplier membership for a user email, if any."""

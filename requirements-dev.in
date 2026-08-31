@@ -14,5 +14,4 @@
 -r playwright/requirements.in
 
 # Repo-level tooling.
-edwh[pip,bundler,files,uptime]>=1.10.0
-ty
+edwh[pip,bundler,files,uptime,devdb]==1.12.0

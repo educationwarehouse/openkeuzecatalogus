@@ -7,6 +7,7 @@ from typedal.types import Query, Rows
 
 from shared_code.data_model import AuthUser, Organisation, Supplier
 from shared_code.data_model.constants.organisation import ORG_TYPE_LABELS
+from shared_code.modules.auth.module import InviteCandidate
 
 
 class UserOrganisationMembership(t.TypedDict):
@@ -23,11 +24,7 @@ def count_members(member_of_gid: str) -> int:
     db = AuthUser._db
     assert db
 
-    rows = db(db.membership.member_of == member_of_gid).select(
-        db.membership.subject,
-        groupby=db.membership.subject,
-    )
-    return len(rows)
+    return db(db.membership.member_of == member_of_gid).count(distinct=db.membership.subject)
 
 
 def build_user_query(membership_gid: str | None = None) -> Query:
@@ -106,3 +103,44 @@ def membership_label(member_of_gid: str | uuid.UUID | None) -> str | None:
         return str(supplier.name or member_of_gid)
 
     return str(member_of_gid)
+
+
+def pending_membership_invites(member_of_gid: str) -> list[InviteCandidate]:
+    """Return direct membership invites not yet linked to an `AuthUser` row."""
+    db = AuthUser._db
+    assert db, "can't continue without db"
+
+    membership_rows: Rows = db(db.membership.member_of == member_of_gid).select(
+        db.membership.subject,
+        groupby=db.membership.subject,
+    )
+    subject_ids = [str(row.subject) for row in membership_rows if row.subject]
+    if not subject_ids:
+        return []
+
+    existing_user_rows = AuthUser.where(AuthUser.gid.belongs(subject_ids)).select(AuthUser.gid)
+    existing_user_gids = {str(row.gid) for row in existing_user_rows}
+    pending_subject_ids = [subject_id for subject_id in subject_ids if subject_id not in existing_user_gids]
+    if not pending_subject_ids:
+        return []
+
+    identity_rows = db(
+        (db.identity.object_type == "user") & (db.identity.object_id.belongs(pending_subject_ids)),
+    ).select(
+        db.identity.object_id,
+        db.identity.email,
+        db.identity.fullname,
+        db.identity.firstname,
+        orderby=db.identity.email,
+    )
+
+    return [
+        InviteCandidate(
+            subject_id=identity.object_id,
+            email=identity.email or "",
+            full_name=identity.fullname or identity.firstname or identity.email or "",
+            source="identity",
+            already_member=True,
+        )
+        for identity in identity_rows
+    ]

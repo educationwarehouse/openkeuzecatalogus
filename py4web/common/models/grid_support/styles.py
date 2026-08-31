@@ -93,9 +93,11 @@ class EddieFormStyleFactory(FormStyleFactory):
 
     REQUIRED_VALIDATOR_TYPES = frozenset(
         (
+            pydal.validators.IS_EMAIL,
             pydal.validators.IS_IN_SET,
             pydal.validators.IS_NOT_EMPTY,
             pydal.validators.IS_IN_DB,
+            pydal.validators.IS_STRONG,
             pydal.validators.IS_URL,
         )
     )

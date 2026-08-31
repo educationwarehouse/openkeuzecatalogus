@@ -108,36 +108,10 @@ class Grid:
     FORMATTERS_BY_TYPE = {
         "boolean": lambda value: INPUT(_type="checkbox", _checked=value, _disabled="disabled") if value else "",
         "datetime": lambda value: (
-            XML(f"""<script>
-            document.write(
-            (new Date({value.year},{value.month - 1},{value.day},{value.hour},{value.minute},{value.second})
-            ).toLocaleString())
-            </script>""")
-            if value and isinstance(value, dt.datetime)
-            else value
-            if value
-            else ""
+            value.strftime("%d-%m-%Y %H:%M:%S") if isinstance(value, dt.datetime) else value or ""
         ),
-        "time": lambda value: (
-            XML(f"""<script>
-            document.write(
-            (new Date(0, 0, 0,{value.hour},{value.minute},{value.second})).toLocaleString().split(', ')[1])
-            </script>""")
-            if value and isinstance(value, dt.time)
-            else value
-            if value
-            else ""
-        ),
-        "date": lambda value: (
-            XML(f"""<script>
-            document.write(
-            (new Date({value.year},{value.month - 1},{value.day})).toLocaleString().split(",")[0])
-            </script>""")
-            if value and isinstance(value, dt.date)
-            else value
-            if value
-            else ""
-        ),
+        "time": lambda value: value.strftime("%H:%M:%S") if isinstance(value, dt.time) else value or "",
+        "date": lambda value: value.strftime("%d-%m-%Y") if isinstance(value, dt.date) else value or "",
         "list:string": lambda value: ", ".join(str(x) for x in value) if value else "",
         "list:integer": lambda value: ", ".join(x for x in value) if value else "",
         "default": lambda value: str(value) if value is not None else "",

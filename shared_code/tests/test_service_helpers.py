@@ -51,12 +51,12 @@ def test_catch_errors_logs_and_reraises_exception(monkeypatch: pytest.MonkeyPatc
             return True
 
     fake_logger = _FakeApplogger()
-    monkeypatch.setattr(
+    monkeypatch.setattr( # noqa: EW001
         "shared_code.infra.database.Applogger.from_env",
         lambda: fake_logger,
     )
     fixed_now = dt.datetime(2026, 6, 1, 10, 11, 12, tzinfo=dt.UTC)
-    monkeypatch.setattr("shared_code.services.applog.contracts.utcnow", lambda: fixed_now)  # needed
+    monkeypatch.setattr("shared_code.services.applog.contracts.utcnow", lambda: fixed_now)  # noqa: EW001
 
     with pytest.raises(ValueError, match="boom"), catch_errors("unit.test.app"):
         raise ValueError("boom")

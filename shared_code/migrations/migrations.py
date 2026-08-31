@@ -18,12 +18,28 @@ from shared_code.migrations.migration_support import (
     no_triggers,
     rebuild_all_materialized_tables_v1,
 )
+from shared_code.migrations.migration_support.catalog_search_report import (
+    CatalogSearchReport_V1,
+    CatalogSearchReport_V1b,
+)
 from shared_code.migrations.migration_support.organisation import (
     backfill_organisation_rbac_identities_v1,
     backfill_organisation_rbac_permissions_v1,
 )
+from shared_code.migrations.migration_support.school_data_quality_reports import (
+    LocationsWithoutBrinVestCodeReport_V1,
+    LocationsWithoutOrganisationMappingReport_V1,
+    SchoolsWithoutEmailDomainReport_V1,
+    SchoolsWithoutEmailDomainReport_V1b,
+    SchoolsWithoutHomepageUrlReport_V1,
+    SchoolsWithoutHomepageUrlReport_V1b,
+)
 from shared_code.migrations.migration_support.seeding import import_seed_relationships_v1, import_seed_table_v1
+from shared_code.util.email import email_domain_sql_v1
 from shared_code.util.olid import generate_supplier_olid
+
+state_of_development = os.getenv("STATE_OF_DEVELOPMENT", "ONT").upper()
+seed_catalog_configuration = os.getenv("MIGRATE_SEED_CATALOG_CONFIGURATION", "").strip() == "1"
 
 
 @migration()
@@ -291,6 +307,10 @@ def create_vision_ed_20260525_001(db: TypeDAL) -> bool:
 @migration()
 def seed_data_from_old_server_json_20260526_001(db: TypeDAL) -> bool:
     """Load optional seed rows from JSON endpoints and upsert by `sync_gid`."""
+    if state_of_development == "TEST":
+        # test controls its own data
+        return True
+
     base_url = os.getenv("MIGRATE_SEED_BASE_URL", "")
     if not base_url:
         print("[migrate] missing MIGRATE_SEED_BASE_URL; skipping seed migration")
@@ -638,6 +658,8 @@ def setup_organisation_rbac_groups_20260622_002(db: TypeDAL) -> bool:
 @migration()
 def seed_organisation_data_from_old_server_json_20260622_003(db: TypeDAL) -> bool:
     """Load optional organisation seed rows and relations from JSON endpoints."""
+    # including test since it has a custom seed base (json)
+
     base_url = os.getenv("MIGRATE_SEED_BASE_URL", "")
     if not base_url:
         print("[migrate] missing MIGRATE_SEED_BASE_URL; skipping organisation seed migration")
@@ -823,6 +845,437 @@ def create_superset_readonly_user_20260622_001(db: TypeDAL) -> bool:
             GRANT SELECT ON SEQUENCES TO {user};
         """,  # no S608: all parameters are in our control so no SQL injection possible)
     )
+
+    db.commit()
+    return True
+
+
+@migration()
+def create_dynamic_filter_table_20260630_001(db: TypeDAL) -> bool:
+    """Create persisted metadata for public product/method filters."""
+    db.executesql("""
+    CREATE TABLE dynamic_filter
+    (
+        id serial PRIMARY KEY,
+        gid uuid NOT NULL DEFAULT uuidv4() UNIQUE,
+        slug varchar(40) NOT NULL UNIQUE,
+        label varchar(100) NOT NULL,
+        filter_kind varchar(20) NOT NULL DEFAULT 'dynamic',
+        field_name varchar(100),
+        match_mode varchar(10) NOT NULL DEFAULT 'contains',
+        applies_to varchar(10) NOT NULL DEFAULT 'both',
+        handler_key varchar(50),
+        widget_kind varchar(20),
+        is_active boolean NOT NULL DEFAULT TRUE,
+        sort_order integer NOT NULL DEFAULT 0
+    );
+    """)
+    db.commit()
+    return True
+
+
+@migration(requires=create_dynamic_filter_table_20260630_001)
+def seed_public_dynamic_filters_20260630_002(db: TypeDAL) -> bool:
+    """Seed the public filter configuration to mirror the old platform."""
+    if state_of_development == "TEST" and not seed_catalog_configuration:
+        # test controls its own data
+        return True
+
+    rows = [
+        {
+            "slug": "q",
+            "label": "Zoekterm",
+            "filter_kind": "search",
+            "field_name": None,
+            "match_mode": "contains",
+            "applies_to": "both",
+            "handler_key": None,
+            "widget_kind": "search",
+            "sort_order": 0,
+        },
+        {
+            "slug": "cmp",
+            "label": "Type",
+            "filter_kind": "custom",
+            "field_name": "composition",
+            "match_mode": "belongs",
+            "applies_to": "product",
+            "handler_key": "product_composition",
+            "widget_kind": "select",
+            "sort_order": 10,
+        },
+        {
+            "slug": "vk",
+            "label": "Vak",
+            "filter_kind": "dynamic",
+            "field_name": "subjects",
+            "match_mode": "contains",
+            "applies_to": "both",
+            "handler_key": None,
+            "widget_kind": "select",
+            "sort_order": 20,
+        },
+        {
+            "slug": "nv",
+            "label": "Niveau",
+            "filter_kind": "dynamic",
+            "field_name": "levels",
+            "match_mode": "contains",
+            "applies_to": "both",
+            "handler_key": None,
+            "widget_kind": "select",
+            "sort_order": 30,
+        },
+        {
+            "slug": "bschkbr",
+            "label": "Beschikbaar",
+            "filter_kind": "dynamic",
+            "field_name": "available",
+            "match_mode": "belongs",
+            "applies_to": "both",
+            "handler_key": None,
+            "widget_kind": "select",
+            "sort_order": 40,
+        },
+        {
+            "slug": "bouw",
+            "label": "Bouw",
+            "filter_kind": "dynamic",
+            "field_name": "bouw",
+            "match_mode": "contains",
+            "applies_to": "product",
+            "handler_key": None,
+            "widget_kind": "select",
+            "sort_order": 50,
+        },
+        {
+            "slug": "tto",
+            "label": "TTO",
+            "filter_kind": "custom",
+            "field_name": "tto",
+            "match_mode": "belongs",
+            "applies_to": "both",
+            "handler_key": "boolean_choice",
+            "widget_kind": "select",
+            "sort_order": 60,
+        },
+        {
+            "slug": "bdgt",
+            "label": "Adviesprijs",
+            "filter_kind": "custom",
+            "field_name": "recommended_price",
+            "match_mode": "belongs",
+            "applies_to": "product",
+            "handler_key": "budget_range",
+            "widget_kind": "select",
+            "sort_order": 70,
+        },
+        {
+            "slug": "mdm",
+            "label": "Medium",
+            "filter_kind": "dynamic",
+            "field_name": "physical_digital_mix",
+            "match_mode": "belongs",
+            "applies_to": "both",
+            "handler_key": None,
+            "widget_kind": "select",
+            "sort_order": 80,
+        },
+        {
+            "slug": "dvcs",
+            "label": "Apparaten",
+            "filter_kind": "dynamic",
+            "field_name": "devices",
+            "match_mode": "contains",
+            "applies_to": "both",
+            "handler_key": None,
+            "widget_kind": "select",
+            "sort_order": 90,
+        },
+        {
+            "slug": "oses",
+            "label": "Besturingssystemen",
+            "filter_kind": "dynamic",
+            "field_name": "operating_systems",
+            "match_mode": "contains",
+            "applies_to": "both",
+            "handler_key": None,
+            "widget_kind": "select",
+            "sort_order": 100,
+        },
+        {
+            "slug": "pbsh",
+            "label": "Aanbieders",
+            "filter_kind": "custom",
+            "field_name": "supplier_gid",
+            "match_mode": "belongs",
+            "applies_to": "both",
+            "handler_key": "supplier_lookup",
+            "widget_kind": "select",
+            "sort_order": 110,
+        },
+        {
+            "slug": "mthd",
+            "label": "Methodes",
+            "filter_kind": "custom",
+            "field_name": "method_gid",
+            "match_mode": "belongs",
+            "applies_to": "product",
+            "handler_key": "method_lookup",
+            "widget_kind": "select",
+            "sort_order": 120,
+        },
+    ]
+
+    for row in rows:
+        db.executesql(
+            """
+            INSERT INTO dynamic_filter (
+                slug,
+                label,
+                filter_kind,
+                field_name,
+                match_mode,
+                applies_to,
+                handler_key,
+                widget_kind,
+                is_active,
+                sort_order
+            )
+            VALUES (
+                %(slug)s,
+                %(label)s,
+                %(filter_kind)s,
+                %(field_name)s,
+                %(match_mode)s,
+                %(applies_to)s,
+                %(handler_key)s,
+                %(widget_kind)s,
+                TRUE,
+                %(sort_order)s
+            )
+            """,
+            placeholders=row,
+        )
+
+    db.commit()
+    return True
+
+
+@migration()
+def create_dynamic_sort_table_20260702_001(db: TypeDAL) -> bool:
+    """Create persisted metadata for public product/method sort options."""
+    db.executesql("""
+    CREATE TABLE dynamic_sort
+    (
+        id serial PRIMARY KEY,
+        gid uuid NOT NULL DEFAULT uuidv4() UNIQUE,
+        slug varchar(40) NOT NULL UNIQUE,
+        label varchar(100) NOT NULL,
+        applies_to varchar(10) NOT NULL DEFAULT 'both',
+        order_expression varchar(255) NOT NULL,
+        is_default boolean NOT NULL DEFAULT FALSE,
+        is_active boolean NOT NULL DEFAULT TRUE,
+        sort_order integer NOT NULL DEFAULT 0
+    );
+    """)
+    db.commit()
+    return True
+
+
+@migration(requires=create_dynamic_sort_table_20260702_001)
+def seed_public_dynamic_sorts_20260702_002(db: TypeDAL) -> bool:
+    """Seed the public sort configuration for catalogue pages."""
+    if state_of_development == "TEST" and not seed_catalog_configuration:
+        # test controls its own data
+        return True
+
+    db.executesql(
+        """
+    INSERT INTO dynamic_sort (
+        slug,
+        label,
+        applies_to,
+        order_expression,
+        is_default,
+        is_active,
+        sort_order
+    )
+    VALUES
+        ('name_asc', 'Alfabetisch (A-Z)', 'both', 'name, id', TRUE, TRUE, 0),
+        ('name_desc', 'Alfabetisch (Z-A)', 'both', '~name, ~id', FALSE, TRUE, 10),
+        ('publication_year_asc', 'Publicatiejaar (oud-nieuw)', 'both', 'publication_date, name, id', FALSE, TRUE, 20),
+        ('publication_year_desc', 'Publicatiejaar (nieuw-oud)', 'both', '~publication_date, ~name, ~id', FALSE, TRUE, 30),
+        ('random', 'Willekeurig', 'both', 'random', FALSE, TRUE, 40);
+    """  # noqa: E501
+    )
+    db.commit()
+    return True
+
+
+@migration()
+def add_supplier_endpoint_publisher_20260707_001(db: TypeDAL) -> bool:
+    """Add the optional Edu-V publisher selector for shared Kennisnet endpoints."""
+    with SupplierModelWithPrio_V1(db):
+        db.executesql("""
+        ALTER TABLE supplier_ed
+            ADD COLUMN endpoint_publisher varchar(255);
+        """)
+    db.commit()
+    return True
+
+
+@migration(requires=add_supplier_endpoint_publisher_20260707_001)
+def add_publication_date_to_product_and_method_20260709_001(db: TypeDAL) -> bool:
+    """Add `publication_date` to catalog tables and repoint publication-year sorts."""
+    with ProductModelWithPrio_V1(db):
+        db.executesql("""
+        ALTER TABLE product_ed
+            ADD COLUMN IF NOT EXISTS publication_date date;
+        """)
+
+    with MethodModelWithPrio_V1(db):
+        db.executesql("""
+        ALTER TABLE method_ed
+            ADD COLUMN IF NOT EXISTS publication_date date;
+        """)
+
+    db.executesql("""
+    UPDATE dynamic_sort
+       SET order_expression = 'publication_date, name, id'
+     WHERE slug = 'publication_year_asc';
+    """)
+    db.executesql("""
+    UPDATE dynamic_sort
+       SET order_expression = '~publication_date, ~name, ~id'
+     WHERE slug = 'publication_year_desc';
+    """)
+
+    db.commit()
+    return True
+
+
+@migration(requires=add_publication_date_to_product_and_method_20260709_001)
+def add_eduv_product_fields_and_import_run_warnings_20260709_002(db: TypeDAL) -> bool:
+    """Add Edu-V product fields and importer-run warning storage."""
+    with ProductModelWithPrio_V1(db):
+        db.executesql("""
+        ALTER TABLE product_ed
+            ADD COLUMN payment_models text,
+            ADD COLUMN product_usages text,
+            ADD COLUMN related_products text,
+            ADD COLUMN specific_access_urls text,
+            ADD COLUMN specific_access_url_types text,
+            ADD COLUMN copyright_type varchar(255),
+            ADD COLUMN deprecation_date date,
+            ADD COLUMN end_of_life_date date,
+            ADD COLUMN follow_up_product uuid,
+            ADD COLUMN for_sale boolean,
+            ADD COLUMN intended_end_user_role varchar(255),
+            ADD COLUMN is_consumption_product boolean,
+            ADD COLUMN sale_unit_size integer,
+            ADD COLUMN supported_until_date date;
+        """)
+
+    db.executesql("""
+    ALTER TABLE importer_run
+        ADD COLUMN warnings_json json NOT NULL DEFAULT '[]'::json;
+    """)
+
+    db.commit()
+    return True
+
+
+@migration(requires=add_eduv_product_fields_and_import_run_warnings_20260709_002)
+def add_error_details_to_importer_run_error_stat_20260709_003(db: TypeDAL) -> bool:
+    """Add generic JSON details to persisted importer run errors."""
+    db.executesql("""
+    ALTER TABLE importer_run_error_stat
+        ADD COLUMN error_details json;
+    """)
+
+    db.commit()
+    return True
+
+
+@migration()
+def create_locations_without_organisation_mapping_report_20260713_001(db: TypeDAL) -> bool:
+    """Create the live Superset report for locations without school mappings."""
+    with LocationsWithoutOrganisationMappingReport_V1(db):
+        pass
+    db.commit()
+    return True
+
+
+@migration()
+def create_locations_without_brin_vest_code_report_20260713_002(db: TypeDAL) -> bool:
+    """Create the live Superset report for locations without BRIN-location codes."""
+    with LocationsWithoutBrinVestCodeReport_V1(db):
+        pass
+    db.commit()
+    return True
+
+
+@migration()
+def create_schools_without_homepage_url_report_20260713_003(db: TypeDAL) -> bool:
+    """Create the live Superset report for schools without homepage URLs."""
+    with SchoolsWithoutHomepageUrlReport_V1(db):
+        pass
+    db.commit()
+    return True
+
+
+@migration()
+def create_schools_without_email_domain_report_20260713_004(db: TypeDAL) -> bool:
+    """Create the live Superset report for schools without email domains."""
+    with SchoolsWithoutEmailDomainReport_V1(db):
+        pass
+    db.commit()
+    return True
+
+
+@migration()
+def create_catalog_search_report_20260713_005(db: TypeDAL) -> bool:
+    """Create the materialized report for catalog search activity."""
+    with CatalogSearchReport_V1(db):
+        pass
+    db.commit()
+    return True
+
+
+@migration(requires=create_catalog_search_report_20260713_005)
+def convert_catalog_search_report_active_filters_to_jsonb_20260716_001(db: TypeDAL) -> bool:
+    """Rebuild the catalog search report with JSONB active filters."""
+    with CatalogSearchReport_V1b(db):
+        pass
+    db.commit()
+    return True
+
+
+@migration(requires=convert_catalog_search_report_active_filters_to_jsonb_20260716_001)
+def add_vestigingscode_to_school_data_quality_reports_20260716_002(db: TypeDAL) -> bool:
+    """Rebuild school data-quality reports with vestigingscode columns."""
+    with SchoolsWithoutHomepageUrlReport_V1b(db), SchoolsWithoutEmailDomainReport_V1b(db):
+        pass
+    db.commit()
+    return True
+
+
+@migration(requires=add_vestigingscode_to_school_data_quality_reports_20260716_002)
+def index_email_domain_for_invite_lookup_20260807_001(db: TypeDAL) -> bool:
+    """Index the email domain so invite similarity lookup stops scanning whole tables."""
+    domain_expression = email_domain_sql_v1("email")
+
+    db.executesql(f"""
+    CREATE INDEX auth_user_email_domain_idx
+        ON auth_user ({domain_expression});
+    """)
+
+    db.executesql(f"""
+    CREATE INDEX identity_email_domain_idx
+        ON identity ({domain_expression})
+     WHERE object_type = 'user';
+    """)
 
     db.commit()
     return True

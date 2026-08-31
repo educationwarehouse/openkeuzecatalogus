@@ -2,6 +2,7 @@
 
 import os
 import smtplib
+import traceback
 import typing as t
 from email.message import EmailMessage
 
@@ -34,6 +35,7 @@ class SMTPMailer(Mailer):
     def send_email_message(self, message: EmailMessage, all_recipients: list[EmailAddress]) -> bool:
         """Send a prepared email via SMTP and report success as a boolean."""
         smtp_class = smtplib.SMTP_SSL if self.ssl else smtplib.SMTP
+
         try:
             with smtp_class(self.host, self.port, timeout=5) as server:
                 if self.tls and not self.ssl:
@@ -42,7 +44,27 @@ class SMTPMailer(Mailer):
                 server.login(self.user, self.password or "")
                 server.send_message(message, from_addr=message["From"], to_addrs=all_recipients)
                 return True
-        except Exception:
+        except Exception as e:
+            from shared_code.infra.error_tickets import try_store_ticket
+
+            print(f"[mailer] failed with {type(e)}({e})")
+            print("[mailer]", "".join(traceback.format_exception(e)))
+
+            context = {
+                "application": "mail.send_email_message",
+                "mailer": {
+                    "transport": "smtp",
+                    "host": self.host,
+                    "port": self.port,
+                    "tls": self.tls,
+                    "ssl": self.ssl,
+                    "sender": self.sender,
+                    "recipient_count": len(all_recipients),
+                    "message_id": message.get("Message-ID", ""),
+                },
+            }
+            ticket_id = try_store_ticket(context)
+            print(f"[mailer] failed; error ticket: {ticket_id or 'failed to store ticket'}")
             return False
 
     @classmethod

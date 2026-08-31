@@ -14,7 +14,7 @@ from shared_code.data_model.tables import (
     Product,
     Supplier,
 )
-from shared_code.modules.scrapers.types import ImportRunCountStat, ImportStats
+from shared_code.modules.scrapers.types import ImportRunCountStat, ImportRunWarningStat, ImportStats
 
 DEFAULT_RUN_RETENTION = 20
 
@@ -32,6 +32,7 @@ def record_importer_run(
     payload_json: dict[str, t.Any],
     stats: ImportStats | None = None,
     failure_message: str | None = None,
+    warnings: list[ImportRunWarningStat] | None = None,
     retention_limit: int = DEFAULT_RUN_RETENTION,
 ) -> str:
     """Persist one finished importer run and its reporting facts."""
@@ -48,6 +49,7 @@ def record_importer_run(
             success=success,
             failure_message=failure_message,
             payload_json=payload_json,
+            warnings_json=[dc.asdict(warning) for warning in (warnings or [])],
         ).gid
     )
 
@@ -102,8 +104,39 @@ def _derive_count_stats(
         ]
     )
 
+    count_stats.extend(
+        [
+            ImportRunCountStat(
+                count_type="run",
+                count_key="image_upload",
+                count_label="CDN-afbeeldingen",
+                metric=metric,
+                value=value,
+                supplier_gid=supplier_gid,
+                supplier_name=supplier_name,
+            )
+            for metric, value in dc.asdict(stats.image_uploads).items()
+        ]
+    )
+
     count_stats.extend(_snapshot_supplier_method_counts(supplier_gid=supplier_gid, supplier_name=supplier_name))
     return count_stats
+
+
+def _count_products_by_method(method_gids: list[str]) -> dict[str, int]:
+    """Count products per method in one grouped query instead of one query per method."""
+    if not method_gids:
+        return {}
+
+    method_gid_field = Product.method_gid
+    count_field = Product.id.count()
+    rows = (
+        Product.where(method_gid_field.belongs(method_gids))
+        .select(method_gid_field, count_field, groupby=method_gid_field)
+        .execute()
+    )
+    # Methods without products are absent here; callers fall back to 0.
+    return {str(row[method_gid_field]): int(row[count_field]) for row in rows}
 
 
 def _snapshot_supplier_method_counts(
@@ -138,8 +171,9 @@ def _snapshot_supplier_method_counts(
 
     method_query = Method.supplier_gid == supplier_gid
     method_rows = Method.where(method_query).select(Method.gid, Method.name, Method.supplier_gid)
+    product_counts = _count_products_by_method([str(method.gid) for method in method_rows])
     for method in method_rows:
-        product_count = Product.where(Product.method_gid == method.gid).count()
+        product_count = product_counts.get(str(method.gid), 0)
         method_supplier_gid = str(method.supplier_gid) if method.supplier_gid else supplier_gid
         stats.append(
             ImportRunCountStat(

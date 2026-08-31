@@ -1,0 +1,59 @@
+[[extend 'layout.html']]
+
+<section class="mb-5">
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <span class="badge rounded-pill text-bg-warning-subtle text-warning-emphasis border border-warning-subtle mb-3">
+                Leermiddelen
+            </span>
+            <h1 class="display-5 fw-bold mb-3">Productoverzicht</h1>
+            <p class="lead text-secondary mb-0">Vergelijk producten op vorm, prijsindicatie en aanvullende digitale
+                                                mogelijkheden.</p>
+        </div>
+        <div class="col-lg-5">
+            <div class="card border-0 bg-body-tertiary shadow-sm">
+                <div class="card-body p-4">
+                    <p class="text-uppercase small fw-semibold text-secondary mb-2">Overzicht</p>
+                    <p class="mb-0 text-secondary">
+                        Vergelijk productvormen, prijsindicaties en aanvullende digitale ondersteuning.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="row g-4 align-items-start">
+    <div class="col-12 col-lg-5 col-xxl-4">
+        <div
+                class="rounded-4 border border-warning-subtle bg-warning-subtle p-3"
+                hx-get="[[=URL('htmx/products/filters')]]"
+                hx-trigger="load"
+                hx-swap="innerHTML"
+        >
+            <div class="placeholder-glow">
+                <span class="placeholder col-6 mb-3"></span>
+                <span class="placeholder col-12 mb-2"></span>
+                <span class="placeholder col-11 mb-2"></span>
+                <span class="placeholder col-9"></span>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-7 col-xxl-8">
+        <div
+                id="product-results"
+                class="rounded-4 border bg-body p-3 shadow-sm"
+                hx-get="[[=URL('htmx/products/results')]]"
+                hx-include=".edwh-state"
+                hx-trigger="ew:state_changed from:closest .edwh-messagebus"
+                hx-swap="innerHTML"
+        >
+            <div class="placeholder-glow">
+                <span class="placeholder col-4 mb-3"></span>
+                <span class="placeholder col-12 mb-2"></span>
+                <span class="placeholder col-12 mb-2"></span>
+                <span class="placeholder col-8"></span>
+            </div>
+        </div>
+    </div>
+</section>

@@ -1,5 +1,9 @@
 """String and text helpers."""
 
+import datetime as dt
+import json
+import typing as t
+
 
 def pluralize(word: str, count: int, plural: str = "", hide_count: bool = False) -> str:
     """Generate the pluralized form of a word based on the given count.
@@ -23,3 +27,19 @@ def pluralize(word: str, count: int, plural: str = "", hide_count: bool = False)
     word = word if count == 1 else plural
 
     return word if hide_count else f"{count} {word}"
+
+
+def format_preview_value(value: t.Any) -> str:
+    """Format structured values consistently in admin import previews."""
+    if value is None:
+        return ""
+    elif isinstance(value, bool):
+        return "ja" if value else "nee"
+    elif isinstance(value, str):
+        return value
+    elif isinstance(value, dt.datetime):
+        return value.isoformat(sep=" ", timespec="seconds")
+    elif isinstance(value, (dt.date, dt.time)):
+        return value.isoformat()
+    else:
+        return json.dumps(value, ensure_ascii=False, default=str)

@@ -7,12 +7,15 @@ import typing as t
 from uuid import UUID
 
 from endow import Service
+from typedal import PaginatedRows
 
 from shared_code.util.env import bool_from_env
 from shared_code.util.time import utcnow
 
 if t.TYPE_CHECKING:
+    from shared_code.data_model import Method, Product
     from shared_code.infra.database import DatabaseContext
+    from shared_code.modules.catalog_filters import CatalogEntityKind, ResolvedCatalogFilters
 
 
 class ApplogEvent(t.TypedDict, total=False):
@@ -73,6 +76,53 @@ class Applogger(Service, abc.ABC):
     def write_auth_event(self, event: AuthEvent) -> bool:
         """Backward-compatible auth-specific writer alias."""
         return self.try_fire(event)
+
+    def log_catalog_search(
+        self,
+        entity_kind: CatalogEntityKind,
+        *,
+        rows: PaginatedRows[Product | Method],
+        filters: ResolvedCatalogFilters | None,
+    ) -> bool:
+        """Log one catalog-result page for anonymous search analysis."""
+        # Avoid importing the data-model package while this core service is initialized.
+        from shared_code.data_model.mixins.search import parsed_search_terms
+
+        active_definitions = filters.active_definitions if filters is not None else []
+        active_filters = {definition.slug: value for definition, value in active_definitions}
+        search_query = next(
+            (
+                t.cast(str, value)
+                for definition, value in active_definitions
+                if definition.metadata.filter_kind == "search"
+            ),
+            None,
+        )
+        pagination = rows.pagination
+        return self.try_fire(
+            {
+                "kind": "event",
+                "action": "catalog_search",
+                "details": {
+                    "entity_kind": entity_kind,
+                    "active_filters": active_filters,
+                    "original_query": search_query,
+                    "normalized_terms": [
+                        {"term": term.part, "mode": term.mode.value} for term in parsed_search_terms(search_query or "")
+                    ],
+                    "result_count": pagination["total_items"],
+                    "result_ed_ids": [row.id for row in rows],
+                    "pagination": {
+                        "current_page": pagination["current_page"],
+                        "total_pages": pagination["total_pages"],
+                    },
+                },
+            },
+        )
+
+    def refresh_catalog_search_report(self) -> None:
+        """Refresh the catalog-search materialized reporting view."""
+        self.db.executesql("REFRESH MATERIALIZED VIEW catalog_search_report_v1;")
 
     def log_auth_action(
         self,

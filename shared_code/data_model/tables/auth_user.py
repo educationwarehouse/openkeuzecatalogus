@@ -2,6 +2,7 @@
 
 import typing as t
 
+from edwh_auth_rbac.rbac import AuthRbac, UserDict
 from pydal.validators import IS_EMAIL, IS_EMPTY_OR, IS_IN_SET, IS_LOWER, IS_NOT_IN_DB
 from typedal import relationship
 from typedal.fields import TimestampField, TypedField
@@ -10,7 +11,12 @@ from typedal.web2py_py4web_shared import AuthUser as _AuthUser
 
 from shared_code.data_model.constants import ROLE_USER, SECTOREN
 from shared_code.data_model.mixins.search import SearchMixin
-from shared_code.data_model.tables.base import InternalUUIDField
+from shared_code.data_model.tables.base import TableWithGid
+from shared_code.data_model.validators.is_existing_sso_account import (
+    IS_NOT_EXISTING_SSO_ACCOUNT,
+    build_normalized_email_match_query,
+)
+from shared_code.util.email import normalize_email_for_lookup
 
 if t.TYPE_CHECKING:
     from shared_code.infra.database import DatabaseContext
@@ -18,11 +24,31 @@ if t.TYPE_CHECKING:
     type identity = t.Any
 
 
-class AuthUser(_AuthUser, SearchMixin, search_fields=("email", "first_name", "last_name")):
+def _resolve_existing_identity_by_normalized_email(
+    rbac: AuthRbac,
+    db: DatabaseContext,
+    email: str,
+) -> UserDict | None:
+    """Resolve an existing RBAC identity by exact or normalized email."""
+    if existing := rbac.get_user(email):
+        return existing
+
+    normalized_email = normalize_email_for_lookup(email)
+    identity_query = (db.identity.object_type == "user") & build_normalized_email_match_query(
+        db.identity.email,
+        normalized_email,
+    )
+    identity_row = db(identity_query).select(db.identity.object_id, limitby=(0, 1)).first()
+    if identity_row and (existing := rbac.get_user(identity_row.object_id)):
+        return existing
+
+    return None
+
+
+class AuthUser(_AuthUser, TableWithGid, SearchMixin, search_fields=("email", "first_name", "last_name")):
     """Application-specific auth user extension with RBAC identity sync."""
 
-    # gid = UUIDField(default=uuid.uuid4, writable=False, requires=IS_UUID(), filter_out=str, label="gid")
-    gid = InternalUUIDField(label="GID")
+    # grid from mixin
     api_key_hash = TypedField(str, readable=False, writable=False)
     past_passwords_hash: TypedField[list[str]]
     reset_password_expires_at = TimestampField(readable=False, writable=False, notnull=False)
@@ -68,6 +94,7 @@ class AuthUser(_AuthUser, SearchMixin, search_fields=("email", "first_name", "la
             [
                 IS_EMAIL(error_message="Vul een geldig emailadres in"),
                 IS_LOWER(),  # converts
+                IS_NOT_EXISTING_SSO_ACCOUNT(db),
                 IS_NOT_IN_DB(
                     db,
                     "auth_user.email",
@@ -77,7 +104,7 @@ class AuthUser(_AuthUser, SearchMixin, search_fields=("email", "first_name", "la
         )
 
         def on_insert(row: OpRow, reference: int) -> None:
-            if user := rbac.get_user(row.email):
+            if user := _resolve_existing_identity_by_normalized_email(rbac, db, row.email):
                 # identity already exists, user was invited
                 rbac.update_identity(
                     user["object_id"],

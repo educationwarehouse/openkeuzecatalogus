@@ -1,11 +1,13 @@
 """Search helpers and mixin utilities for typedal models."""
 
+import enum
 import shlex
 import typing as t
+from dataclasses import dataclass
 
 from pydal.helpers.classes import SQLCustomType
 from typedal import QueryBuilder
-from typedal.fields import Field
+from typedal.fields import Field, rname
 from typedal.mixins import Mixin
 from typedal.tables import _TypedTable
 from typedal.types import OrderBy, Query
@@ -25,6 +27,43 @@ def safe_quoted_split(terms: str) -> t.Generator[str]:
     except ValueError:
         # shlex couldn't split, search verbatim
         yield terms
+
+
+class SearchTermMode(enum.Enum):
+    """Whether a parsed search term should include or exclude matches."""
+
+    INCLUDE = "include"
+    EXCLUDE = "exclude"
+
+
+@dataclass(frozen=True, slots=True)
+class SearchTerm:
+    """A normalized search term together with its include/exclude mode."""
+
+    part: str
+    mode: SearchTermMode = SearchTermMode.INCLUDE
+
+
+@dataclass(frozen=True, slots=True)
+class TermSearchResult:
+    """Query fragments and ranking metadata for a parsed search term."""
+
+    query: Query
+    rank_clauses: list[str]
+    max_rank: int
+
+
+def parsed_search_terms(terms: str) -> t.Generator[SearchTerm]:
+    """Yield normalized search terms with mode metadata."""
+    for term in safe_quoted_split(terms):
+        if term.startswith("-") and len(term) > 1:
+            mode = SearchTermMode.EXCLUDE
+            term = term[1:]
+        else:
+            mode = SearchTermMode.INCLUDE
+
+        if term:
+            yield SearchTerm(part=term, mode=mode)
 
 
 def search_for_fieldtype(field: Field, search: str) -> Query | None:
@@ -114,16 +153,23 @@ class SearchMixin(Mixin):
 
     @classmethod
     def __search_mixin_daily_seed__(cls) -> str:
-        """Use this as a raw field in `.select()`.
+        """Return the seed that keeps the random order stable for a whole day."""
+        return utcnow().strftime("%Y%m%d")  # e.g. 20240201 for 1st of Feb
 
-        setseed expects a number between -1 and 1.
-        This function converts the current date to a number in that range.
-        This will break in the year 20000 but who cares.
+    @classmethod
+    def __search_mixin_random_orderby__(cls) -> str:
+        """Return a deterministic 'random' order expression.
+
+        `ORDER BY RANDOM()` cannot be used here:
+        - Postgres rejects it in combination with SELECT DISTINCT (which typedal adds
+          when a paginated query joins relationships), since a volatile ORDER BY
+          expression can never appear in the select list.
+        - It reshuffles per query, so paginating would repeat and skip rows.
+
+        Hashing the primary key with a daily seed gives a stable shuffle that changes
+        once a day, is safe to repeat in the select list, and survives pagination.
         """
-        today = utcnow()
-        today = int(today.strftime("%Y%m%d"))  # e.g. 20240201 for 1st of Feb
-        seed = today / 100_000_000  # range of -1 to 1
-        return f"setseed({seed})"
+        return f"md5(concat({rname(cls.id)}, '{cls.__search_mixin_daily_seed__()}'))"
 
     @classmethod
     def _apply_orderby[T: _TypedTable](
@@ -143,11 +189,9 @@ class SearchMixin(Mixin):
         """
         orderby: OrderBy | t.Iterable[OrderBy] | None
 
-        extra_fields = []
-        if order == "random":
-            orderby = "<random>"
-            seed = cls.__search_mixin_daily_seed__()
-            extra_fields.append(seed)
+        # explicitly check 'str' otherwise == 'random' becomes a Query
+        if isinstance(order, str) and order == "random":
+            orderby = cls.__search_mixin_random_orderby__()
         elif isinstance(order, str):
             if order.startswith("~"):
                 orderby = ~cls[order[1:]]
@@ -157,7 +201,7 @@ class SearchMixin(Mixin):
         else:
             orderby = order
 
-        return builder.select(*extra_fields, orderby=orderby)
+        return builder.select(orderby=orderby)
 
     @classmethod
     def apply_orderby[T: _TypedTable](
@@ -169,6 +213,85 @@ class SearchMixin(Mixin):
         except KeyError:
             # field does not exist -> ignore
             return builder
+
+    @classmethod
+    def _search_field_names(cls) -> list[str]:
+        """Return the ordered field names used for text search ranking."""
+        return [
+            "id",
+            "gid",
+            *cls.__settings__["search_fields"],
+            "slug",
+        ]
+
+    @classmethod
+    def _build_term_match(
+        cls,
+        part: str,
+        search_fields: list[str],
+        *,
+        extra_conditions_fn: t.Callable[[str], t.Iterable[Query]] | None = None,
+        include_ranking: bool,
+    ) -> TermSearchResult:
+        """Build the OR-query and ranking clauses for a single search part."""
+        part_query = cls.id == 0
+        rank_clauses: list[str] = []
+        max_rank = len(search_fields)
+
+        for idx, fieldname in enumerate(search_fields, 1):
+            if not (field := getattr(cls, fieldname, None)):
+                continue
+
+            condition = search_for_fieldtype(field, part)
+            if not condition:
+                continue
+
+            if include_ranking:
+                rank_clauses.append(f"WHEN {condition} THEN {idx}")
+            part_query |= condition
+
+        if extra_conditions_fn:
+            for extra_idx, condition in enumerate(extra_conditions_fn(part), start=len(search_fields) + 1):
+                if include_ranking:
+                    rank_clauses.append(f"WHEN {condition} THEN {extra_idx}")
+                part_query |= condition
+                max_rank = max(max_rank, extra_idx)
+
+        return TermSearchResult(
+            query=part_query,
+            rank_clauses=rank_clauses,
+            max_rank=max_rank,
+        )
+
+    @classmethod
+    def _combine_search_query(
+        cls,
+        query: Query,
+        part_query: Query,
+        mode: SearchTermMode,
+    ) -> Query:
+        """Combine one term query into the accumulated search query."""
+        return query & (~part_query if mode is SearchTermMode.EXCLUDE else part_query)
+
+    @classmethod
+    def _apply_search_orderby(
+        cls,
+        builder: QueryBuilder,
+        rank_clauses: list[str],
+        max_rank: int,
+    ) -> QueryBuilder:
+        """Apply search ranking and preserve existing ordering."""
+        new_orderby = f"""CASE {" ".join(rank_clauses)} ELSE {max_rank + 1} END""" if rank_clauses else None
+
+        if existing_orderby := builder.select_kwargs.get("orderby"):
+            existing_orderby = rname(existing_orderby) if isinstance(existing_orderby, Field) else existing_orderby
+
+            new_orderby = f"{new_orderby}, {existing_orderby}" if new_orderby else existing_orderby
+
+        if new_orderby:
+            return builder.select(orderby=new_orderby)
+
+        return builder
 
     @classmethod
     def _apply_search(
@@ -198,52 +321,23 @@ class SearchMixin(Mixin):
             return builder
 
         query = cls.id > 0  # Start with true condition
-
-        search_fields = [
-            "id",
-            "gid",
-            *cls.__settings__["search_fields"],
-            "slug",
-        ]
-
-        orderby = []
+        search_fields = cls._search_field_names()
+        rank_clauses: list[str] = []
         max_rank = len(search_fields)
-        search_parts = safe_quoted_split(search)
 
         # For each search term, ensure it matches at least one field
-        for part in search_parts:
-            part_query = cls.id == 0  # Start with false for this search term
+        for search_term in parsed_search_terms(search):
+            term_match = cls._build_term_match(
+                search_term.part,
+                search_fields,
+                extra_conditions_fn=extra_conditions_fn,
+                include_ranking=search_term.mode is SearchTermMode.INCLUDE,
+            )
+            rank_clauses.extend(term_match.rank_clauses)
+            max_rank = max(max_rank, term_match.max_rank)
+            query = cls._combine_search_query(query, term_match.query, search_term.mode)
 
-            for idx, fieldname in enumerate(search_fields, 1):
-                if not (field := getattr(cls, fieldname, None)):
-                    # can't search through fields we don't have eh?
-                    continue
-
-                # build query part specifically for this field's type:
-                if condition := search_for_fieldtype(field, part):
-                    # note: both condition (Query) and idx (int) are controlled values from code, not user input,
-                    #  so no query injection risk here
-                    orderby.append(f"WHEN {condition} THEN {idx}")
-                    part_query |= condition  # This term matches if found in ANY field
-
-            if extra_conditions_fn:
-                for extra_idx, condition in enumerate(extra_conditions_fn(part), start=len(search_fields) + 1):
-                    # note: both condition (Query) and idx (extra_idx) are controlled values from code, not user input,
-                    #  so no query injection risk here
-                    orderby.append(f"WHEN {condition} THEN {extra_idx}")
-                    part_query |= condition
-                    max_rank = max(max_rank, extra_idx)
-
-            # All search terms must be satisfied (AND across terms)
-            query &= part_query
-
-        new_orderby = f"""CASE {" ".join(orderby)} ELSE {max_rank + 1} END""" if orderby else None
-
-        if existing_orderby := builder.select_kwargs.get("orderby"):
-            new_orderby = f"{new_orderby}, {existing_orderby}" if new_orderby else existing_orderby
-
-        if new_orderby:
-            builder = builder.select(orderby=new_orderby)
+        builder = cls._apply_search_orderby(builder, rank_clauses, max_rank)
 
         return builder.where(query)
 
@@ -281,7 +375,7 @@ class SearchMixin(Mixin):
             builder = builder.select(*select)
 
         if limit:
-            builder = cls.select(limitby=(0, limit))
+            builder = builder.select(limitby=(0, limit))
 
         if order:
             builder = cls.apply_orderby(order, builder)

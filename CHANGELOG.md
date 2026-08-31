@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 31-08-2026
+
+### Features
+
+- Publiek catalogusoverzicht voor producten en methoden met zoeken, dynamische filters, sortering, paginering en verschillende weergaven
+- JSON-import in de beheeromgeving met sjabloondownload, validatie, preview en verwerking
+- Edu-V-importer uitgebreid met ondersteuning voor catalogusversies 1.1.0 en 2.0.0, inclusief product-, methode- en afbeeldingsverwerking
+- Gebruikers uitnodigen en koppelen aan organisaties en aanbieders verder uitgewerkt
+
+### Internals
+
+- Queue-verwerking, scraper-imports en import-runrapportage verder gestandaardiseerd en uitgebreid
+- S3/MinIO-gebaseerde afbeeldingsopslag toegevoegd met lokale testimplementatie
+- Databasecontexten, catalogusrapportages en datakwaliteitsrapporten toegevoegd
+- Architectuur-, deployment-, integratie- en ontwikkel-documentatie uitgebreid
+
 ## 20-07-2026
 
 ### Features
