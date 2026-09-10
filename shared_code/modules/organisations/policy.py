@@ -6,7 +6,7 @@ from endow.policy import AuthorizationResult
 from typedal import QueryBuilder
 
 from shared_code.infra.database.policy import ReusablePolicy
-from shared_code.modules.auth.contract import AuthContext
+from shared_code.modules.auth import AuthContext
 
 if typing.TYPE_CHECKING:
     from shared_code.data_model import Organisation

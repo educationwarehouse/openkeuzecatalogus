@@ -606,6 +606,7 @@ def test_cdn_image_upload_stats_track_success_failure_and_run_counts(
         supplier_gid=str(supplier.gid),
         db=db_per_file,
         image_storage=MockImageStorage(tmp_path / "cdn"),
+        auth_adapter=AuthAdapter.for_service("pytest.scraper_flow")
     )
 
     image_stats = importer.sync_images_to_cdn()

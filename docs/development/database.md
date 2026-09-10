@@ -6,6 +6,8 @@ This project uses `TypeDAL`/`pyDAL` style database access.
 
 The `postgres` Compose service is built from `postgres/Dockerfile` (base: `postgres:18`, adds `pgaudit` and extension build deps).
 `postgres/extensions.sql` is mounted into `docker-entrypoint-initdb.d` and runs once on database init, enabling `pgcrypto`, `unaccent`, and `pg_trgm`.
+`pg_trgm` backs the similarity scoring in [search ranking](../architecture/search-ranking.md) and is also
+enabled by migration for databases that predate this init script.
 `postgres/addendum.conf` supplies extra `postgresql.conf` settings layered onto the base image config.
 
 ## References

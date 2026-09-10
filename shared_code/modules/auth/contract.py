@@ -65,15 +65,18 @@ class AuthAdapter:
     """
 
     get_actor: t.Callable[[], AuthActor]
+    get_session_gid: t.Callable[[], str | None] = lambda: None
     get_roles: t.Callable[[AuthContext], set[str]] = lambda self: set()
     get_permissions: t.Callable[[AuthContext], set[str]] = lambda self: set()
+    get_permitted_object_ids: t.Callable[[AuthContext, str], set[str]] = lambda self, privilege: set()
     grant_membership: t.Callable[[AuthContext, str, str], t.Any] | None = None
     revoke_membership: t.Callable[[AuthContext, str, str], t.Any] | None = None
     check_membership: t.Callable[[AuthContext, str], bool] | None = None
+    check_subject_membership: t.Callable[[AuthContext, str, str], bool] | None = None
     check_permission: t.Callable[[AuthContext, str], bool] | None = None
 
     @classmethod
-    def for_service(cls, service_name: str) -> t.Self:
+    def for_service(cls, service_name: str) -> AuthAdapter:
         """Build an auth adapter for internal service callers."""
         actor = AuthActor(
             kind="service",
@@ -82,13 +85,9 @@ class AuthAdapter:
             name=service_name,
         )
 
-        return cls(
+        return edwh_rbac_adapter(
             get_actor=lambda: actor,
-            get_roles=lambda self: set(),
-            get_permissions=lambda self: set(),
-            grant_membership=lambda self, subject, role: self.raw_rbac.add_membership(subject, role),
-            revoke_membership=lambda self, subject, role: self.raw_rbac.remove_membership(subject, role),
-            check_membership=lambda self, role: self.raw_rbac.has_membership(self.id, role) if self.id else False,
+            get_rbac=lambda ctx: ctx.raw_rbac,
         )
 
 
@@ -130,6 +129,11 @@ class AuthContext(Injectable):
     def actor(self) -> AuthActor:
         """Return the current actor."""
         return self.adapter.get_actor()
+
+    @property
+    def session_gid(self) -> str | None:
+        """Return the current session gid when available."""
+        return self.adapter.get_session_gid()
 
     def is_user(self) -> bool:
         """Return whether the actor represents a user."""
@@ -224,12 +228,23 @@ class AuthContext(Injectable):
 
         return role in self.roles
 
+    def has_subject_membership(self, subject: str | UUID, role: str | UUID) -> bool:
+        """Return whether one subject belongs to the given role."""
+        if not self.adapter.check_subject_membership:
+            raise NotImplementedError("AuthContext does not provide arbitrary membership checks")
+
+        return self.adapter.check_subject_membership(self, str(subject), str(role))
+
     def has_permission(self, permission: str) -> bool:
         """Return whether the actor has the given permission."""
         if self.adapter.check_permission:
             return self.adapter.check_permission(self, permission)
 
         return permission in self.permissions
+
+    def permitted_object_ids(self, privilege: str) -> set[str]:
+        """Return object identities the actor may access with one privilege."""
+        return self.adapter.get_permitted_object_ids(self, privilege)
 
     def is_admin(self) -> bool:
         """Return whether the actor has the admin role."""
@@ -241,8 +256,29 @@ class AuthContext(Injectable):
         return cls.with_injected(auth_adapter=AuthAdapter.for_service(service_name))
 
 
+def edwh_rbac_adapter(
+    *,
+    get_actor: t.Callable[[], AuthActor],
+    get_rbac: t.Callable[[AuthContext], AuthRbac],
+    get_session_gid: t.Callable[[], str | None] = lambda: None,
+) -> AuthAdapter:
+    """Build an adapter backed by an edwh-rbac instance."""
+    return AuthAdapter(
+        get_actor=get_actor,
+        get_session_gid=get_session_gid,
+        get_permitted_object_ids=lambda context, privilege: (
+            set(get_rbac(context).get_permissions(context.id, privilege)) if context.id else set()
+        ),
+        grant_membership=lambda context, subject, role: get_rbac(context).add_membership(subject, role),
+        revoke_membership=lambda context, subject, role: get_rbac(context).remove_membership(subject, role),
+        check_membership=lambda context, role: bool(context.id and get_rbac(context).has_membership(context.id, role)),
+        check_subject_membership=lambda context, subject, role: bool(get_rbac(context).has_membership(subject, role)),
+    )
+
+
 __all__ = [
     "AuthActor",
     "AuthAdapter",
     "AuthContext",
+    "edwh_rbac_adapter",
 ]

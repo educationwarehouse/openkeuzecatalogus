@@ -7,7 +7,7 @@ from pathlib import Path
 from pytest import MonkeyPatch
 from typedal import TypeDAL
 
-from shared_code.data_model import DynamicFilter, DynamicSort, MethodEd, ProductEd, Supplier
+from shared_code.data_model import DynamicFilter, DynamicSort, Method, MethodEd, ProductEd, Supplier
 from shared_code.modules.auth import AuthAdapter
 from shared_code.modules.methods import MethodBackend
 from shared_code.services.applog import DequeApplogger
@@ -220,3 +220,45 @@ def test_method_backend_list_my_methods_returns_only_member_rows(
 
     assert {str(row.gid) for row in rows} == {str(visible_method.gid)}
     assert str(hidden_method.gid) not in {str(row.gid) for row in rows}
+
+    Method.where(Method.gid == visible_method.gid).first_or_fail().delete_record()
+    db_per_file.commit()
+
+    archived_rows = backend.list_my_methods(with_deleted=True).collect()
+
+    assert {str(row.gid) for row in archived_rows} == {str(visible_method.gid)}
+    assert {row.effstatus for row in archived_rows} == {True, False}
+
+
+def test_method_backend_list_my_methods_with_deleted_returns_all_rows_for_admin(
+    migrated_db_per_file: None,
+    db_per_file: TypeDAL,
+    supplier_factory: t.Callable[..., Supplier],
+    method_factory: t.Callable[..., MethodEd],
+    education_warehouse_admin_adapter: AuthAdapter,
+) -> None:
+    """Admins should see active and archived methods from every supplier."""
+    assert migrated_db_per_file is None
+
+    first_supplier = supplier_factory(name="Admin Method Supplier One", email_domains=["admin-method-one.example.test"])
+    second_supplier = supplier_factory(name="Admin Method Supplier Two", email_domains=["admin-method-two.example.test"])
+    first_method = method_factory(
+        supplier_gid=first_supplier.gid,
+        olid="admin-method-001",
+        name="Admin Method One",
+    )
+    second_method = method_factory(
+        supplier_gid=second_supplier.gid,
+        olid="admin-method-002",
+        name="Admin Method Two",
+    )
+
+    Method.where(Method.gid == first_method.gid).first_or_fail().delete_record()
+    db_per_file.commit()
+
+    backend = _make_backend(education_warehouse_admin_adapter, db_per_file)
+    rows = backend.list_my_methods(with_deleted=True).collect()
+    row_gids = {str(row.gid) for row in rows}
+
+    assert {str(first_method.gid), str(second_method.gid)}.issubset(row_gids)
+    assert any(str(row.gid) == str(first_method.gid) and row.effstatus is False for row in rows)

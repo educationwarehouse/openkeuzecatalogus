@@ -1,0 +1,84 @@
+[[extend 'layout.html']]
+
+<section class="comparison-page vstack gap-4">
+    <header class="comparison-intro d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3">
+        <div>
+            <p class="comparison-eyebrow mb-2">Keuzehulp</p>
+            <h1 class="mb-2">[[=title]]</h1>
+            <p class="text-secondary mb-0">
+                Bekijk eigenschappen en onderwijsvisies naast elkaar. Gekleurde rijen bevatten verschillen.
+            </p>
+        </div>
+        <label class="comparison-filter form-check form-switch mb-0">
+            <input class="form-check-input comparison-differences-toggle" type="checkbox">
+            <span class="form-check-label">Toon alleen verschillen</span>
+        </label>
+    </header>
+
+    [[if missing_count:]]
+    <div class="alert alert-warning mb-0" role="alert">
+        [[=missing_count]] geselecteerde items zijn niet meer openbaar beschikbaar en worden niet getoond.
+    </div>
+    [[pass]]
+
+    [[if not records:]]
+    <div class="alert alert-secondary mb-0" role="alert">
+        Geen van de geselecteerde items is nog openbaar beschikbaar.
+    </div>
+    [[else:]]
+    <div class="comparison-matrix" style="--comparison-column-count: [[=len(records)]];">
+        <div class="comparison-scroll">
+            <div class="comparison-grid comparison-grid-header">
+                <div class="comparison-label comparison-label-header">Eigenschap</div>
+                [[for record in records:]]
+                <div class="comparison-heading">
+                    <span class="comparison-heading-overline">[[='Methode' if entity_kind == 'methode' else 'Product']]</span>
+                    <strong class="comparison-heading-name">[[=record['name']]]</strong>
+                </div>
+                [[pass]]
+            </div>
+
+            <section class="comparison-section" aria-labelledby="comparison-properties">
+                <h2 id="comparison-properties" class="visually-hidden">Eigenschappen</h2>
+                [[for field in fields:]]
+                <div class="comparison-grid comparison-row [[='comparison-row-different' if field['different'] else 'comparison-row-same']]">
+                    <div class="comparison-label">
+                        [[if field['different']:]]<span class="comparison-difference-marker" aria-hidden="true"></span>[[pass]]
+                        [[=field['label']]]
+                    </div>
+                    [[for value in field['values']:]]
+                    <div class="comparison-value text-break">[[=value]]</div>
+                    [[pass]]
+                </div>
+                [[pass]]
+            </section>
+
+            <section class="comparison-section comparison-visions-section" aria-labelledby="comparison-visions">
+                <div class="comparison-section-title comparison-grid">
+                    <div id="comparison-visions" class="comparison-label comparison-section-label">Visies per thema
+                    </div>
+                    <div class="comparison-section-rule"></div>
+                </div>
+                [[for vision_row in visions:]]
+                <div class="comparison-grid comparison-row comparison-vision-row [[='comparison-row-different' if vision_row['different'] else 'comparison-row-same']]">
+                    <div class="comparison-label comparison-theme-label">
+                        [[if vision_row['different']:]]<span class="comparison-difference-marker"
+                                                             aria-hidden="true"></span>[[pass]]
+                        [[=vision_row['theme']]]
+                    </div>
+                    [[for vision in vision_row['values']:]]
+                    <div class="comparison-value comparison-vision-value text-break">
+                        <p class="mb-2">[[=vision['content']]]</p>
+                        <p class="comparison-vision-source mb-0">Bron: [[=vision['source']]]</p>
+                        [[if vision['properties'] != '{}':]]
+                        <pre class="comparison-vision-properties mb-0">[[=vision['properties']]]</pre>
+                        [[pass]]
+                    </div>
+                    [[pass]]
+                </div>
+                [[pass]]
+            </section>
+        </div>
+    </div>
+    [[pass]]
+</section>

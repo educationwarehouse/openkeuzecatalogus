@@ -5,6 +5,7 @@ import datetime as dt
 import pytest
 
 from shared_code.infra.database import catch_errors
+from shared_code.modules.auth import AuthAdapter, AuthContext
 from shared_code.services.applog.contracts import ApplogEvent, Applogger
 from shared_code.util.env import bool_from_env
 from shared_code.util.time import normalize_timestamp
@@ -51,14 +52,13 @@ def test_catch_errors_logs_and_reraises_exception(monkeypatch: pytest.MonkeyPatc
             return True
 
     fake_logger = _FakeApplogger()
-    monkeypatch.setattr( # noqa: EW001
-        "shared_code.infra.database.Applogger.from_env",
-        lambda: fake_logger,
+    fake_logger.auth = AuthContext.with_injected(
+        auth_adapter=AuthAdapter.for_service("test.catch_errors"),
     )
     fixed_now = dt.datetime(2026, 6, 1, 10, 11, 12, tzinfo=dt.UTC)
     monkeypatch.setattr("shared_code.services.applog.contracts.utcnow", lambda: fixed_now)  # noqa: EW001
 
-    with pytest.raises(ValueError, match="boom"), catch_errors("unit.test.app"):
+    with pytest.raises(ValueError, match="boom"), catch_errors("unit.test.app", applog=fake_logger):
         raise ValueError("boom")
 
     assert len(fake_logger.fired_events) == 1

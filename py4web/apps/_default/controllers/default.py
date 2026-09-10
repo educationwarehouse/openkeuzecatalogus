@@ -1,25 +1,23 @@
+import json
 import typing as t
+from uuid import UUID
 
+from common.controllers.error import FancyHTTP
 from common.models.request_data import CatalogRequest
 
-from py4web import HTTP, URL, action, redirect, request
+from py4web import URL, action, redirect, request
 from shared_code.modules.catalog_filters import InvalidCatalogFilterValue
+from shared_code.util.lists import uniq
 
 from ..fixtures import common
-from ..models import auth, backend
+from ..fixtures.content_editable import ContentEditableV2
+from ..models import backend
 
 
 @action("index")
 @common()
 def index() -> None:
     return redirect(URL("producten"))
-
-
-@action("profile")
-@common(None, auth.user)
-def profile() -> str:
-    me = auth.get_user()
-    return str(me.as_dict() if me else {})
 
 
 @action("auth/error")
@@ -29,8 +27,7 @@ def auth_no_roles() -> str:
 
 
 @action("methodes")
-@action.uses("method_overview.html")
-@common()
+@common(ContentEditableV2("method_overview.html"))
 def methods() -> dict[str, t.Any]:
     return {
         "title": "Methodenoverzicht",
@@ -38,11 +35,75 @@ def methods() -> dict[str, t.Any]:
 
 
 @action("producten")
-@action.uses("product_overview.html")
-@common()
+@common(ContentEditableV2("product_overview.html"))
 def products() -> dict[str, t.Any]:
     return {
         "title": "Productoverzicht",
+    }
+
+
+@action("product/<gid>")
+@action.uses("catalog_detail.html")
+@common()
+def product_detail(gid: str) -> dict[str, t.Any]:
+    """Show one available public product."""
+    detail = backend.products.get_public_product_detail(gid)
+    if detail is None:
+        raise FancyHTTP(404, "Product niet gevonden")
+
+    return {
+        "title": detail["product"].get("name") or "Product",
+        "heading": detail["product"].get("name") or "Onbenoemd product",
+        "back_url": URL("producten"),
+        "back_label": "Terug naar producten",
+        "payload_json": json.dumps(detail, ensure_ascii=False, indent=2, default=str),
+    }
+
+
+@action("methode/<gid>")
+@action.uses("catalog_detail.html")
+@common()
+def method_detail(gid: str) -> dict[str, t.Any]:
+    """Show one available public method."""
+    detail = backend.methods.get_public_method_detail(gid)
+    if detail is None:
+        raise FancyHTTP(404, "Methode niet gevonden")
+
+    return {
+        "title": detail["method"].get("name") or "Methode",
+        "heading": detail["method"].get("name") or "Onbenoemde methode",
+        "back_url": URL("methodes"),
+        "back_label": "Terug naar methodes",
+        "payload_json": json.dumps(detail, ensure_ascii=False, indent=2, default=str),
+    }
+
+
+@action("compare/<entity_kind>/<gids_path:path>")
+@action.uses("compare.html")
+@common()
+def compare(entity_kind: str, gids_path: str) -> dict[str, t.Any]:
+    """Show the selected public methods or products in URL order."""
+    if entity_kind not in {"methode", "product"}:
+        raise FancyHTTP(404, "Onbekend vergelijkingstype")
+
+    try:
+        # split path by / ; canonize ; deduplicate
+        validated_gids = gids_path.split("/")
+        validated_gids = (str(UUID(gid.strip())) for gid in validated_gids)
+        validated_gids = uniq(validated_gids)
+    except ValueError as exc:
+        raise FancyHTTP(404, "Ongeldige vergelijking") from exc
+
+    if len(validated_gids) < 2:
+        raise FancyHTTP(400, "Kies minstens twee items om te vergelijken")
+
+    comparison_entity_kind = "method" if entity_kind == "methode" else "product"
+    comparison = backend.comparison.load_public_comparison(comparison_entity_kind, validated_gids)
+
+    return {
+        "title": "Methodes vergelijken" if entity_kind == "methode" else "Producten vergelijken",
+        "entity_kind": entity_kind,
+        **comparison,
     }
 
 
@@ -104,7 +165,7 @@ def htmx_product_results() -> dict[str, t.Any]:
             limit=catalog_request.page_limit,
         )
     except InvalidCatalogFilterValue as exc:
-        raise HTTP(400, str(exc)) from exc
+        raise FancyHTTP(400, str(exc)) from exc
 
     return {
         "active_filter_count": resolved_filters.active_filter_count,

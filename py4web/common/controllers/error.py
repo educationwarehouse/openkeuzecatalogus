@@ -9,14 +9,29 @@ from py4web_debug.internals import ContextDict
 
 import py4web
 from common.fixtures import error_ticket_helper
-from py4web import URL
+from common.models import backend
+from py4web import HTTP, URL
 from shared_code.data_model import AnyDict
-from shared_code.infra.error_tickets import try_store_ticket
 
-ERROR_CACHE_PATH = Path("/shared_cache") / "errors"
 COMMON_PATH = Path("/p4w/common")
 
 IS_DEBUG = is_debug()
+
+
+class FancyHTTP(HTTP):
+    """HTTP exception that renders its body with the common error template."""
+
+    def __init__(self, status: int, body: str, headers: AnyDict | None = None) -> None:
+        """Create an HTTP exception with a rendered error response.
+
+        Args:
+            status: HTTP status code to return.
+            body: Error message to display on the rendered error page.
+            headers: Optional HTTP response headers.
+
+        """
+        body = generic_error_renderer(status, body)
+        super().__init__(status, body, headers=headers)
 
 
 def yatl_render(template: str, templates_path: Path | None = None, **context: t.Any) -> str:
@@ -61,9 +76,7 @@ def error_renderer_5xx(context: ContextDict) -> str:
 
     # note: since py4web 30a558f (release 20250607.2) we don't have access to fixtures (auth/session)
     #  anymore during error rendering.
-    ticket_id = try_store_ticket(t.cast(AnyDict, context), snapshot=error_snapshot)
-
-    # todo: ntfy ?
+    ticket_id = backend.error_tickets.try_store(t.cast(AnyDict, context), snapshot=error_snapshot)
 
     if not (IS_DEBUG or has_authenticated_user):
         # hide details for anonymous users on production

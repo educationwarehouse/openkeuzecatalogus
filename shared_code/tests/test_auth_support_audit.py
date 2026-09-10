@@ -1,6 +1,5 @@
-"""Tests for auth support flows and user audit-log filtering."""
+"""Tests for auth support flows."""
 
-import datetime as dt
 import json
 import typing as t
 import uuid
@@ -12,15 +11,18 @@ from shared_code.data_model import AuthUser, OrganisationEd, Supplier
 from shared_code.data_model.constants import OrganisationType
 from shared_code.modules.auth import AuthAdapter
 from shared_code.modules.auth.module import AuthSupportBackend
-from shared_code.services.applog.handler import all_audit_logs, process_applog_signal, user_audit_logs
 from shared_code.services.mail import MockMailer
 
 
 def _make_auth_support_backend(db: TypeDAL) -> AuthSupportBackend:
+    auth_adapter = AuthAdapter.for_service("pytest.auth_support")
     return AuthSupportBackend.with_injected(
         db=db,
-        auth_adapter=AuthAdapter.for_service("pytest.auth_support"),
-        mailer=MockMailer.from_env(),
+        auth_adapter=auth_adapter,
+        # manually overwrite mailer:
+        mailer=MockMailer.with_injected(
+            auth_adapter=auth_adapter
+        ),
     )
 
 
@@ -218,195 +220,3 @@ def test_auth_support_invite_lifecycle_and_membership_target_resolution(
     assert backend._find_similar_match(exact_normalized_probe, membership_gid) is None
 
     assert backend._find_similar_match("invalid-email-without-at", membership_gid) is None
-
-
-def test_user_audit_logs_matches_nested_details_and_normalized_email(
-    migrated_db_per_file: None,
-    db_per_file: TypeDAL,
-) -> None:
-    """User audit logs should include nested user references and normalized email matches."""
-    assert migrated_db_per_file is None
-
-    target_gid = str(uuid.uuid4())
-    unrelated_gid = str(uuid.uuid4())
-
-    process_applog_signal(
-        db_per_file,
-        name="admin-action",
-        signal_source="pytest",
-        evidence={
-            "kind": "event",
-            "action": "gid-match",
-            "details": {"target_user_gid": target_gid},
-            "admin_email": "admin@example.test",
-        },
-        ts=dt.datetime(2026, 7, 6, 10, 0, 0),
-    )
-    process_applog_signal(
-        db_per_file,
-        name="membership-invite",
-        signal_source="pytest",
-        evidence={
-            "kind": "event",
-            "action": "email-match",
-            "details": {"candidate_email": " TARGET@Example.Test "},
-            "email": "target@example.test",
-        },
-        ts=dt.datetime(2026, 7, 6, 10, 1, 0),
-    )
-    process_applog_signal(
-        db_per_file,
-        name="admin-action",
-        signal_source="pytest",
-        evidence={
-            "kind": "event",
-            "action": "unrelated",
-            "details": {"target_user_gid": unrelated_gid, "candidate_email": "other@example.test"},
-        },
-        ts=dt.datetime(2026, 7, 6, 10, 2, 0),
-    )
-    db_per_file.commit()
-
-    logs = user_audit_logs(
-        db_per_file,
-        user_gid=target_gid,
-        user_email="target@example.test",
-        limit=10,
-    )
-
-    assert [log["name"] for log in logs] == ["membership-invite", "admin-action"]
-    assert [t.cast(dict[str, t.Any], log["evidence"])["action"] for log in logs] == ["email-match", "gid-match"]
-    assert logs[0]["user"] == "target@example.test"
-    assert logs[1]["user"] == "admin@example.test"
-
-
-def test_user_audit_logs_matches_direct_signal_and_evidence_user_references(
-    migrated_db_per_file: None,
-    db_per_file: TypeDAL,
-) -> None:
-    """User audit logs should match direct signal/evidence references and honor the result limit."""
-    assert migrated_db_per_file is None
-
-    target_gid = str(uuid.uuid4())
-    unrelated_gid = str(uuid.uuid4())
-
-    process_applog_signal(
-        db_per_file,
-        name="oldest-signal-user",
-        signal_source="pytest",
-        user_gid=target_gid,
-        ts=dt.datetime(2099, 1, 2, 10, 0, 0),
-    )
-    process_applog_signal(
-        db_per_file,
-        name="middle-related-user",
-        signal_source="pytest",
-        related=target_gid,
-        ts=dt.datetime(2099, 1, 2, 10, 1, 0),
-    )
-    process_applog_signal(
-        db_per_file,
-        name="newest-evidence-user",
-        signal_source="pytest",
-        evidence={
-            "kind": "event",
-            "action": "evidence-user",
-            "user_gid": target_gid,
-            "by_eddie_email": "eddie@example.test",
-        },
-        ts=dt.datetime(2099, 1, 2, 10, 2, 0),
-    )
-    process_applog_signal(
-        db_per_file,
-        name="unrelated-signal-user",
-        signal_source="pytest",
-        user_gid=unrelated_gid,
-        ts=dt.datetime(2099, 1, 2, 10, 3, 0),
-    )
-    db_per_file.commit()
-
-    limited_logs = user_audit_logs(
-        db_per_file,
-        user_gid=target_gid,
-        user_email=None,
-        limit=2,
-    )
-
-    assert [log["name"] for log in limited_logs] == ["newest-evidence-user", "middle-related-user"]
-    assert limited_logs[0]["user"] == "eddie@example.test"
-    assert t.cast(dict[str, t.Any], limited_logs[0]["evidence"])["action"] == "evidence-user"
-    assert str(limited_logs[1]["related"]) == target_gid
-
-    all_matching_logs = user_audit_logs(
-        db_per_file,
-        user_gid=target_gid,
-        user_email=None,
-        limit=10,
-    )
-    assert [log["name"] for log in all_matching_logs] == [
-        "newest-evidence-user",
-        "middle-related-user",
-        "oldest-signal-user",
-    ]
-    assert str(all_matching_logs[2]["user_gid"]) == target_gid
-
-
-def test_all_audit_logs_returns_recent_rows_with_evidence_user_fallbacks(
-    migrated_db_per_file: None,
-    db_per_file: TypeDAL,
-) -> None:
-    """All audit logs should expose evidence payloads, user labels, and newest-first limiting."""
-    assert migrated_db_per_file is None
-
-    older_user_gid = str(uuid.uuid4())
-    newest_related_gid = str(uuid.uuid4())
-
-    process_applog_signal(
-        db_per_file,
-        name="older-direct-user",
-        signal_source="pytest",
-        user_gid=older_user_gid,
-        ts=dt.datetime(2100, 1, 1, 10, 0, 0),
-    )
-    process_applog_signal(
-        db_per_file,
-        name="middle-email-evidence",
-        signal_source="pytest",
-        evidence={
-            "kind": "event",
-            "action": "middle",
-            "email": "middle@example.test",
-        },
-        ts=dt.datetime(2100, 1, 1, 10, 1, 0),
-    )
-    process_applog_signal(
-        db_per_file,
-        name="newest-admin-evidence",
-        signal_source="pytest",
-        evidence={
-            "kind": "event",
-            "action": "newest",
-            "admin_email": "admin@example.test",
-        },
-        related=newest_related_gid,
-        ts=dt.datetime(2100, 1, 1, 10, 2, 0),
-    )
-    db_per_file.commit()
-
-    logs = all_audit_logs(db_per_file, limit=2)
-
-    assert [log["name"] for log in logs] == ["newest-admin-evidence", "middle-email-evidence"]
-    assert logs[0]["user"] == "admin@example.test"
-    assert str(logs[0]["related"]) == newest_related_gid
-    assert t.cast(dict[str, t.Any], logs[0]["evidence"])["action"] == "newest"
-    assert logs[1]["user"] == "middle@example.test"
-    assert t.cast(dict[str, t.Any], logs[1]["evidence"])["action"] == "middle"
-
-    logs_with_older_row = all_audit_logs(db_per_file, limit=3)
-    assert [log["name"] for log in logs_with_older_row] == [
-        "newest-admin-evidence",
-        "middle-email-evidence",
-        "older-direct-user",
-    ]
-    assert str(logs_with_older_row[2]["user"]) == older_user_gid
-    assert logs_with_older_row[2]["evidence"] is None

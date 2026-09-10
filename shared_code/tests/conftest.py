@@ -733,7 +733,7 @@ def education_warehouse_admin_adapter(
 
 
 def _pg_env() -> tuple[dict[str, str], dict[str, str]]:
-    """Return ``(pg_connection_dict, subprocess_env_with_password)`` for pg_dump/pg_restore."""
+    """Return `(pg_connection_dict, subprocess_env_with_password)` for pg_dump/pg_restore."""
     pg = _parse_postgres_uri(os.environ.get("POSTGRES_URI", ""))
     env = {**os.environ, "PGPASSWORD": pg["password"]}
     return pg, env
@@ -842,7 +842,7 @@ def snapshot_session() -> t.Iterator[str]:
 
 @pytest.fixture()
 def snapshot_name() -> str:
-    """Default snapshot name used by ``restored_db``. Override in a local conftest to change."""
+    """Default snapshot name used by `restored_db`. Override in a local conftest to change."""
     return DEFAULT_SNAPSHOT_NAME
 
 

@@ -21,7 +21,7 @@ def test_db_has_tables(migrated_db_per_file: None, db_per_file: TypeDAL) -> None
 
     for table in db_per_file:
         # doesn't need to have values but at least shouldn't crash:
-        db_per_file(table).count()
+        db_per_file(table).select(table.ALL, limitby=(0, 1), orderby="<random>")
 
 
 def test_product_ed_effstatus_roundtrip(migrated_db_per_file: None, db_per_file: TypeDAL) -> None:

@@ -15,7 +15,9 @@ from shared_code.util.time import utcnow
 if t.TYPE_CHECKING:
     from shared_code.data_model import Method, Product
     from shared_code.infra.database import DatabaseContext
+    from shared_code.modules.auth import AuthContext
     from shared_code.modules.catalog_filters import CatalogEntityKind, ResolvedCatalogFilters
+    from shared_code.modules.comparison.types import VisionIds
 
 
 class ApplogEvent(t.TypedDict, total=False):
@@ -26,6 +28,7 @@ class ApplogEvent(t.TypedDict, total=False):
     action: str | None
     details: str | dict
     user_gid: str | None
+    session_gid: str | None
     related: str | UUID | None
     # ...
 
@@ -53,10 +56,24 @@ class ApplogSignal(t.TypedDict):
     related: str | None
 
 
+def selected_extra_field(row: t.Any, field_name: str) -> t.Any | None:
+    """Return a selected non-model field from a regular or joined TypedDAL row."""
+    raw_rows = (getattr(row, "_row", None), *getattr(row, "_rows", ()))
+    for raw_row in raw_rows:
+        if raw_row is None:
+            continue
+        elif field_name in raw_row:
+            return raw_row[field_name]
+        elif field_name in raw_row.get("_extra", {}):
+            return raw_row["_extra"][field_name]
+    return None
+
+
 class Applogger(Service, abc.ABC):
     """Abstract app logger contract with shared event helpers."""
 
     db: DatabaseContext
+    auth: AuthContext
 
     @abc.abstractmethod
     def fire(self, event: ApplogEvent) -> bool:
@@ -68,6 +85,8 @@ class Applogger(Service, abc.ABC):
         try:
             if "timestamp" not in event:
                 event["timestamp"] = utcnow()
+            if not event.get("session_gid"):
+                event["session_gid"] = self.auth.session_gid
             return self.fire(event)
         except Exception as e:
             print(f"[applog] failed with {e}")
@@ -99,6 +118,14 @@ class Applogger(Service, abc.ABC):
             None,
         )
         pagination = rows.pagination
+
+        result_scores = [
+            {
+                "id": row.id,
+                "score": selected_extra_field(row, "search_rank"),
+            }
+            for row in rows
+        ]
         return self.try_fire(
             {
                 "kind": "event",
@@ -112,12 +139,57 @@ class Applogger(Service, abc.ABC):
                     ],
                     "result_count": pagination["total_items"],
                     "result_ed_ids": [row.id for row in rows],
+                    "result_scores": result_scores,
                     "pagination": {
                         "current_page": pagination["current_page"],
                         "total_pages": pagination["total_pages"],
                     },
                 },
             },
+        )
+
+    def log_catalog_compare(
+        self,
+        entity_kind: CatalogEntityKind,
+        *,
+        requested_gids: t.Sequence[str],
+        rows: t.Iterable[t.Any],
+        vision_ids: VisionIds,
+    ) -> bool:
+        """Log the requested catalogue records and their resolved revisions."""
+        return self.try_fire(
+            {
+                "kind": "event",
+                "action": "catalog_compare",
+                "details": {
+                    "entity_kind": entity_kind,
+                    "requested_gids": list(requested_gids),
+                    "result_ed_ids": [row.id for row in rows],
+                    "vision_ed_ids": vision_ids,
+                },
+            }
+        )
+
+    def log_catalog_detail(
+        self,
+        entity_kind: CatalogEntityKind,
+        *,
+        requested_gid: str,
+        row: t.Any,
+        vision_ids: t.Sequence[int | None],
+    ) -> bool:
+        """Log one successfully resolved public catalogue detail view."""
+        return self.try_fire(
+            {
+                "kind": "event",
+                "action": "catalog_detail",
+                "details": {
+                    "entity_kind": entity_kind,
+                    "requested_gid": requested_gid,
+                    "result_ed_id": row.id,
+                    "vision_ed_ids": list(vision_ids),
+                },
+            }
         )
 
     def refresh_catalog_search_report(self) -> None:

@@ -40,7 +40,7 @@ def test_image_storage_from_env_uses_local_mock(monkeypatch: MonkeyPatch, tmp_pa
     monkeypatch.setenv("IMAGE_STORAGE_FAKE", "1")
     monkeypatch.setenv("IMAGE_STORAGE_MOCK_PATH", str(tmp_path))
 
-    storage = ImageStorage.from_env()
+    storage = ImageStorage.with_injected()
 
     assert isinstance(storage, MockImageStorage)
     assert storage.storage_path == tmp_path

@@ -3,7 +3,7 @@
 from py4web.utils.auth import Auth
 from py4web.utils.auth_plugins import OAuth2
 
-from py4web import URL
+from py4web import URL, redirect, request
 from shared_code.infra.web import PY4WEB_URL
 from shared_code.services.entree import EntreeOAuthService
 
@@ -71,6 +71,18 @@ class OAuth2Kennisnet(OAuth2):
             return None
 
         return self.service.fetch_normalized_userinfo(userinfo_url=self.userinfo_url, token=token)
+
+    def handle_request(self, auth: Auth, path: str, get_vars: dict, post_vars: dict) -> None:
+        """Preserve explicit next targets while leaving the default redirect role-aware."""
+        if path == "login":
+            if next_url := request.query.get("next"):
+                auth.session["_next"] = next_url
+            else:
+                auth.session.pop("_next", None)
+
+            return redirect(self.get_login_url())
+
+        return super().handle_request(auth, path, get_vars, post_vars)
 
 
 def setup_entree_plugin(service: EntreeOAuthService, auth: Auth) -> None:

@@ -9,6 +9,8 @@ from .importer_run import ImporterRun, ImporterRunCountStat, ImporterRunErrorSta
 from .method import Method, MethodEd
 from .organisation import Organisation, OrganisationEd
 from .product import Product, ProductEd
+from .search_rank_weight import SearchRankWeight
+from .static_content import StaticContent
 from .supplier import Supplier, SupplierEd
 from .tagged import Tagged, TaggedEd
 from .vision import Vision, VisionEd
@@ -29,7 +31,9 @@ __all__ = [
     "OrganisationEd",
     "Product",
     "ProductEd",
+    "SearchRankWeight",
     "Signal",
+    "StaticContent",
     "Supplier",
     "SupplierEd",
     "Tagged",

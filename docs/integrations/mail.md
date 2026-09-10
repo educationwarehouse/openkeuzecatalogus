@@ -9,12 +9,13 @@ Runtime behavior:
 - `Mailer.send(..., blocking=True)` sends directly in-process.
 
 Queue processing:
-- PGQ consumer entrypoint: `send_email_message` in `pgq/consumers/applog.py`.
-- The consumer resolves `Mailer.with_injected(db=db)` and calls `mailer.send_email_message(...)`.
+- PGQ consumer entrypoint: `send_email_message` in `pgq/consumers/maintenance.py`.
+- The maintenance consumer opens a dedicated backend context and calls
+  `backend.mailer.send_email_message(...)`.
 
 ## Transport Selection
 
-`Mailer.from_env(db)` chooses implementation via `SMTP_FAKE`:
+`Mailer.from_env()` chooses implementation via `SMTP_FAKE`:
 - `SMTP_FAKE=1`: `MockMailer` (writes JSONL messages for tests/dev).
 - `SMTP_FAKE=0`: `SMTPMailer` (real SMTP transport).
 

@@ -3,7 +3,7 @@
 import abc
 import typing as t
 
-from endow.policy import Allow, AuthorizationResult, BasePolicy
+from endow.policy import Allow, AuthorizationResult, BasePolicy, Deny
 from typedal import QueryBuilder, TypedTable
 from typedal.helpers import classproperty
 
@@ -23,6 +23,10 @@ class ReusablePolicy(BasePolicy, abc.ABC):
     def request_read(self) -> AuthorizationResult:
         """Return the authorization result for a read request."""
         ...
+
+    def request_update(self) -> AuthorizationResult:
+        """Return the authorization result for an update request."""
+        return Deny("Write access is not available for this resource.")
 
     def _membership_object_ids_for_table(self, table_name: str) -> list[str]:
         """Return recursive membership object ids for the current actor and table."""
@@ -72,26 +76,27 @@ class ReusablePolicy(BasePolicy, abc.ABC):
             ),
         )
 
+    def _request_update_from_permissions[T: BaseTable](self) -> AuthorizationResult[QueryBuilder[T]]:
+        """Build an update scope from the current actor's inherited RBAC permissions."""
+        if self.auth.is_service() or self.auth.is_admin():
+            return Allow(apply=lambda query: query)
+
+        permitted_gids = self.auth.permitted_object_ids("write")
+        return Allow(apply=lambda query: query.where(lambda table: table.gid.belongs(permitted_gids)))
+
     def require_read(self) -> Allow:
         """Require read access and return the enforced authorization result."""
         return self.request_read().require()
 
-    # todo: same for
-    # request_update()
-    # request_delete()
-    # request_create()
+    def require_update(self) -> Allow:
+        """Require update access and return the enforced authorization result."""
+        return self.request_update().require()
 
 
 class TypeDALPolicyMixin[T: TypedTable]:
     """Mixin that binds a policy object to a typed DAL model."""
 
     policy: ReusablePolicy
-
-    # todo: finish
-    # request_read() -> AuthorizedRead[T]
-    # request_update() -> AuthorizedUpdate[TEdit]
-    # request_delete() -> AuthorizedDelete[T]
-    # request_create() -> AuthorizedCreate[TCreate]
 
     @classproperty
     def model(cls) -> type[T]:
@@ -109,3 +114,13 @@ class TypeDALPolicyMixin[T: TypedTable]:
         builder = self.model.permissions(read=True, insert=False, update=False, delete=False)
 
         return authz(builder)
+
+    def request_update(self) -> QueryBuilder[T]:
+        """Request update access for the bound model."""
+        authz: Allow[QueryBuilder[T]] = self.policy.require_update()
+
+        builder = self.model.permissions(read=True, insert=False, update=True, delete=False)
+
+        return authz(builder)
+
+    # todo: add request_create() and request_delete() policy contracts

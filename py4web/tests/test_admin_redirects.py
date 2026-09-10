@@ -20,7 +20,7 @@ from py4web import request
     ],
 )
 def test_find_next_allows_only_local_or_app_domain_urls(
-    other_app_request_context: None, monkeypatch: pytest.MonkeyPatch, next_url: str, expected: str
+    admin_app_request_context: None, monkeypatch: pytest.MonkeyPatch, next_url: str, expected: str
 ) -> None:
     """Only local paths and the configured domain's subdomains are allowed."""
     monkeypatch.setenv("HOSTINGDOMAIN", "example.test")

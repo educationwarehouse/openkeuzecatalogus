@@ -1,4 +1,4 @@
-"""Smoke tests for database fixtures in ``shared_code/tests/conftest.py``."""
+"""Smoke tests for database fixtures in `shared_code/tests/conftest.py`."""
 
 from typedal import TypeDAL
 

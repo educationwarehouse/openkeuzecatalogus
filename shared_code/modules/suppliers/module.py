@@ -7,7 +7,7 @@ from typedal import PaginatedRows, QueryBuilder
 
 from shared_code.data_model.tables import AuthUser, Supplier
 from shared_code.infra.database.policy import TypeDALPolicyMixin
-from shared_code.modules.auth.contract import AuthContext
+from shared_code.modules.auth import AuthContext
 from shared_code.modules.suppliers.policy import SupplierPolicy
 from shared_code.util.email import extract_email_domain
 
@@ -45,6 +45,11 @@ class SupplierBackend(Domain, TypeDALPolicyMixin[Supplier]):
     def list_my_suppliers(self) -> QueryBuilder[Supplier]:
         """Return suppliers visible to the current actor."""
         return self.request_read()
+
+    def get_my_supplier(self, supplier_gid: str) -> Supplier | None:
+        """Return one supplier after applying the actor's access policy."""
+        builder = self.request_update()
+        return builder.where(gid=supplier_gid).first()
 
     def list_public_suppliers(self) -> PaginatedRows[Supplier]:
         """Return (active) subppliers, selecting only public fields."""

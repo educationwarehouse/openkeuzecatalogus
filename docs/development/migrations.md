@@ -150,3 +150,115 @@ For the runtime and policy model, see [Auth and RBAC](../architecture/auth-rbac.
 - Re-run intentionally with same schema version:
   - Remove the matching `.complete` lock file in `./migrate/flags` first; 
 - You can also run `edwh migrate --force` to automatically remove those flag files before migrating.
+
+## Writing a New Migration
+
+### Naming and Placement
+
+- Function name: `descriptive_name_YYYYMMDD_NNN` (for example `create_supplier_ed_20260521_001`).
+- The date suffix makes migrations chronologically identifiable; `_NNN` is the sequence number within that day.
+- Keep names unique across the whole file; the full function name is the identity stored in `ewh_implemented_features`.
+- **Append new migrations at the end of `migrations.py`.** With the default ordering mode, execution order follows definition order in the file, not the date in the name. The date suffix documents intent; file position guarantees order.
+- The helper migration `create_utcnow_helper_20060000_001` combines both guarantees: it is first in the file *and* uses a date far in the past, so it sorts before all dated migrations under either ordering mode.
+
+### Function Skeleton
+
+```python
+@migration()
+def do_something_20260728_001(db: TypeDAL) -> bool:
+    """One-line summary of the schema change."""
+    db.executesql("""
+                  ALTER TABLE ...
+                  """)
+    db.commit()
+    return True
+```
+
+- Decorate with `@migration()` (or `@migration`); both register the function.
+- Every migration receives `db: TypeDAL`, ends with `db.commit()`, and returns `True` on success.
+- Keep the docstring to one line describing the *why*; multi-line only when columns or behavior need explanation.
+- Reusable logic belongs in `shared_code/migrations/migration_support/`, not inline in `migrations.py`. Add a per-entity module there when a new entity family needs one.
+
+### SQL Conventions
+
+- Pass dynamic values with `%(name)s` placeholders and `placeholders=dict(...)`; never with f-string interpolation (see [Database](database.md)).
+- T-strings (`t"SELECT ... WHERE gid = {gid}"`) are an accepted alternative for parameterized values.
+- F-strings are only acceptable for SQL *identifiers* (table, role, index names) from controlled sources, annotated with `# noqa S608` (see `create_superset_readonly_user_20260622_001`).
+- Do not make migrations defensively idempotent. A migration runs once; on failure it is recorded as failed and retried on the next run. Plain `CREATE TABLE` is preferred so conflicts surface as errors.
+- Use `IF NOT EXISTS` only when the object can legitimately pre-exist (example: the applog tables shared with the ontwikkelstraat, or roles in a test environment).
+- Index naming: `idx_<table>_<purpose>` for lookup indexes, `<table>_<columns>` for supporting indexes, `<table>_<column>_unique` for unique indexes. Unique constraints on `_ed` tables are named `<table>_unique_sync_gid`.
+
+### Effective-Dated Tables (`_ed`)
+
+For the semantics, see [Effective-dated models](../architecture/effective-dated-models.md). When creating a new `_ed` source table, follow the standard shape:
+
+- Standard columns: `id serial PRIMARY KEY`, `gid uuid NOT NULL DEFAULT uuidv4()`, `effdt timestamp DEFAULT utcnow()`, `effstatus boolean DEFAULT TRUE`, `prio integer DEFAULT 0`, `last_saved_by varchar`, `created_at`/`updated_at timestamp DEFAULT CURRENT_TIMESTAMP`.
+- `sync_gid uuid DEFAULT uuidv7() NOT NULL` with `CONSTRAINT <table>_unique_sync_gid UNIQUE` — this is the row-level upsert key for sync/import.
+- Standard indexes:
+  - `<table>_id_effdt ON <table> (gid ASC, effdt DESC, id ASC)`
+  - `idx_<table>_effdt_lookup ON <table> (effdt DESC, gid ASC, prio DESC, effdt DESC) INCLUDE (id)`
+- Wrap the `CREATE TABLE` in the matching model manager (`with ProductModelWithPrio_V1(db):`) so the `_model` projection is created alongside.
+
+### View and Model Managers (`ViewMigrationManager`)
+
+All `ViewMigrationManager` subclasses share the same lifecycle: entering the `with` block runs `down()` (drop), leaving it runs `up()` (recreate). Two families exist.
+
+**Model managers** for effective-dated pairs: `ProductModelWithPrio_V1`, `SupplierModelWithPrio_V1`, `MethodModelWithPrio_V1`, `VisionModelWithPrio_V1`, `TaggedModelWithPrio_V1`, `OrganisationModelWithPrio_V1` (importable from `shared_code.migrations.migration_support`).
+
+Use `with <Entity>ModelWithPrio_V1(db):` around **any DDL that alters the `_ed` table** (adding/dropping columns, changing types). `up()` recreates the `_model` table via `create_effdted_model_view_with_prio_v4`, its indexes, and refills it.
+
+**Report managers** for standalone (materialized) views: for example `CatalogSearchReport_V1`, `LocationsWithoutOrganisationMappingReport_V1` (in `migration_support/catalog_search_report.py` and `migration_support/school_data_quality_reports.py`, imported directly from their module).
+
+Use them with an empty block to create or rebuild the view:
+
+```python
+@migration()
+def create_catalog_search_report_20260713_005(db: TypeDAL) -> bool:
+    """Create the materialized report for catalog search activity."""
+    with CatalogSearchReport_V1(db):
+        pass
+    db.commit()
+    return True
+```
+
+**Manager versioning.** When a view definition changes, do not edit the existing manager class. Add a suffixed class with the new definition, and set `until` on the old class to the migration that introduces its successor. The suffix indicates the nature of the change:
+
+- **`_V1b`, `_V1c`, ...**: non-breaking changes to the same database object. The view or function name stays the same; the Python class version tracks the evolution of the definition. Use this when adding a column, changing a WHERE clause, or otherwise modifying the query without renaming the database object.
+- **`_V2`, `_V3`, ...**: breaking changes that also rename the database object (for example `some_view_v1` → `some_view_v2`). Use this when the query shape or output schema changes so fundamentally that downstream consumers need to adapt.
+
+The manager attributes controlling lifecycle:
+
+- `since`: migration that must have run before this manager becomes active (for model managers: the migration creating the `_ed` table). The manager is a no-op before that point.
+- `until`: migration after which this manager must no longer act. The old version is a no-op once its successor migration has run.
+- `uses`: the managers this view depends on (for example a report reading from `organisation_model`). When a dependency is rebuilt, this view is torn down first and rebuilt after, so it always reflects the refreshed dependency.
+
+This keeps dependent trigger/function/model structures consistent with altered source tables, and old migrations replayable, without hand-written teardown.
+
+### Bulk Operations
+
+- Use `with no_triggers(db):` around bulk inserts/updates on `_ed` tables. It sets `session_replication_role = replica`, so the per-row `_model` refresh trigger is skipped.
+- **After a `no_triggers` bulk operation, always rebuild**: `rebuild_all_materialized_tables_v1(db)`. Pass `extra=["recursive_tables"]` when organisation hierarchy tables are affected, or `dependency_order=[...]` when rebuild order matters.
+- Use `simple_progress(rows)` when iterating large batches so migration logs show progress. It is a minimal progress counter (a "poorman's tqdm") that prints coarse updates (every 1000 rows) to stderr; it does not support live-updating progress bars, and in Docker Compose `migrate` containers the stderr output may be buffered or delayed because of the container's stdout streaming setup.
+
+### Dependencies
+
+- Use `@migration(requires=other_migration_function)` when execution order cannot be guaranteed by file position alone, for example a cross-domain dependency (see `create_superset_readonly_user_20260622_001`).
+- `requires` accepts a function reference or a function name; prefer the function reference so renames fail loudly.
+
+### Environment-Dependent Migrations
+
+- Migrations that depend on optional environment configuration must **skip gracefully**: check the variable, print `[migrate] ...` and `return True` (see `seed_data_from_old_server_json_20260526_001`). Skipping counts as success and is recorded as such.
+- Migrations with a hard requirement may read `os.environ[...]` directly; a missing variable then fails the migration and it is retried on the next run (see `create_superset_readonly_user_20260622_001`). Choose deliberately between the two patterns.
+
+### Helper Inventory
+
+Importable from `shared_code.migrations.migration_support`:
+
+| Helper | Purpose |
+|---|---|
+| `create_effdted_model_view_with_prio_v4(db, table)` | Create `_model` table, `get_active_<table>()`, triggers, `rebuild_<model>()` for an `_ed` table |
+| `upsert_index_v1(db, table, columns, unique=, include=)` | Drop and recreate an index named `idx_<table>_<columns>` |
+| `drop_table_or_mv(db, name)` | Drop a table or materialized view, whichever exists |
+| `no_triggers(db)` | Context manager: disable triggers for bulk operations |
+| `rebuild_all_materialized_tables_v1(db, exceptions=, extra=, dependency_order=)` | Rebuild all `*_model` tables |
+| `simple_progress(items, every=1000)` | Yield items with progress output for large batches |

@@ -120,11 +120,16 @@ reference values from earlier ones.
 8. **Applog credentials**: `PY4WEB_APPLOG_ID/KEY`, `TOOLS_APPLOG_ID/KEY`
    - IDs use `hosting_domain`; keys are random
 9. **Crypto seeds**: `EMAIL_VERIFICATION_SEED`, `DEFAULT_FROM_ADDRESS`
-10. **Notifications**: `NTFY_ERROR_URL`, `NTFY_WARNING_URL`, `NTFY_SORT_URL`
-    - Defaults use `prefix="https://ntfy.sh/"` + hostname-based channel names
+10. **Error signals and notifications**: `ERROR_SIGNAL_BACKEND`,
+    `ERROR_SIGNAL_QUEUE_PATH`, `NTFY_WARNING_URL`, `NTFY_SORT_URL`
+    - Development defaults to the `mock` backend and adds
+      `ERROR_SIGNAL_MOCK_PATH`
+    - Other environments default to `ntfy` and add `NTFY_ERROR_URL`
+    - Ntfy defaults use `prefix="https://ntfy.sh/"` + hostname-based channel names
 11. **Data services**: `REDIS_PORT`, `POSTGRES_USERNAME`, `POSTGRES_PASSWORD`,
     `PGPOOL_PORT`, `POSTGRES_DATABASE`, `INSIDE_DOCKER_POSTGRES_URI`,
-    `OUTSIDE_DOCKER_POSTGRES_URI`, `INSIDE_DOCKER_PG_DUMP_URI`, `PGSTATS_PORT`
+    `OUTSIDE_DOCKER_POSTGRES_URI`, `INSIDE_DOCKER_PG_DUMP_URI`,
+    `SUPERSET_DB_USER`, `SUPERSET_DB_PASSWORD`, `PGSTATS_PORT`
     - Ports use `edwh.tasks.next_value()` to avoid collisions
     - URIs compose earlier values via f-strings
 12. **Object storage (Backblaze B2)**: `B2_ATTACHMENTS_BUCKETNAME/KEYID/KEY`,
@@ -132,14 +137,18 @@ reference values from earlier ones.
 13. **Mailgun**: `MAILGUN_DOMAIN/API_KEY/NEXT_RETRY_DELAY_EXPRESSION/MAX_RETRIES`
 14. **Upload retry**: `UPLOAD_MAX_RETRIES`, `UPLOAD_NEXT_RETRY_DELAY_EXPRESSION`
 15. **Docker tag**: `DOCKER_TAG`
-16. **Misc**: `EDDIE_EMAIL`, `PGQ_WORKERS`
-17. **Sub-tasks** (called inline):
+16. **Runtime and worker settings**: `EDDIE_EMAIL`, `PGQ_WORKERS`,
+    `PY4WEB_SESSION_SECRET`, and development-only `PY4WEB_RESTART_SECRET`
+17. **Entree OIDC**: `ENTREE_CLIENT_ENDPOINT`, `ENTREE_CLIENT_ID`,
+    `ENTREE_CLIENT_SECRET`
+18. **Sub-tasks** (called inline):
     - `setup_migrate_seed(use_default)` - `MIGRATE_SEED_BASE_URL`, `MIGRATE_SEED_BEARER_TOKEN`
     - `setup_testing_snapshot(use_default)` - `TESTING_SNAPSHOT_URL`
     - `setup_py4web_password(use_default)` - generates password, writes to `password.txt` + `.env`
     - `setup_smtp(dotenv_path, sod)` - `SMTP_FAKE`, `SMTP_SERVER/PORT/SENDER/USER/PASSWORD/TLS/SSL`
+    - `setup_image_storage(sod, use_default)` - fake/local or S3-compatible image-storage settings
     - `uptimerobot_autoadd()` - auto-adds monitors via plugin
-18. **Permissions & file secrets**: `chown`, `set_permissions`, `generate_jwt_key()`,
+19. **Permissions & file secrets**: `chown`, `set_permissions`, `generate_jwt_key()`,
     `bundler_build()`
 
 New environment variables may be added as features evolve. The `setup` task is designed to be re-runnable so new keys are prompted on next invocation.
@@ -151,6 +160,7 @@ Set via `tasks.py:StateOfDevelopment` (see [local-setup.md](local-setup.md) for 
 | Variable | ONT/TEST | DEMO/PRD |
 |----------|----------|---------------|
 | `ACCEPT_DEFAULTS` | offered (default: 1) | not offered |
+| `ERROR_SIGNAL_BACKEND` | `mock` | `ntfy` |
 | `SMTP_FAKE` | 1 | 0 |
 | `PY4WEB_DEBUG_MODE` | 1 | 0 |
 | `PY4WEB_REPLICAS` | 1 | 3 |
@@ -186,7 +196,7 @@ Container runtime  (os.environ has all declared vars)
 - Docker Compose reads `.env` from the project directory automatically.
 - `environment:` blocks in `docker-compose.yml` reference `${VAR}` or `${VAR:-default}`.
 - The `*shared_environment` YAML anchor is reused across `migrate`, `py4web`, `pgq-*`, and `playwright` services, so every service gets all configured env vars.
-- `SERVICE_NAME` is set per Compose service so applog events can attribute work to `migrate`, `py4web`, `pgq-scrapers`, `pgq-applog`, or `playwright` instead of relying on the container hostname.
+- `SERVICE_NAME` is set per Compose service so applog events can attribute work to `migrate`, `py4web`, `pgq-scrapers`, `pgq-applog`, `pgq-maintenance`, or `playwright` instead of relying on the container hostname.
 
 ### Troubleshooting Variable Interpolation
 

@@ -687,7 +687,7 @@ class BaseEduVImporter(AbstractImporter, abc.ABC):
                 {
                     str(level)
                     for row in product_rows
-                    for level in t.cast(list[str], row.get("levels", []))
+                    for level in row.get("levels", [])
                     if isinstance(level, str) and level
                 }
             )
@@ -695,7 +695,7 @@ class BaseEduVImporter(AbstractImporter, abc.ABC):
                 {
                     str(level)
                     for row in product_rows
-                    for level in t.cast(list[str], row.get("level_x_year", []))
+                    for level in row.get("level_x_year", [])
                     if isinstance(level, str) and level
                 }
             )
@@ -703,7 +703,7 @@ class BaseEduVImporter(AbstractImporter, abc.ABC):
                 {
                     str(subject)
                     for row in product_rows
-                    for subject in t.cast(list[str], row.get("subjects", []))
+                    for subject in row.get("subjects", [])
                     if isinstance(subject, str) and subject
                 }
             )
@@ -714,7 +714,7 @@ class BaseEduVImporter(AbstractImporter, abc.ABC):
                 {
                     entry
                     for row in product_rows
-                    for entry in t.cast(list[str], row.get("digital_folio_mix", []))
+                    for entry in row.get("digital_folio_mix", [])
                     if isinstance(entry, str) and entry
                 }
             )

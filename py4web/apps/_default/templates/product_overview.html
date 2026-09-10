@@ -7,21 +7,36 @@
                 Leermiddelen
             </span>
             <h1 class="display-5 fw-bold mb-3">Productoverzicht</h1>
-            <p class="lead text-secondary mb-0">Vergelijk producten op vorm, prijsindicatie en aanvullende digitale
-                                                mogelijkheden.</p>
+            <edwh-editable id="product-overview-introduction">
+                <p class="lead text-secondary mb-0">Vergelijk producten op vorm, prijsindicatie en aanvullende digitale
+                                                    mogelijkheden.</p>
+            </edwh-editable>
         </div>
         <div class="col-lg-5">
             <div class="card border-0 bg-body-tertiary shadow-sm">
                 <div class="card-body p-4">
                     <p class="text-uppercase small fw-semibold text-secondary mb-2">Overzicht</p>
-                    <p class="mb-0 text-secondary">
-                        Vergelijk productvormen, prijsindicaties en aanvullende digitale ondersteuning.
-                    </p>
+                    <edwh-editable id="product-overview-summary">
+                        <p class="mb-0 text-secondary">
+                            Vergelijk productvormen, prijsindicaties en aanvullende digitale ondersteuning.
+                        </p>
+                    </edwh-editable>
                 </div>
             </div>
         </div>
     </div>
 </section>
+
+<aside class="comparison-tray shadow-lg" data-comparison-kind="product" hidden>
+    <div class="comparison-header">
+        <span class="small text-uppercase fw-semibold">Selectie</span>
+        <strong><span class="comparison-count">0</span> producten</strong>
+    </div>
+    <ul class="comparison-items list-unstyled mb-3"></ul>
+    <a class="btn btn-dark w-100 disabled comparison-link" aria-disabled="true">
+        Vergelijk geselecteerde producten
+    </a>
+</aside>
 
 <section class="row g-4 align-items-start">
     <div class="col-12 col-lg-5 col-xxl-4">

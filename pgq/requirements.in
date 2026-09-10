@@ -9,7 +9,7 @@
 # === Parsing / Content / Metadata ===
 onixcheck
 python-dotenv
-scrapy~=2.13.0
+scrapy~=2.17.0
 scrapy-playwright
 tqdm
 xmltodict
@@ -17,3 +17,6 @@ zeep
 
 # === Tooling / Test ===
 pytest-asyncio
+
+### security bumps ###
+twisted >= 26.4.0

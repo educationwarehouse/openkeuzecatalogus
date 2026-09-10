@@ -4,6 +4,7 @@ import json
 import typing as t
 from pathlib import Path
 
+from shared_code.modules.auth import AuthAdapter
 from typedal import TypeDAL
 
 from shared_code.services.mail import Mailer, MockMailer, SMTPMailer
@@ -40,6 +41,7 @@ def test_mailer_uses_fake_sender_and_writes_inbox(db_psql: TypeDAL) -> None:
 
 def test_smtp_mailer_from_env_splits_host_and_port(monkeypatch: MonkeyPatch, db_psql: TypeDAL) -> None:
     """SMTP server env may include host:port and should split correctly."""
+    monkeypatch.setenv("SMTP_FAKE", "0")
     monkeypatch.setenv("SMTP_SERVER", "smtp.example.com:2525")
     monkeypatch.delenv("SMTP_PORT", raising=False)
     monkeypatch.setenv("SMTP_USER", "mailer@example.com")
@@ -47,7 +49,11 @@ def test_smtp_mailer_from_env_splits_host_and_port(monkeypatch: MonkeyPatch, db_
     monkeypatch.setenv("SMTP_TLS", "1")
     monkeypatch.setenv("SMTP_SSL", "0")
 
-    mailer = SMTPMailer.from_env()
+    mailer = Mailer.with_injected(
+        auth_adapter=AuthAdapter.for_service("pytest.smtp_mailer")
+    )
+
+    assert isinstance(mailer, SMTPMailer)
 
     assert mailer.host == "smtp.example.com"
     assert mailer.port == 2525
@@ -65,11 +71,44 @@ def test_smtp_mailer_from_env_with_incomplete_config_raises_oserror(monkeypatch:
     monkeypatch.delenv("SMTP_PASSWORD", raising=False)
 
     try:
-        SMTPMailer.from_env()
+        SMTPMailer.from_env() # noqa: EW002 - this is on purpose
     except OSError as exc:
         assert str(exc) == "Incomplete SMTP Config"
     else:  # pragma: no cover
         raise AssertionError("Expected OSError for incomplete SMTP config")
+
+
+def test_mailer_from_env_stores_ticket_when_smtp_delivery_fails(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
+    """The contract factory must safely handle SMTP transport errors."""
+    error_cache_path = tmp_path / "errors"
+    monkeypatch.setenv("SMTP_FAKE", "0")
+    monkeypatch.setenv("SMTP_SERVER", "smtp.example.com")
+    monkeypatch.setenv("SMTP_PORT", "65536")
+    monkeypatch.setenv("SMTP_USER", "mailer@example.com")
+    monkeypatch.setenv("SMTP_PASSWORD", "secret")
+    monkeypatch.setenv("SMTP_TLS", "0")
+    monkeypatch.setenv("SMTP_SSL", "0")
+    monkeypatch.setenv("APPLICATION_NAME", "mailer-tests")
+    monkeypatch.setenv("HOSTINGDOMAIN", "example.test")
+    monkeypatch.setenv("PROJECT", "tests")
+    monkeypatch.setenv("PROJECT", "tests")
+    monkeypatch.setenv("ERROR_CACHE_PATH", str(error_cache_path))
+    monkeypatch.setenv("ERROR_SIGNAL_QUEUE_PATH", str(tmp_path / "error-signals"))
+
+    mailer = Mailer.with_injected(
+        auth_adapter=AuthAdapter.for_service("pytest.mailer"),
+    )
+    assert isinstance(mailer, SMTPMailer), "wrong mailer selected"
+
+    sent = mailer.send(
+        to="recipient@example.com",
+        subject="failed delivery",
+        body="This must create an error ticket.",
+        blocking=True,
+    )
+
+    assert sent is False
+    assert len(list(error_cache_path.glob("*.toml"))) == 1
 
 
 def test_mock_mailer_writes_tuple_body_reply_to_cc_and_headers(tmp_path: Path, db_psql: TypeDAL) -> None:

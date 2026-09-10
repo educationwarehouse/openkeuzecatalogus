@@ -22,3 +22,7 @@ class SupplierPolicy(ReusablePolicy):
     def request_read(self) -> AuthorizationResult[QueryBuilder[Supplier]]:
         """Return the read scope for supplier queries."""
         return self._request_read_from_recursive_memberships("supplier_model")
+
+    def request_update(self) -> AuthorizationResult[QueryBuilder[Supplier]]:
+        """Return the supplier rows the current actor may update."""
+        return self._request_update_from_permissions()

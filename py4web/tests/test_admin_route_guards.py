@@ -7,8 +7,8 @@ from pathlib import Path
 CONTROLLERS_DIR = Path(__file__).resolve().parents[1] / "apps" / "admin" / "controllers"
 ALLOWED_ADMIN_ROUTE_FIXTURES: dict[str, str | set[str]] = {
     "admin": "*",
+    "admin_or_supplier": "*",
     "common": {"stop_impersonate"},
-    # later: supplier-specific etc.
 }
 
 

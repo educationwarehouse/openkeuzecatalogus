@@ -23,6 +23,7 @@ plumbum < 2
 # === Parsing / Content / Metadata ===
 b2sdk<3
 beautifulsoup4
+html5lib
 is-isbn
 iso3166
 markdown2

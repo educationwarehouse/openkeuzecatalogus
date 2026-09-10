@@ -76,7 +76,7 @@ type GridSearchQueryValidator = t.Callable[[str], tuple[str, str | None]]
 type GridSearchQuery = tuple[str, t.Callable[[str], Query], GridSearchQueryValidator | None]
 type GridSearchQueries = t.Sequence[GridSearchQuery] | t.Literal["auto"] | None
 type GridColumn = Field | Expression | FieldVirtual | Column
-type GridColumns = t.Sequence[GridColumn] | None
+type GridColumns = t.Sequence[GridColumn | None] | None
 type GridOrderBy = OrderBy | t.Sequence[OrderBy] | None
 type GridGroupBy = GroupBy | t.Sequence[GroupBy] | None
 type GridLeft = Expression | t.Sequence[Expression] | None
@@ -234,7 +234,11 @@ class Grid:
         self.number_of_pages = 0
         self.page_end = 0
         self.page_start = 0
-        self.query_parms = safely(lambda: request.params, default={})
+        self.query_parms = {
+            key: value
+            for key, value in safely(lambda: request.params, default={}).items()
+            if key not in {"_formkey", "_formname", "formkey", "formname"}
+        }
         self.record_id = None
         self.rows: Rows | None = None
         self.tablename = None

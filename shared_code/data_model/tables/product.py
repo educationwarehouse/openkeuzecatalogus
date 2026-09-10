@@ -4,25 +4,19 @@ import datetime as dt
 import typing as t
 
 from pydal.validators import IS_FLOAT_IN_RANGE, IS_IN_SET, IS_NULL_OR
-from typedal import QueryBuilder, Ref, relationship
+from typedal import Ref, relationship
 from typedal.fields import TypedField, UUIDField
-from typedal.types import Query
+from typedal.helpers import classproperty
 
+from shared_code.data_model.constants import PRODUCT_COMPOSITION_LABELS
 from shared_code.data_model.fields import OptionalUUIDField
-from shared_code.data_model.mixins.search import SearchMixin
+from shared_code.data_model.mixins.search import RankedSearchMixin
 from shared_code.data_model.representers import comma_separated
 from shared_code.data_model.tables.base import BaseTable
 from shared_code.data_model.tables.shared_product import SharedProductField
 
 if t.TYPE_CHECKING:
     from shared_code.data_model import Method, Supplier  # noqa F401; used by relationship()
-
-
-PRODUCT_COMPOSITION_LABELS = {
-    "package": "Productpakket",
-    "single": "Los product",
-    "component": "Onderdeel (niet los verkrijgbaar)",
-}
 
 
 class ProductEd(BaseTable, SharedProductField):
@@ -53,41 +47,19 @@ class ProductEd(BaseTable, SharedProductField):
     sale_unit_size = TypedField(int | None, label="Verkoopeenheid Grootte")
     supported_until_date = TypedField(dt.date | None, label="Ondersteund Tot")
 
+    @classproperty
+    def admin_grid(cls) -> str:
+        """Return the admin grid identifier for products."""
+        return "products"
 
-class Product(ProductEd, SearchMixin, search_fields=("name", "olid")):
+
+class Product(ProductEd, RankedSearchMixin, search_fields=("name", "olid")):
     """Current product model view."""
 
     method = relationship(
         Ref["Method"],
         condition=lambda product, method: product.method_gid == method.gid,
     )
-
-    @classmethod
-    def apply_search(cls, search: str, builder: QueryBuilder[t.Self]) -> QueryBuilder[t.Self]:
-        """Apply text search, including related method and supplier matches via SearchMixin."""
-        from shared_code.data_model.tables.method import Method
-        from shared_code.data_model.tables.supplier import Supplier
-
-        def extra_conditions(part: str) -> list[Query]:
-            search_part = (part or "").strip()
-            if not search_part:
-                return []
-
-            method_gids = Method.apply_search(
-                search_part,
-                Method.select(Method.gid),
-            ).to_sql()
-            supplier_gids = Supplier.apply_search(
-                search_part,
-                Supplier.select(Supplier.gid),
-            ).to_sql()
-
-            return [
-                cls.method_gid.belongs(method_gids),
-                cls.supplier_gid.belongs(supplier_gids),
-            ]
-
-        return cls._apply_search(search, builder, extra_conditions_fn=extra_conditions)
 
     @property
     def composition_label(self) -> str:

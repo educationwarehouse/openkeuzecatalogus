@@ -3,11 +3,12 @@
 import json
 import typing as t
 from pathlib import Path
+from types import SimpleNamespace
 
 from pytest import MonkeyPatch
 from typedal import TypeDAL
 
-from shared_code.data_model import DynamicFilter, DynamicSort, MethodEd, ProductEd, Supplier
+from shared_code.data_model import DynamicFilter, DynamicSort, MethodEd, Product, ProductEd, Supplier
 from shared_code.services.applog import Applogger, DequeApplogger
 from shared_code.services.applog.handler import process_applog_deque
 from shared_code.modules.auth import AuthAdapter
@@ -108,6 +109,125 @@ def test_product_backend_list_public_products_excludes_removed_and_applies_sorti
 
     assert [row.name for row in rows.data] == ["Alpha Product", "Beta Product"]
     assert rows.pagination["total_items"] == 2
+
+
+def test_product_backend_search_uses_the_public_results_sort(
+    migrated_db_per_file: None,
+    db_per_file: TypeDAL,
+    supplier_factory: t.Callable[..., Supplier],
+    method_factory: t.Callable[..., MethodEd],
+    product_factory: t.Callable[..., ProductEd],
+    dynamic_filter_factory: t.Callable[..., DynamicFilter],
+    dynamic_sort_factory: t.Callable[..., DynamicSort],
+) -> None:
+    """Public product search uses the production results sort with an active query."""
+    assert migrated_db_per_file is None
+
+    supplier = supplier_factory(name="Multi Sort Search Supplier", email_domains=["multi-sort-search.example.test"])
+    method = method_factory(
+        supplier_gid=str(supplier.gid),
+        olid="multi-sort-search-method",
+        name="Multi Sort Search Method",
+    )
+    product_factory(
+        supplier_gid=str(supplier.gid),
+        method_gid=method.gid,
+        olid="multi-sort-search-product",
+        name="Stimulus Multi Sort Product",
+    )
+    search_filter = dynamic_filter_factory(
+        slug="q",
+        label="Zoeken",
+        filter_kind="search",
+        applies_to="both",
+        widget_kind="search",
+        sort_order=1,
+    )
+    sort = dynamic_sort_factory(
+        slug="name_asc",
+        label="Alfabetisch (A-Z)",
+        applies_to="both",
+        order_expression="name, id",
+        sort_order=1,
+        is_default=True,
+    )
+
+    backend = SimpleNamespace(
+        products=_make_backend(AuthAdapter.for_service("products-multi-sort-search"), db_per_file)
+    )
+    resolved_filters = backend.products.resolve_public_product_filters({search_filter.slug: ["stimulus"]})
+    rows = backend.products.list_public_products(
+        resolved_filters,
+        sort=sort.slug,
+        page=1,
+        limit=12,
+    )
+
+    assert [row.name for row in rows] == ["Stimulus Multi Sort Product"]
+
+
+def test_product_search_applog_records_each_result_id_and_rank(
+    monkeypatch: MonkeyPatch,
+    tmp_path: Path,
+    migrated_db_per_file: None,
+    db_per_file: TypeDAL,
+    supplier_factory: t.Callable[..., Supplier],
+    method_factory: t.Callable[..., MethodEd],
+    product_factory: t.Callable[..., ProductEd],
+    dynamic_filter_factory: t.Callable[..., DynamicFilter],
+    dynamic_sort_factory: t.Callable[..., DynamicSort],
+) -> None:
+    """Catalog-search events include the displayed ID and relevance score for every result."""
+    assert migrated_db_per_file is None
+    monkeypatch.setenv("APPLOG_FAKE", "0")
+    monkeypatch.setenv("APPLOG_DEQUE_DIR", str(tmp_path / "applog-deque"))
+
+    supplier = supplier_factory(name="Search Rank Supplier", email_domains=["search-rank.example.test"])
+    method = method_factory(
+        supplier_gid=str(supplier.gid),
+        olid="search-rank-method",
+        name="Search Rank Method",
+    )
+    first_product = product_factory(
+        supplier_gid=str(supplier.gid),
+        method_gid=method.gid,
+        olid="search-rank-product-1",
+        name="Algebra Basis",
+    )
+    second_product = product_factory(
+        supplier_gid=str(supplier.gid),
+        method_gid=method.gid,
+        olid="search-rank-product-2",
+        name="Algebra Plus",
+    )
+    search_filter = dynamic_filter_factory(
+        slug="q",
+        label="Zoeken",
+        filter_kind="search",
+        applies_to="both",
+        widget_kind="search",
+        sort_order=1,
+    )
+    sort = dynamic_sort_factory(
+        slug="name-asc",
+        label="Naam A-Z",
+        applies_to="product",
+        order_expression="name",
+        sort_order=1,
+        is_default=True,
+    )
+
+    backend = _make_backend(AuthAdapter.for_service("products-search-rank-log"), db_per_file)
+    filters = backend.resolve_public_product_filters({search_filter.slug: ["algebra"]})
+    backend.list_public_products(filters=filters, sort=sort.slug, page=1, limit=10)
+
+    applog = backend.applog
+    assert isinstance(applog, DequeApplogger)
+    payload = json.loads(applog.deque.pop())
+    assert payload["evidence"]["details"]["result_scores"] == [
+        {"id": first_product.id, "score": 500},
+        {"id": second_product.id, "score": 500},
+    ]
 
 
 def test_product_search_is_exported_to_catalog_search_report(
@@ -233,3 +353,58 @@ def test_product_backend_list_my_products_returns_only_member_rows(
 
     assert {str(row.gid) for row in rows} == {str(visible_product.gid)}
     assert str(hidden_product.gid) not in {str(row.gid) for row in rows}
+
+    Product.where(Product.gid == visible_product.gid).first_or_fail().delete_record()
+    db_per_file.commit()
+
+    archived_rows = backend.list_my_products(with_deleted=True).collect()
+
+    assert {str(row.gid) for row in archived_rows} == {str(visible_product.gid)}
+    assert {row.effstatus for row in archived_rows} == {True, False}
+
+
+def test_product_backend_list_my_products_with_deleted_returns_all_rows_for_admin(
+    migrated_db_per_file: None,
+    db_per_file: TypeDAL,
+    supplier_factory: t.Callable[..., Supplier],
+    method_factory: t.Callable[..., MethodEd],
+    product_factory: t.Callable[..., ProductEd],
+    education_warehouse_admin_adapter: AuthAdapter,
+) -> None:
+    """Admins should see active and archived products from every supplier."""
+    assert migrated_db_per_file is None
+
+    first_supplier = supplier_factory(name="Admin Product Supplier One", email_domains=["admin-product-one.example.test"])
+    second_supplier = supplier_factory(name="Admin Product Supplier Two", email_domains=["admin-product-two.example.test"])
+    first_method = method_factory(
+        supplier_gid=str(first_supplier.gid),
+        olid="admin-product-method-001",
+        name="Admin Product Method One",
+    )
+    second_method = method_factory(
+        supplier_gid=str(second_supplier.gid),
+        olid="admin-product-method-002",
+        name="Admin Product Method Two",
+    )
+    first_product = product_factory(
+        supplier_gid=str(first_supplier.gid),
+        method_gid=first_method.gid,
+        olid="admin-product-001",
+        name="Admin Product One",
+    )
+    second_product = product_factory(
+        supplier_gid=str(second_supplier.gid),
+        method_gid=second_method.gid,
+        olid="admin-product-002",
+        name="Admin Product Two",
+    )
+
+    Product.where(Product.gid == first_product.gid).first_or_fail().delete_record()
+    db_per_file.commit()
+
+    backend = _make_backend(education_warehouse_admin_adapter, db_per_file)
+    rows = backend.list_my_products(with_deleted=True).collect()
+    row_gids = {str(row.gid) for row in rows}
+
+    assert {str(first_product.gid), str(second_product.gid)}.issubset(row_gids)
+    assert any(str(row.gid) == str(first_product.gid) and row.effstatus is False for row in rows)

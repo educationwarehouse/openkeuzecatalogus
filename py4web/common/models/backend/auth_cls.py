@@ -4,15 +4,16 @@ import typing as t
 import uuid
 
 from edwh_auth_rbac.model import IdentityKey
-from py4web.utils.auth import Auth
+from py4web.utils.auth import Auth, b16e
 from py4web.utils.form import FormStyleBootstrap5
 from pydal.objects import Row
 from typedal import TypeDAL
 from typedal.types import Query
 
 from common.fixtures.requires_fixture import Condition, OrElse, RequiresFixture
-from py4web import URL, redirect, request
+from py4web import HTTP, URL, redirect, request
 from shared_code.data_model import AnyDict
+from shared_code.data_model.constants import ROLE_SUPPLIER
 from shared_code.data_model.tables import AuthUser
 from shared_code.data_model.validators.is_existing_sso_account import build_normalized_email_match_query
 from shared_code.modules.auth import (
@@ -46,6 +47,8 @@ ALLOWED_ACTIONS = [
     "register",
     "verify_email",
 ]
+
+ACCOUNT_BLOCKED = "account-blocked"
 
 
 class AppAuth(Auth):
@@ -212,14 +215,32 @@ class AppAuth(Auth):
         """Normalize email input for auth flows that perform lookups."""
         return normalize_email_for_lookup(email)
 
+    def _sso_user_for_email(self, email: str) -> AuthUser | None:
+        """Return the federative account associated with an email address."""
+        normalized_email = self._normalize_auth_email_input(email)
+        query = (AuthUser.sso_id != None) & build_normalized_email_match_query(AuthUser.email, normalized_email)
+        return AuthUser.where(query).first()
+
+    def ensure_not_blocked(self, user_or_query: AuthUser | Query | bool) -> AuthUser | None:
+        """Resolve an account when needed and reject it when it is blocked."""
+        user = user_or_query if isinstance(user_or_query, AuthUser) else AuthUser.where(user_or_query).first()
+        if user and user.action_token == ACCOUNT_BLOCKED:
+            raise HTTP(403, self._flash_message_text("account_is_blocked"))
+
+        return user
+
     def login(self, email: str, password: str) -> tuple[Row, None] | tuple[None, str]:
         """Log successful and failed login attempts."""
         email = self._normalize_auth_email_input(email)
         user, error = super().login(email, password)
+        if not user and (sso_user := self._sso_user_for_email(email)):
+            user, error = super().login(sso_user.email, password)
+
         if user:
             self.form_source.log_auth_action("login", success=True, user=user, email=email)
         else:
             self.form_source.log_auth_action("invalid_login_attempt", success=False, email=email)
+
         return user, error
 
     def _flash_message_text(self, key: str) -> str:
@@ -268,12 +289,66 @@ class AppAuth(Auth):
         next: str = "",
         route: str | None = None,
     ) -> str | None:
-        """Create a reset token and persist its expiry when one is generated."""
+        """Create a reset token for local or federative accounts and persist its expiry."""
         email = self._normalize_auth_email_input(email)
-        token = super().request_reset_password(email, send=send, next=next, route=route)
+        sso_user = self._sso_user_for_email(email)
+        if not sso_user:
+            token = super().request_reset_password(email, send=send, next=next, route=route)
+        elif sso_user.action_token == ACCOUNT_BLOCKED:
+            # Intentional: blocked accounts get no reset token.
+            # This differs from ensure_not_blocked() which raises HTTP 403.
+            # Here we return None silently so the caller can fall through to
+            # the normal "if token: send email" path without sending a reset.
+            # US 7875: "Wachtwoord herstel moet via E-mail kunnen, ook bij
+            # federatieve accounts" — but blocked accounts are explicitly excluded.
+            token = None
+        else:
+            token = str(uuid.uuid4())
+            if next:
+                token += "/" + b16e(next)
+            sso_user.update_record(action_token=f"reset-password-request:{token}")
+            if send:
+                self._link = link = URL(
+                    route or self.route,
+                    "reset_password",
+                    vars={"token": token},
+                    scheme=True,
+                    use_appname=self.param.use_appname_in_redirects,
+                )
+                email_recipient = sso_user.as_dict()
+                email_recipient["email"] = email
+                self.send("reset_password", email_recipient, link=link)
+
+            self.backend.applog.log_auth_action(
+                action="sso-reset-requested",
+                user_gid=sso_user.gid,
+                email=email,
+                success=True,
+            )
         if token:
             mark_reset_password_expiry(token)
         return token
+
+    def get_or_register_user(self, user: dict[str, t.Any]) -> dict[str, t.Any] | None:
+        """Attach a new federative identity to its existing local account when available."""
+        if sso_id := user.get("sso_id"):
+            if existing_sso_account := self.ensure_not_blocked(AuthUser.sso_id == sso_id):
+                return existing_sso_account.as_dict()
+
+            normalized_email = self._normalize_auth_email_input(str(user.get("email") or ""))
+            local_account_query = (AuthUser.email == normalized_email) & (
+                (AuthUser.sso_id == None) | (AuthUser.sso_id == "")
+            )
+
+            if local_account := self.ensure_not_blocked(local_account_query):
+                local_account.update_record(sso_id=sso_id)
+                return local_account.as_dict()
+
+            existing_sso_user = self._sso_user_for_email(str(user.get("email") or ""))
+            if existing_sso_user:
+                raise HTTP(409, "Dit e-mailadres is al gekoppeld aan een SSO-account.")
+
+        return super().get_or_register_user(user)
 
     def request_magic_login(
         self,
@@ -286,7 +361,7 @@ class AppAuth(Auth):
         user_query = build_normalized_email_match_query(AuthUser.email, normalized_email)
         user = AuthUser.where(user_query).select(AuthUser.id, AuthUser.first_name, AuthUser.action_token).first()
 
-        if not user or user.action_token == "account-blocked":  # noqa S105 - this is not a password
+        if not user or user.action_token == ACCOUNT_BLOCKED:
             return None
 
         token = str(uuid.uuid4())
@@ -348,6 +423,17 @@ class AppAuth(Auth):
         super().store_user_in_session(user_id)
         if user := AuthUser(user_id):
             self.grant_memberships(user)
+
+        if "_next" not in self.session:
+            self.session["_next"] = self._sso_default_redirect_target()
+
+    def _sso_default_redirect_target(self) -> str:
+        """Choose the default post-SSO route after the user's roles are available."""
+        return (
+            URL("admin", "index", use_appname=False)
+            if self.auth_context.is_admin() or self.auth_context.has_membership(ROLE_SUPPLIER)
+            else URL("index", use_appname=False)
+        )
 
     def grant_roles_after_email_verification(self, _form: None, user: AuthUser) -> None:
         """Grant supplier-backed memberships when a user verifies their email."""

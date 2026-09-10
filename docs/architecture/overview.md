@@ -9,7 +9,8 @@ This repository uses Docker Compose to run the web app, background workers, and 
   - `py4web`: web runtime.
 - Async workers:
   - `pgq-scrapers`: queue consumer for scraper jobs.
-  - `pgq-applog`: queue consumer for applog jobs.
+  - `pgq-applog`: queue consumer for applog deque processing.
+  - `pgq-maintenance`: queue consumer for utility jobs and scheduled maintenance.
 - Data services:
   - `pg-0`: PostgreSQL database.
   - `redis-master`: primary Redis.
@@ -28,7 +29,10 @@ This repository uses Docker Compose to run the web app, background workers, and 
   - Responsibility: process scraper import jobs (`start_importer_edu-v`).
 - `pgq-applog` service
   - Entrypoint: `pgq run pgq.consumers.applog:main --batch-size 5`
-  - Responsibility: process queued email and applog deque schedules.
+  - Responsibility: process the applog deque and queued error-ticket signals every minute.
+- `pgq-maintenance` service
+  - Entrypoint: `pgq run pgq.consumers.maintenance:main --batch-size 1`
+  - Responsibility: deliver queued email and refresh materialized views hourly.
 - `playwright` service
   - Responsibility: run browser tests against the running `py4web` service.
 
@@ -43,8 +47,10 @@ This repository uses Docker Compose to run the web app, background workers, and 
 2. `migrate` runs after those dependencies are available.
 3. `py4web` starts only after:
    - `pg-0` healthcheck succeeds, and
-   - `migrate` has completed successfully.
-4. `pgq-scrapers` and `pgq-applog` follow the same dependency pattern as `py4web`.
+   - `migrate` has completed successfully, and
+   - `pgq-applog` and `pgq-maintenance` report healthy.
+4. `pgq-scrapers`, `pgq-applog`, and `pgq-maintenance` start after the `pg-0`
+   healthcheck succeeds and `migrate` completes successfully.
 5. `redis-slave` starts after `redis-master` and replicates from it.
 
 ## State and Persistence Boundaries
@@ -62,3 +68,4 @@ This repository uses Docker Compose to run the web app, background workers, and 
 - `py4web` replicas via `PY4WEB_REPLICAS` (default `3`).
 - `pgq-scrapers` replicas via `PGQ_WORKERS` (default `3`).
 - `pgq-applog` runs with one replica.
+- `pgq-maintenance` runs with one replica.

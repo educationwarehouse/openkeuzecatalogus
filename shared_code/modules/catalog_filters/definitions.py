@@ -30,7 +30,7 @@ class InvalidCatalogFilterValue(ValueError):
     """Raised when a request value cannot be used by a catalogue filter."""
 
     def __init__(self, slug: str) -> None:
-        """Initialize the error for the filter identified by ``slug``."""
+        """Initialize the error for the filter identified by `slug`."""
         super().__init__(f"Invalid value for catalogue filter {slug!r}")
 
 

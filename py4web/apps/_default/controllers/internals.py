@@ -3,12 +3,31 @@ import sys
 from urllib.parse import urlencode
 
 from common.fixtures import FlagBasedCache
+from common.fixtures.common import admin
+from common.models import session
 from common.settings import RESTART_FLAG
 
 from py4web import HTTP, URL, action, redirect, request
 
 from .. import settings
+from ..fixtures.content_editable import ContentEditableV2
 from ..models import db
+
+
+@action("api/content-editable/save", method="POST")
+@admin()
+def api_save() -> str:
+    """Sla een contenteditable-sectie uit de UI op in de database.
+
+    Toegang tot dit endpoint wordt beperkt door de admin-fixture.
+    """
+    form = {**request.forms}
+
+    for identifier, content in form.items():
+        ContentEditableV2.write_value(identifier, content)
+
+    return session["path"]
+
 
 if os.getenv("COVERAGE_PROCESS_START"):  # pragma: no cover
 
@@ -23,6 +42,14 @@ if os.getenv("COVERAGE_PROCESS_START"):  # pragma: no cover
 
         cov.save()
         return "flushed"
+
+
+if os.getenv("STATE_OF_DEVELOPMENT", "").upper() == "ONT":
+
+    @action("5xx")
+    def development_5xx() -> None:
+        """Raise a 5xx response for development error-ticket checks."""
+        raise RuntimeError("Development 5xx endpoint")
 
 
 if settings.ENTREE_FAKE:

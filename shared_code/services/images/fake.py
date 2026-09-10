@@ -11,7 +11,7 @@ class MockImageStorage(ImageStorage):
     """Store images locally and expose them as file:// URLs."""
 
     def __init__(self, storage_path: Path) -> None:
-        """Create a local image store rooted at ``storage_path``."""
+        """Create a local image store rooted at `storage_path`."""
         self.storage_path = storage_path
 
     @classmethod

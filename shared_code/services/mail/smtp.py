@@ -6,12 +6,15 @@ import traceback
 import typing as t
 from email.message import EmailMessage
 
+from shared_code.services.error_tickets import ErrorTicketService
 from shared_code.services.mail.contracts import EmailAddress, Mailer
 from shared_code.util.env import bool_from_env
 
 
 class SMTPMailer(Mailer):
     """SMTP-backed mailer implementation for real email delivery."""
+
+    error_tickets: ErrorTicketService
 
     def __init__(
         self,
@@ -45,8 +48,6 @@ class SMTPMailer(Mailer):
                 server.send_message(message, from_addr=message["From"], to_addrs=all_recipients)
                 return True
         except Exception as e:
-            from shared_code.infra.error_tickets import try_store_ticket
-
             print(f"[mailer] failed with {type(e)}({e})")
             print("[mailer]", "".join(traceback.format_exception(e)))
 
@@ -63,7 +64,8 @@ class SMTPMailer(Mailer):
                     "message_id": message.get("Message-ID", ""),
                 },
             }
-            ticket_id = try_store_ticket(context)
+            ticket_id = self.error_tickets.try_store(context)
+
             print(f"[mailer] failed; error ticket: {ticket_id or 'failed to store ticket'}")
             return False
 

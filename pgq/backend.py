@@ -8,14 +8,15 @@ from endow import BackendBase
 from shared_code.data_model.setup import define_tables
 from shared_code.infra.database import DatabaseContext
 from shared_code.modules.auth import AuthAdapter
-from shared_code.services import Applogger, Mailer
+from shared_code.services import Applogger, ErrorTicketService, Mailer
 
 
 class PgqBackend(BackendBase):
     """Shared service graph for one PGQ database job."""
 
-    db: DatabaseContext
     applog: Applogger
+    db: DatabaseContext
+    error_tickets: ErrorTicketService
     mailer: Mailer
 
 

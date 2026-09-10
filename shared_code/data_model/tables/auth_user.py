@@ -6,6 +6,7 @@ from edwh_auth_rbac.rbac import AuthRbac, UserDict
 from pydal.validators import IS_EMAIL, IS_EMPTY_OR, IS_IN_SET, IS_LOWER, IS_NOT_IN_DB
 from typedal import relationship
 from typedal.fields import TimestampField, TypedField
+from typedal.helpers import classproperty
 from typedal.types import OpRow, Set, Validator
 from typedal.web2py_py4web_shared import AuthUser as _AuthUser
 
@@ -13,6 +14,8 @@ from shared_code.data_model.constants import ROLE_USER, SECTOREN
 from shared_code.data_model.mixins.search import SearchMixin
 from shared_code.data_model.tables.base import TableWithGid
 from shared_code.data_model.validators.is_existing_sso_account import (
+    IS_EMPTY_ON_UPDATE,
+    IS_NORMALIZED_EMAIL,
     IS_NOT_EXISTING_SSO_ACCOUNT,
     build_normalized_email_match_query,
 )
@@ -79,6 +82,7 @@ class AuthUser(_AuthUser, TableWithGid, SearchMixin, search_fields=("email", "fi
         super().__on_define__(db)
         auth = db.auth
         # access raw rbac because AuthContext doesn't include all these features (update_identity, add_user)
+        # (todo)
         rbac = auth.raw_rbac
 
         cls.past_passwords_hash.readable = False
@@ -88,11 +92,12 @@ class AuthUser(_AuthUser, TableWithGid, SearchMixin, search_fields=("email", "fi
         cls.last_name.label = "Achternaam"
         cls.password.label = "Wachtwoord"
         cls.password.readable = False
+        cls.password.requires = IS_EMPTY_ON_UPDATE(cls.password.requires or [])
 
         cls.email.requires = t.cast(
             list[Validator],
             [
-                IS_EMAIL(error_message="Vul een geldig emailadres in"),
+                IS_NORMALIZED_EMAIL(IS_EMAIL(error_message="Vul een geldig emailadres in")),
                 IS_LOWER(),  # converts
                 IS_NOT_EXISTING_SSO_ACCOUNT(db),
                 IS_NOT_IN_DB(
@@ -151,6 +156,17 @@ class AuthUser(_AuthUser, TableWithGid, SearchMixin, search_fields=("email", "fi
 
         cls.after_insert(on_insert)
 
+        def on_before_update(_selection: Set, changes: OpRow) -> bool:
+            """Omit an empty password field so it cannot clear the stored password."""
+            update_changes = t.cast(dict, changes)
+            if "password" not in update_changes or update_changes["password"] is not None:
+                return False
+
+            del update_changes["password"]
+            return not tuple(update_changes)
+
+        cls.before_update(on_before_update)
+
         def on_update(selection: Set, changes: OpRow) -> None:
             users: list[AuthUser] = selection.select(
                 AuthUser.id,
@@ -182,6 +198,11 @@ class AuthUser(_AuthUser, TableWithGid, SearchMixin, search_fields=("email", "fi
 
         # note: no on_delete because identity may not be removed!
         # auth_user can be deleted though, the identity with its permissions will stay.
+
+    @classproperty
+    def admin_grid(cls) -> str:
+        """Return the admin grid identifier for users."""
+        return "users"
 
     @property
     def full_name(self) -> str:

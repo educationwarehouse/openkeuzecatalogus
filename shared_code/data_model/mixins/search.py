@@ -6,10 +6,12 @@ import typing as t
 from dataclasses import dataclass
 
 from pydal.helpers.classes import SQLCustomType
+from pydal.objects import Field as PydalField
 from typedal import QueryBuilder
-from typedal.fields import Field, rname
+from typedal.fields import Field as TypedalField
+from typedal.fields import TypedField, rname
 from typedal.mixins import Mixin
-from typedal.tables import _TypedTable
+from typedal.tables import TypedTable, _TypedTable
 from typedal.types import OrderBy, Query
 
 from shared_code.data_model.validators.is_uuid import is_uuid
@@ -53,6 +55,67 @@ class TermSearchResult:
     max_rank: int
 
 
+@dataclass(frozen=True, slots=True)
+class SearchRankRule:
+    """One fully configured source of weighted search matches."""
+
+    name: str
+    conditions_for_part: t.Callable[[str], tuple[SearchRankCondition, ...]]
+
+    def group_for_part(self, part: str) -> SearchRankGroup:
+        """Build this rule's strongest-match group for one parsed search part."""
+        return SearchRankGroup(self.conditions_for_part(part))
+
+
+@dataclass(frozen=True, slots=True)
+class SearchRankCondition:
+    """One weighted condition within a ranked field match."""
+
+    query: Query
+    score: int
+
+
+@dataclass(frozen=True, slots=True)
+class SearchRankGroup:
+    """Conditions for one field, scored only by its strongest matching rule."""
+
+    conditions: tuple[SearchRankCondition, ...]
+
+    @property
+    def query(self) -> Query | None:
+        """Return the combined condition used to include a matching row."""
+        query: Query | None = None
+        for condition in self.conditions:
+            query = condition.query if query is None else query | condition.query
+        return query
+
+    def score_expression(self) -> str:
+        """Return SQL that awards only the highest matching score for this field."""
+        ordered_conditions = sorted(self.conditions, key=lambda condition: condition.score, reverse=True)
+        cases = " ".join(f"WHEN {condition.query} THEN {condition.score}" for condition in ordered_conditions)
+        return f"CASE {cases} ELSE 0 END"
+
+
+def basic_search_query(search: str, table: t.Any) -> Query:
+    """Build a basic text-search query for a table without specialised search."""
+    query = table.id > 0
+
+    for term in parsed_search_terms(search):
+        term_query = table.id == 0
+        for field in table:
+            if field.readable and (condition := search_for_fieldtype(field, term.part, allow_exact_match=False)):
+                term_query |= condition
+
+        query &= ~term_query if term.mode is SearchTermMode.EXCLUDE else term_query
+
+    return query
+
+
+def apply_basic_search[T: TypedTable](search: str, table: type[T], builder: QueryBuilder[T]) -> QueryBuilder[T]:
+    """Filter a typed table by readable text fields when it has no specialised search."""
+    return builder.where(basic_search_query(search, table))
+
+
 def parsed_search_terms(terms: str) -> t.Generator[SearchTerm]:
     """Yield normalized search terms with mode metadata."""
     for term in safe_quoted_split(terms):
@@ -66,7 +129,14 @@ def parsed_search_terms(terms: str) -> t.Generator[SearchTerm]:
             yield SearchTerm(part=term, mode=mode)
 
 
-def search_for_fieldtype(field: Field, search: str) -> Query | None:
+def escape_sql_like_value(value: str) -> str:
+    """Escape literal characters that have special meaning in SQL LIKE patterns."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def search_for_fieldtype(
+    field: PydalField | TypedalField, search: str, *, allow_exact_match: bool = True
+) -> Query | None:
     """Build a field-type-specific query condition for a search value."""
     fieldtype = field.type
 
@@ -74,8 +144,8 @@ def search_for_fieldtype(field: Field, search: str) -> Query | None:
         return None
 
     if fieldtype in ("string", "text"):
-        return field.contains(search)
-    elif fieldtype.startswith("list:"):
+        return field.cast("text").contains(search)
+    elif isinstance(fieldtype, str) and fieldtype.startswith("list:"):
         # manually use like instead of contains for partial matching:
         return field.ilike(f"%{search}%")
     elif fieldtype == "id":
@@ -86,7 +156,7 @@ def search_for_fieldtype(field: Field, search: str) -> Query | None:
         if is_uuid(search):
             return field == search
         # else: can't match uuid
-    else:
+    elif allow_exact_match:
         # fallback other types to exact match:
         return field == search
 
@@ -284,7 +354,11 @@ class SearchMixin(Mixin):
         new_orderby = f"""CASE {" ".join(rank_clauses)} ELSE {max_rank + 1} END""" if rank_clauses else None
 
         if existing_orderby := builder.select_kwargs.get("orderby"):
-            existing_orderby = rname(existing_orderby) if isinstance(existing_orderby, Field) else existing_orderby
+            existing_orderby = (
+                rname(existing_orderby)
+                if isinstance(existing_orderby, (TypedalField, PydalField))
+                else existing_orderby
+            )
 
             new_orderby = f"{new_orderby}, {existing_orderby}" if new_orderby else existing_orderby
 
@@ -301,31 +375,15 @@ class SearchMixin(Mixin):
         *,
         extra_conditions_fn: t.Callable[[str], t.Iterable[Query]] | None = None,
     ) -> QueryBuilder:
-        """Apply a search filter across predefined search fields.
-
-        Arguments:
-            search: The search term to match within each field specified in __settings__.
-                  Search terms are split by words unless enclosed in quotes.
-                  For example: 'Machine learning "neural networks" research' will be split into
-                  ['machine', 'learning', 'neural networks', 'research']
-            builder: The query builder instance to apply the search filter to.
-            extra_conditions_fn: Optional callback that returns additional query
-                conditions for each search part.
-
-        Returns:
-            The modified QueryBuilder with search conditions applied across multiple fields.
-
-        """
+        """Apply the legacy field-order search ranking."""
         search = (search or "").strip()
         if not search:
             return builder
 
-        query = cls.id > 0  # Start with true condition
+        query = cls.id > 0  # start with true condition
         search_fields = cls._search_field_names()
         rank_clauses: list[str] = []
         max_rank = len(search_fields)
-
-        # For each search term, ensure it matches at least one field
         for search_term in parsed_search_terms(search):
             term_match = cls._build_term_match(
                 search_term.part,
@@ -337,13 +395,11 @@ class SearchMixin(Mixin):
             max_rank = max(max_rank, term_match.max_rank)
             query = cls._combine_search_query(query, term_match.query, search_term.mode)
 
-        builder = cls._apply_search_orderby(builder, rank_clauses, max_rank)
-
-        return builder.where(query)
+        return cls._apply_search_orderby(builder, rank_clauses, max_rank).where(query)
 
     @classmethod
     def apply_search(cls, search: str, builder: QueryBuilder) -> QueryBuilder:
-        """Apply search filtering to the provided query builder."""
+        """Apply a table's configured text search to the provided builder."""
         return cls._apply_search(search, builder)
 
     @classmethod
@@ -354,34 +410,189 @@ class SearchMixin(Mixin):
         order: OrderBy | t.Literal["random"] | None = None,
         limit: int | None = None,
         builder: QueryBuilder[t.Self] | None = None,
-        select: list[str | Field] | None = None,
+        select: list[str | PydalField | TypedalField] | None = None,
     ) -> QueryBuilder[t.Self]:
-        """Build a search query with optional ordering and field selection.
-
-        Arguments:
-            search: A term to apply across fields specified in __settings__ for filtering results.
-            order: Defines the ordering of results; accepts a field name, a Field object, or "random".
-            limit: limit amount of results (you can also use .paginate on the result)
-            builder: An optional QueryBuilder instance to build upon.
-            select: An optional list of fields to include in the query.
-
-        Returns:
-            A QueryBuilder instance with applied search, order, and selection criteria.
-
-        """
+        """Build a search query with optional ordering, limit, and selected fields."""
         builder = builder or QueryBuilder(cls)
-
         if select:
             builder = builder.select(*select)
-
         if limit:
             builder = builder.select(limitby=(0, limit))
 
         if order:
             builder = cls.apply_orderby(order, builder)
+        return cls.apply_search(search, builder) if (search or "").strip() else builder
 
+
+class RankedSearchMixin(SearchMixin):
+    """Add configurable weighted relevance ranking to :class:`SearchMixin`."""
+
+    @classmethod
+    def search_rank_rules(
+        cls,
+        score_overrides: dict[str, dict[str, int | None]] | None = None,
+    ) -> tuple[SearchRankRule, ...]:
+        """Build ranking rules from the persisted configuration for this table."""
+        from shared_code.data_model.tables.search_rank_weight import SearchRankWeight
+
+        entity_kind = cls.__name__.lower()
+        rows = SearchRankWeight.where(SearchRankWeight.entity_kind == entity_kind).collect()
+        rules: list[SearchRankRule] = []
+        for row in rows:
+            scores = score_overrides.get(row.gid, {}) if score_overrides else {}
+            if row.related_table:
+                related_table = cls.id.db.find_model(row.related_table)
+                if related_table is None or row.foreign_key is None or row.related_key is None:
+                    raise ValueError(f"Invalid related search ranking rule: {row.label}")
+                rules.append(
+                    cls.related_search_rank_rule(
+                        row.key,
+                        getattr(cls, row.foreign_key),
+                        related_table=related_table,
+                        related_key=getattr(related_table, row.related_key),
+                        related_field=getattr(related_table, row.source_field),
+                        exact=scores.get("exact", row.exact),
+                        prefix=scores.get("prefix", row.prefix),
+                        contains=scores.get("contains", row.contains),
+                        trigram=scores.get("trigram", row.trigram),
+                    )
+                )
+            else:
+                rules.append(
+                    cls.direct_search_rank_rule(
+                        row.key,
+                        getattr(cls, row.source_field),
+                        exact=scores.get("exact", row.exact),
+                        prefix=scores.get("prefix", row.prefix),
+                        contains=scores.get("contains", row.contains),
+                        trigram=scores.get("trigram", row.trigram),
+                    )
+                )
+        return tuple(rules)
+
+    @staticmethod
+    def _trigram_condition(field: PydalField | TypedField[t.Any], part: str, threshold: float) -> Query:
+        """Return a safely quoted PostgreSQL trigram-similarity condition."""
+        if not isinstance(threshold, (int, float)) or not 0 <= threshold <= 1:
+            raise ValueError("trigram threshold must be between 0 and 1")
+        assert field.db, "Can't continue without db"
+        value = field.db._adapter.represent(part, "string")
+        return Query(field.db, f"similarity(CAST({rname(field)} AS text), CAST({value} AS text)) >= {threshold:.2f}")
+
+    @classmethod
+    def direct_search_rank_rule(
+        cls,
+        name: str,
+        field: PydalField | TypedField[t.Any],
+        *,
+        exact: int | None = None,
+        prefix: int | None = None,
+        contains: int | None = None,
+        trigram: int | None = None,
+        trigram_threshold: float = 0.30,
+    ) -> SearchRankRule:
+        """Build a complete direct-field rule that can score every search part."""
+
+        def conditions_for_part(part: str) -> tuple[SearchRankCondition, ...]:
+            conditions: list[SearchRankCondition] = []
+            literal_part = escape_sql_like_value(part)
+            if exact is not None:
+                conditions.append(SearchRankCondition(field.ilike(literal_part, escape="\\"), exact))
+            if prefix is not None:
+                conditions.append(SearchRankCondition(field.ilike(f"{literal_part}%", escape="\\"), prefix))
+            if contains is not None:
+                conditions.append(SearchRankCondition(field.contains(part), contains))
+            if trigram is not None and " " not in part:
+                conditions.append(SearchRankCondition(cls._trigram_condition(field, part, trigram_threshold), trigram))
+            return tuple(conditions)
+
+        return SearchRankRule(name=name, conditions_for_part=conditions_for_part)
+
+    @classmethod
+    def related_search_rank_rule(
+        cls,
+        name: str,
+        foreign_key: PydalField | TypedField[t.Any],
+        *,
+        related_table: type[TypedTable],
+        related_key: PydalField | TypedField[t.Any],
+        related_field: PydalField | TypedField[t.Any],
+        exact: int | None = None,
+        prefix: int | None = None,
+        contains: int | None = None,
+        trigram: int | None = None,
+        trigram_threshold: float = 0.30,
+        # todo: also make trigram_threshold configurable in UI
+    ) -> SearchRankRule:
+        """Build a complete related-field rule that can score every search part."""
+        direct_rule = cls.direct_search_rank_rule(
+            name,
+            related_field,
+            exact=exact,
+            prefix=prefix,
+            contains=contains,
+            trigram=trigram,
+            trigram_threshold=trigram_threshold,
+        )
+
+        def conditions_for_part(part: str) -> tuple[SearchRankCondition, ...]:
+            return tuple(
+                SearchRankCondition(
+                    foreign_key.belongs(related_table.where(condition.query).select(related_key).to_sql()),
+                    condition.score,
+                )
+                for condition in direct_rule.conditions_for_part(part)
+            )
+
+        return SearchRankRule(name=name, conditions_for_part=conditions_for_part)
+
+    @classmethod
+    def _apply_ranked_search_orderby(cls, builder: QueryBuilder, rank_expression: str) -> QueryBuilder:
+        """Select and order by the computed rank while preserving deterministic ties."""
+        existing_orderby = builder.select_kwargs.get("orderby")
+        assert cls._db, "Ranked search requires a defined database table."
+        # like % should not be interpreted as %s formatted string in expression:
+        rank_orderby = ~cls._db.sql_expression(rank_expression.replace("%", "%%"), output_type="integer")
+        if isinstance(existing_orderby, (tuple, list)):
+            orderby = (rank_orderby, *existing_orderby)
+        elif existing_orderby:
+            orderby = (rank_orderby, existing_orderby)
+        else:
+            orderby = rank_orderby
+        default_fields = (cls.ALL,) if not builder.select_args else ()
+        return builder.select(
+            *default_fields,
+            f"({rank_expression}) AS search_rank",
+            orderby=t.cast(OrderBy | t.Iterable[OrderBy], orderby),
+        )
+
+    @classmethod
+    def _apply_search(
+        cls,
+        search: str,
+        builder: QueryBuilder,
+        *,
+        score_overrides: dict[str, dict[str, int | None]] | None = None,
+        **_: t.Any,
+    ) -> QueryBuilder:
+        """Filter and score rows, summing strongest per-field matches for include terms."""
         search = (search or "").strip()
-        if search:
-            builder = cls.apply_search(search, builder)
+        if not search:
+            return builder
 
-        return builder
+        query = cls.id > 0  # start with true condition
+        rank_rules = cls.search_rank_rules(score_overrides)
+        rank_expressions: list[str] = []
+        for search_term in parsed_search_terms(search):
+            term_query = cls.id == 0
+            for rank_rule in rank_rules:
+                group = rank_rule.group_for_part(search_term.part)
+                if group_query := group.query:
+                    term_query |= group_query
+                    if search_term.mode is SearchTermMode.INCLUDE:
+                        rank_expressions.append(group.score_expression())
+
+            query = cls._combine_search_query(query, term_query, search_term.mode)
+
+        rank_expression = " + ".join(rank_expressions) or "0"
+        return cls._apply_ranked_search_orderby(builder, rank_expression).where(query)

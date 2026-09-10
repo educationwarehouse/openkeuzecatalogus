@@ -1,11 +1,12 @@
 """Helpers for building (py4web) URLs."""
 
 import os
+import typing as t
 
 import yayarl as yarl
 
 
-def _PY4WEB_URL(*path_parts: str, **params: str) -> yarl.URL:
+def _PY4WEB_URL(*path_parts: str, **params: str | t.Sequence[str]) -> yarl.URL:
     """Return a yarl URL using the py4web host and provided path/query parts."""
     path = "/".join(path_parts)
     if path[0] != "/":
@@ -14,7 +15,7 @@ def _PY4WEB_URL(*path_parts: str, **params: str) -> yarl.URL:
     return yarl.URL.build(scheme="https", host=host, path=path, query=params)
 
 
-def PY4WEB_URL(*path_parts: str, **params: str) -> str:
+def PY4WEB_URL(*path_parts: str, **params: str | t.Sequence[str]) -> str:
     """Return a string URL for use in YATL templates."""
     url = _PY4WEB_URL(*path_parts, **params)
     return str(url)

@@ -6,7 +6,7 @@ from endow import Domain
 
 from shared_code.data_model import AuthUser, Organisation, Tagged
 from shared_code.data_model.constants import Predicate
-from shared_code.modules.auth.contract import AuthContext
+from shared_code.modules.auth import AuthContext
 from shared_code.modules.organisations.policy import OrganisationPolicy
 from shared_code.util.email import extract_email_domain
 

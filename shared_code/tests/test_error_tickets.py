@@ -1,28 +1,29 @@
 """Tests for structured error ticket persistence."""
 
+import typing as t
 from pathlib import Path
 
 from pytest import MonkeyPatch
 
-from shared_code.infra.error_tickets import (
+from shared_code.services.error_tickets import (
     AuthInfo,
+    ErrorTicketService,
     ExceptionInfo,
     RequestInfo,
-    count_tickets,
-    delete_all_tickets,
-    delete_ticket,
-    list_tickets,
-    load_ticket,
-    store_ticket, try_store_ticket,
+    SnapshotDict,
 )
-import typing as t
 
-def _raise_and_store_ticket(context: dict[str, t.Any], snapshot=None) -> str:
+
+def _raise_and_store_ticket(
+    error_tickets: ErrorTicketService,
+    context: dict[str, t.Any],
+    snapshot: SnapshotDict | None = None,
+) -> str:
     """Store a ticket while an exception is active so traceback capture is real."""
     try:
         raise RuntimeError("boom")
     except RuntimeError:
-        return try_store_ticket(context, snapshot=snapshot)
+        return error_tickets.try_store(context, snapshot=snapshot)
 
 
 def _ticket_env(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
@@ -36,6 +37,7 @@ def _ticket_env(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
 def test_store_and_load_ticket_round_trips_real_data(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
     """A stored ticket should be readable back into the same dataclasses."""
     _ticket_env(monkeypatch, tmp_path)
+    error_tickets = ErrorTicketService.with_injected()
 
     context = {"application": "ticket-tests", "details": {"nested": ["a", "b"]}}
     snapshot = {
@@ -61,13 +63,13 @@ def test_store_and_load_ticket_round_trips_real_data(monkeypatch: MonkeyPatch, t
         ),
     }
 
-    ticket_id = _raise_and_store_ticket(context, snapshot=snapshot)
+    ticket_id = _raise_and_store_ticket(error_tickets, context, snapshot=snapshot)
     ticket_path = tmp_path / "errors" / f"{ticket_id}.toml"
 
     assert ticket_id.startswith("TICKETPROJ-")
     assert ticket_path.is_file()
 
-    ticket = load_ticket(ticket_id)
+    ticket = error_tickets.load(ticket_id)
     assert ticket is not None
     assert ticket.meta.ticket_id == ticket_id
     assert ticket.meta.application == "ticket-tests"
@@ -100,33 +102,35 @@ def test_store_and_load_ticket_round_trips_real_data(monkeypatch: MonkeyPatch, t
 def test_ticket_lifecycle_uses_real_files(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
     """Count, list, delete and delete-all should operate on the stored files."""
     _ticket_env(monkeypatch, tmp_path)
+    error_tickets = ErrorTicketService.with_injected()
 
-    first = _raise_and_store_ticket({"application": "ticket-tests", "seq": 1})
-    second = _raise_and_store_ticket({"application": "ticket-tests", "seq": 2})
-    third = _raise_and_store_ticket({"application": "ticket-tests", "seq": 3})
+    first = _raise_and_store_ticket(error_tickets, {"application": "ticket-tests", "seq": 1})
+    second = _raise_and_store_ticket(error_tickets, {"application": "ticket-tests", "seq": 2})
+    third = _raise_and_store_ticket(error_tickets, {"application": "ticket-tests", "seq": 3})
 
-    assert count_tickets() == 3
-    assert len(list_tickets()) == 3
-    assert len(list_tickets(limit=2)) == 2
+    assert error_tickets.count() == 3
+    assert len(error_tickets.list_tickets()) == 3
+    assert len(error_tickets.list_tickets(limit=2)) == 2
 
-    delete_ticket(second)
-    remaining = list_tickets()
-    assert count_tickets() == 2
+    error_tickets.delete(second)
+    remaining = error_tickets.list_tickets()
+    assert error_tickets.count() == 2
     assert {ticket.meta.ticket_id for ticket in remaining} == {first, third}
 
-    delete_all_tickets()
-    assert count_tickets() == 0
-    assert list_tickets() == []
+    error_tickets.delete_all()
+    assert error_tickets.count() == 0
+    assert error_tickets.list_tickets() == []
     assert (tmp_path / "errors").exists()
 
 
 def test_load_ticket_returns_none_for_invalid_toml(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
     """Malformed ticket files should be ignored rather than crashing."""
     _ticket_env(monkeypatch, tmp_path)
+    error_tickets = ErrorTicketService.with_injected()
 
     bad_ticket_id = "BROKEN-0001"
     bad_path = tmp_path / "errors" / f"{bad_ticket_id}.toml"
     bad_path.parent.mkdir(parents=True, exist_ok=True)
     bad_path.write_text("not = [valid", encoding="utf-8")
 
-    assert load_ticket(bad_ticket_id) is None
+    assert error_tickets.load(bad_ticket_id) is None

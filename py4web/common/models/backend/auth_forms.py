@@ -10,6 +10,7 @@ from yatl.helpers import A
 
 from common.models.redirects import find_next
 from py4web import URL, redirect, request
+from shared_code.data_model.constants import ROLE_SUPPLIER
 from shared_code.data_model.tables import AuthUser
 from shared_code.data_model.validators.is_existing_sso_account import (
     SSO_REGISTERED_ACCOUNT_ERROR,
@@ -43,7 +44,7 @@ class LoggingAuthForms(DefaultAuthForms):
 
     def _redirect_target_for_authenticated_user(self) -> str:
         """Send authenticated users to their landing page instead of the login form."""
-        if self.auth.auth_context.is_admin():
+        if self.auth.auth_context.is_admin() or self.auth.auth_context.has_membership(ROLE_SUPPLIER):
             default = URL("admin", "index", use_appname=False)
         else:
             default = URL("index", use_appname=False)
@@ -148,6 +149,22 @@ class LoggingAuthForms(DefaultAuthForms):
         )
         return result
 
+    def request_reset_password(self, model: bool = False) -> dict[str, t.Any] | str | Form:
+        """Show the preferred Entree login route alongside the email fallback."""
+        result = super().request_reset_password(model=model)
+        if model or not isinstance(result, Form) or result.submitted or "oauth2kennisnet" not in self.auth.plugins:
+            return result
+
+        sso_login_url = URL(f"{self.auth.route}/plugin/oauth2kennisnet/login")
+        result.param.sidecar.append(
+            DIV(
+                "Gebruik je Entree? Log dan bij voorkeur in via SSO. ",
+                A("Inloggen via Entree", _href=sso_login_url),
+            )
+        )
+        self.log_auth_action(action="sso-reset-option-opened", success=True)
+        return result
+
     def verify_email(self, model: bool = False) -> dict[str, t.Any] | None:
         """Verify the email token, pass the resolved user to hooks, and auto-login on success."""
         if model:
@@ -231,8 +248,7 @@ class LoggingAuthForms(DefaultAuthForms):
         details: dict[str, t.Any] | None = None,
     ) -> None:
         if action == "logout":
-            # no form to post-process
-            return
+            raise redirect(URL("auth", "login", use_appname=False))
 
         log_success = success if success is not None else (bool(form.accepted) if form else True)
         self.log_auth_action(
@@ -242,6 +258,14 @@ class LoggingAuthForms(DefaultAuthForms):
             email=email,
             details=details,
         )
+
+        if action == "reset_password" and user and user.sso_id:
+            self.log_auth_action(
+                action="sso-password-reset",
+                success=log_success,
+                user=user.as_dict(),
+                email=normalize_email_for_lookup(user.email),
+            )
 
         if action in self.auth.on_accept:
             self.auth.on_accept[action](form, user)

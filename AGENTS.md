@@ -46,6 +46,7 @@ Important: names like `products`, `payment_api`, and `lms_api` are placeholders,
 
 - Do not use `monkeypatch.setattr` in tests; steer the user toward proper integration tests. Use it only when the user explicitly asks for it.
 - Never add `# ty: ignore`, `# type: ignore`, or `# noqa` comments unless the user explicitly asks for that specific exception.
+- This instruction applies only to code authored or edited by agents. It is not a code-review rule: do not report suppression comments as review findings.
 
 ## Knowledge Gained / Feedback Log
 

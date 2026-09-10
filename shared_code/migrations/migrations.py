@@ -21,6 +21,7 @@ from shared_code.migrations.migration_support import (
 from shared_code.migrations.migration_support.catalog_search_report import (
     CatalogSearchReport_V1,
     CatalogSearchReport_V1b,
+    CatalogSearchReport_V1c,
 )
 from shared_code.migrations.migration_support.organisation import (
     backfill_organisation_rbac_identities_v1,
@@ -1257,6 +1258,85 @@ def add_vestigingscode_to_school_data_quality_reports_20260716_002(db: TypeDAL) 
     """Rebuild school data-quality reports with vestigingscode columns."""
     with SchoolsWithoutHomepageUrlReport_V1b(db), SchoolsWithoutEmailDomainReport_V1b(db):
         pass
+    db.commit()
+    return True
+
+
+@migration()
+def create_static_content_table_20260720_001(db: TypeDAL) -> bool:
+    """Create storage for admin-editable public-page content sections."""
+    db.executesql("""
+    CREATE TABLE static_content
+    (
+        id serial PRIMARY KEY,
+        gid uuid NOT NULL DEFAULT uuidv4() UNIQUE,
+        scope varchar(120) NOT NULL,
+        section varchar(120) NOT NULL,
+        content text NOT NULL,
+        CONSTRAINT static_content_scope_section_unique UNIQUE (scope, section)
+    );
+    """)
+    db.commit()
+    return True
+
+
+@migration()
+def enable_pg_trgm_20260721_001(db: TypeDAL) -> bool:
+    """Enable PostgreSQL trigram similarity for relevance-ranked search."""
+    db.executesql("CREATE EXTENSION IF NOT EXISTS pg_trgm;")
+    db.commit()
+    return True
+
+
+@migration(requires=convert_catalog_search_report_active_filters_to_jsonb_20260716_001)
+def add_catalog_search_result_scores_20260721_002(db: TypeDAL) -> bool:
+    """Rebuild the catalog-search report with displayed relevance scores."""
+    with CatalogSearchReport_V1c(db):
+        pass
+    db.commit()
+    return True
+
+
+@migration()
+def create_search_rank_weight_table_20260721_003(db: TypeDAL) -> bool:
+    """Create editable weights for product and method search ranking."""
+    db.executesql("""
+    CREATE TABLE search_rank_weight
+    (
+        id serial PRIMARY KEY,
+        gid uuid NOT NULL DEFAULT uuidv4() UNIQUE,
+        entity_kind varchar(10) NOT NULL,
+        key varchar(40) NOT NULL,
+        section varchar(20) NOT NULL,
+        sort_order integer NOT NULL DEFAULT 0,
+        label varchar(100) NOT NULL,
+        source_field varchar(100) NOT NULL,
+        foreign_key varchar(100),
+        related_table varchar(100),
+        related_key varchar(100),
+        exact integer,
+        prefix integer,
+        contains integer,
+        trigram integer,
+        CONSTRAINT search_rank_weight_entity_key_unique UNIQUE (entity_kind, key)
+    );
+    """)
+    db.executesql(
+        """
+    INSERT INTO search_rank_weight (
+        entity_kind, key, section, sort_order, label, source_field, foreign_key, related_table, related_key, exact, prefix, contains, trigram
+    )
+    VALUES
+        ('product', 'name', 'name', 10, 'Productnaam', 'name', NULL, NULL, NULL, 1200, 500, 300, 350),
+        ('product', 'related_method_name', 'related', 20, 'Methodenaam', 'name', 'method_gid', 'Method', 'gid', 60, NULL, 45, NULL),
+        ('product', 'supplier_name', 'related', 10, 'Leveranciersnaam', 'name', 'supplier_gid', 'Supplier', 'gid', 70, NULL, 50, NULL),
+        ('product', 'olid', 'identifier', 10, 'Product-OLID', 'olid', NULL, NULL, NULL, 90, NULL, 80, NULL),
+        ('method', 'name', 'name', 10, 'Methodenaam', 'name', NULL, NULL, NULL, 1200, 500, 300, 350),
+        ('method', 'related_product_name', 'related', 20, 'Productnaam', 'name', 'gid', 'Product', 'method_gid', 60, NULL, 45, NULL),
+        ('method', 'supplier_name', 'related', 10, 'Leveranciersnaam', 'name', 'supplier_gid', 'Supplier', 'gid', 70, NULL, 50, NULL),
+        ('method', 'olid', 'identifier', 10, 'Methode-OLID', 'olid', NULL, NULL, NULL, 90, NULL, 80, NULL);
+    """  # noqa: E501
+    )
     db.commit()
     return True
 

@@ -1,7 +1,7 @@
-"""Safe ``?next`` redirect helpers.
+"""Safe `?next` redirect helpers.
 
 Kept separate from :mod:`common.models.request_data` (which pulls in
-``common.models.backend``) so that ``common.models.backend.auth_forms`` can
+`common.models.backend`) so that `common.models.backend.auth_forms` can
 import these without triggering a circular import back into itself.
 """
 
@@ -13,7 +13,7 @@ from py4web import redirect, request
 
 
 def find_next(default: str) -> str:
-    """Return a local or app-domain ``next`` URL, or ``default`` when unsafe."""
+    """Return a local or app-domain `next` URL, or `default` when unsafe."""
     try:
         next_url = request.query.get("next")
         if not next_url or next_url != next_url.strip() or "\\" in next_url:
@@ -39,7 +39,7 @@ def find_next(default: str) -> str:
 
 
 def redirect_next(default: str) -> t.NoReturn:
-    """Redirect to the validated ``next`` URL or ``default``."""
+    """Redirect to the validated `next` URL or `default`."""
     return redirect(find_next(default))
 
 

@@ -4,29 +4,7 @@ import dataclasses as dc
 import enum
 import typing as t
 
-from shared_code.data_model.tables import Method, Product, Supplier, Vision
-from shared_code.modules.scrapers.errors import ImportErrorCode
-
-
-class ImportMethod(Method, dict):
-    """Importer schema proxy for method payloads."""
-
-    _errors: list[ImportErrorCode]
-
-
-class ImportProduct(Product, dict):
-    """Importer schema proxy for product payloads."""
-
-    _errors: list[ImportErrorCode]
-
-
-class ImportSupplier(Supplier, dict):
-    """Importer schema proxy for supplier payloads."""
-
-
-class ImportVision(Vision, dict):
-    """Importer schema proxy for vision payloads."""
-
+from shared_code.generated.import_payloads import ImportMethod, ImportProduct, ImportSupplier, ImportVision
 
 JsonPrimitive = str | int | float | bool | None
 JsonValue = JsonPrimitive | dict[str, "JsonValue"] | list["JsonValue"]
@@ -237,3 +215,33 @@ def to_err_prio(prio: int | ImportPriority) -> int:
     if ImportPriority.is_ok(resolved_prio):
         return resolved_prio - OFFSET_OK + OFFSET_ERR
     return resolved_prio
+
+
+__all__ = [
+    "CUMULUS_BASE",
+    "GENERIC_IMPORTER_BASE",
+    "GRIST_BASE",
+    "HUMAN_BASE",
+    "OFFSET_ERR",
+    "OFFSET_OK",
+    "SOURCE_STRIDE",
+    "SUPPLIER_BAND",
+    "CdnImageUploadStats",
+    "ChangeResult",
+    "ChangeStatus",
+    "ImportAuxStats",
+    "ImportMethod",
+    "ImportPriority",
+    "ImportProduct",
+    "ImportRunCountStat",
+    "ImportRunErrorStat",
+    "ImportRunWarningStat",
+    "ImportStats",
+    "ImportSupplier",
+    "ImportTypeStats",
+    "ImportVision",
+    "JsonObject",
+    "JsonPrimitive",
+    "JsonValue",
+    "to_err_prio",
+]

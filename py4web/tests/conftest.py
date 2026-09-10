@@ -1,5 +1,9 @@
 """Pytest fixtures for py4web tests."""
 
+from collections.abc import Callable, Iterator, Mapping
+from contextlib import AbstractContextManager, contextmanager
+from urllib.parse import urlencode
+
 import pytest
 from ombott.router.radirouter import Route
 
@@ -37,6 +41,22 @@ def default_app_request_context() -> None:
 
 
 @pytest.fixture()
-def other_app_request_context() -> None:
-    """Seed a non-default app request context for shared-auth redirect tests."""
+def admin_app_request_context() -> None:
+    """Seed the minimal request context needed by decorated admin actions."""
     _seed_request_context("admin", "/admin/index")
+
+
+@pytest.fixture()
+def request_query() -> Callable[[Mapping[str, str]], AbstractContextManager[None]]:
+    """Temporarily set the active request query through Ombott's environment."""
+
+    @contextmanager
+    def set_query(params: Mapping[str, str]) -> Iterator[None]:
+        original_query_string = request.environ.get("QUERY_STRING", "")
+        request.environ["QUERY_STRING"] = urlencode(params)
+        try:
+            yield
+        finally:
+            request.environ["QUERY_STRING"] = original_query_string
+
+    return set_query

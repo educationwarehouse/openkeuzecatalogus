@@ -7,6 +7,8 @@ from datetime import datetime
 from typedal import TypedTable, relationship
 from typedal.fields import TypedField, UUIDField
 
+# todo: docs about these tables + fields
+
 
 class ImporterRun(TypedTable):
     """One finished importer run."""

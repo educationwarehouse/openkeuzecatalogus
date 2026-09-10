@@ -6,6 +6,7 @@ import uuid
 from pydal.validators import IS_EMPTY_OR, IS_IN_SET, IS_URL
 from typedal import TypeDAL
 from typedal.fields import TypedField
+from typedal.helpers import classproperty
 from typedal.types import OpRow
 
 from shared_code.data_model.constants import ROLE_SUPPLIER
@@ -25,6 +26,7 @@ def keep_supplier_group_in_sync(cls: type[SupplierEd]) -> t.Callable[[OpRow, int
     assert db, "Can't use keep_supplier_group_in_sync on a class used without db.define()"
     auth = db.auth
     # access raw rbac because AuthContext doesn't include all these features (update_identity, add_group)
+    # (todo)
     rbac = auth.raw_rbac
 
     def wrapper(_changes: OpRow, row_id: int) -> None:
@@ -124,6 +126,11 @@ class SupplierEd(BaseTable, EffdtFields):
 
         cls.before_insert(on_insert)
         cls.after_insert(keep_supplier_group_in_sync(cls))
+
+    @classproperty
+    def admin_grid(cls) -> str:
+        """Return the admin grid identifier for suppliers."""
+        return "suppliers"
 
 
 class Supplier(SupplierEd, SearchMixin, search_fields=("name", "gid", "olid")):

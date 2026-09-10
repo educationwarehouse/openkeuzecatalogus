@@ -133,7 +133,7 @@ def wait_for_specific_email(
 
 
 def wait_for_auth_markers(
-    email: str,
+    email: str | None,
     expected_markers: set[str],
     timeout_seconds: int = 10,
     start_at: int = 0,
@@ -145,7 +145,7 @@ def wait_for_auth_markers(
         seen = {
             str(event.get("action"))
             for event in events[start_at:]
-            if event.get("kind") == "auth_action" and event.get("email") == email
+            if event.get("kind") == "auth_action" and (email is None or event.get("email") == email)
         }
         if expected_markers.issubset(seen):
             return seen
@@ -155,7 +155,7 @@ def wait_for_auth_markers(
     return {
         str(event.get("action"))
         for event in events[start_at:]
-        if event.get("kind") == "auth_action" and event.get("email") == email
+        if event.get("kind") == "auth_action" and (email is None or event.get("email") == email)
     }
 
 
@@ -169,7 +169,7 @@ def test_entree_mock_login_works_and_logs_success(page: Page) -> None:
 
     entree_login_button.click()
 
-    page.goto(f"{BASE_URL}/profile")
+    page.goto(f"{BASE_URL}/auth/profile")
     profile_body = page.text_content("body") or ""
     assert f"kennisnet:mock-entree-user@{MOCK_EMAIL_DOMAIN}" in profile_body
 
@@ -189,7 +189,7 @@ def test_entree_mock_login_works_and_logs_success(page: Page) -> None:
 
     entree_login_button.click()
 
-    page.goto(f"{BASE_URL}/profile")
+    page.goto(f"{BASE_URL}/auth/profile")
     profile_body = page.text_content("body") or ""
     assert f"kennisnet:mock-entree-user@{MOCK_EMAIL_DOMAIN}" in profile_body
 
@@ -238,7 +238,7 @@ def test_sso_user_can_request_and_use_magic_login_link(page: Page) -> None:
     assert magic_url, "No magic_login URL found in fake mail payload"
 
     page.goto(magic_url)
-    page.goto(f"{BASE_URL}/profile")
+    page.goto(f"{BASE_URL}/auth/profile")
     profile_body = page.text_content("body") or ""
     assert sso_email in profile_body
 
@@ -248,6 +248,54 @@ def test_sso_user_can_request_and_use_magic_login_link(page: Page) -> None:
         start_at=applog_start,
     )
     assert "magic_login" in markers
+
+
+def test_sso_user_can_reset_password_via_plain_email(page: Page) -> None:
+    """Allow an Entree user to set a local password through the email fallback."""
+    sso_email = f"kennisnet:mock-entree-user@{MOCK_EMAIL_DOMAIN}"
+    email = f"mock-entree-user@{MOCK_EMAIL_DOMAIN}"
+    new_password = f"SSOFallback!{uuid.uuid4().hex}"
+    inbox_start = len(_read_messages())
+    applog_start = len(_read_applog_events())
+
+    page.goto(f"{BASE_URL}/auth/login")
+    page.locator("a[href*='oauth2kennisnet']").first.click()
+    page.goto(f"{BASE_URL}/auth/logout")
+
+    page.goto(f"{BASE_URL}/auth/request_reset_password")
+    entree_login_link = page.locator("a[href='/auth/plugin/oauth2kennisnet/login']")
+    assert entree_login_link.is_visible()
+    page.fill("input[name='email']", email)
+    page.locator("button[type='submit'], input[type='submit']").first.click()
+    page.wait_for_url("**/auth/login")
+
+    reset_mail = wait_for_specific_email(
+        email=email,
+        pattern=re.compile(r"/auth/reset_password"),
+        start_at=inbox_start,
+    )
+    assert reset_mail is not None
+    reset_url = _extract_reset_password_url(reset_mail)
+    assert reset_url, "No reset_password URL found in fake mail payload"
+    page.goto(reset_url)
+
+    page.fill("input[name='new_password']", new_password)
+    page.fill("input[name='new_password_again']", new_password)
+    page.locator("button[type='submit'], input[type='submit']").first.click()
+    page.wait_for_url("**/auth/login")
+
+    page.fill("input[name='email']", email)
+    page.fill("input[name='password']", new_password)
+    page.locator("button[type='submit'], input[type='submit']").first.click()
+    page.goto(f"{BASE_URL}/auth/profile")
+    assert sso_email in (page.text_content("body") or "")
+
+    markers = wait_for_auth_markers(
+        email=None,
+        expected_markers={"sso-reset-option-opened", "sso-reset-requested", "sso-password-reset"},
+        start_at=applog_start,
+    )
+    assert {"sso-reset-option-opened", "sso-reset-requested", "sso-password-reset"}.issubset(markers)
 
 
 def test_register_sends_verification_mail(page: Page) -> None:
@@ -278,7 +326,7 @@ def test_register_sends_verification_mail(page: Page) -> None:
     page.wait_for_url("**/auth/login")
 
     # Account should not be able to access protected page before email verification.
-    page.goto(f"{BASE_URL}/profile")
+    page.goto(f"{BASE_URL}/auth/profile")
     profile_before_verify = page.text_content("body") or ""
     assert email not in profile_before_verify
 
@@ -287,7 +335,7 @@ def test_register_sends_verification_mail(page: Page) -> None:
     page.fill("input[name='email']", email)
     page.fill("input[name='password']", password)
     page.locator("button[type='submit'], input[type='submit']").first.click()
-    page.goto(f"{BASE_URL}/profile")
+    page.goto(f"{BASE_URL}/auth/profile")
     profile_after_unverified_login = page.text_content("body") or ""
     assert email not in profile_after_unverified_login
 
@@ -304,7 +352,7 @@ def test_register_sends_verification_mail(page: Page) -> None:
 
     page.goto(verify_url)
     # Verification now establishes the session, so protected access should succeed immediately.
-    page.goto(f"{BASE_URL}/profile")
+    page.goto(f"{BASE_URL}/auth/profile")
     profile_body = page.text_content("body") or ""
     assert email in profile_body
 
@@ -325,7 +373,7 @@ def test_register_sends_verification_mail(page: Page) -> None:
     logged_out_session_value = cookies_after_logout[0]["value"]
     assert logged_out_session_value != logged_in_session_value
 
-    page.goto(f"{BASE_URL}/profile")
+    page.goto(f"{BASE_URL}/auth/profile")
     profile_after_logout = page.text_content("body") or ""
     assert email not in profile_after_logout
 
@@ -403,7 +451,7 @@ def test_reset_password_with_registered_account(page: Page) -> None:
     page.fill("input[name='email']", email)
     page.fill("input[name='password']", password)
     page.locator("button[type='submit'], input[type='submit']").first.click()
-    page.goto(f"{BASE_URL}/profile")
+    page.goto(f"{BASE_URL}/auth/profile")
     profile_with_old_password = page.text_content("body") or ""
     assert email not in profile_with_old_password
 
@@ -411,6 +459,6 @@ def test_reset_password_with_registered_account(page: Page) -> None:
     page.fill("input[name='email']", email)
     page.fill("input[name='password']", new_password)
     page.locator("button[type='submit'], input[type='submit']").first.click()
-    page.goto(f"{BASE_URL}/profile")
+    page.goto(f"{BASE_URL}/auth/profile")
     profile_with_new_password = page.text_content("body") or ""
     assert email in profile_with_new_password

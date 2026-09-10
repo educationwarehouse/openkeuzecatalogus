@@ -106,6 +106,8 @@ They do **not** represent final product domains. Replace them with actual bounde
 - [Dependency rules](architecture/dependency-rules.md)
 - [Auth and RBAC](architecture/auth-rbac.md)
 - [Catalogue filtering](architecture/catalog-filters.md)
+- [Search ranking](architecture/search-ranking.md)
+- [Public catalogue pages and comparisons](architecture/public-catalogue.md)
 - [Scraper import architecture](architecture/scraper-imports.md)
 - [Effective-dated `_ed` and `_model` tables](architecture/effective-dated-models.md)
 - [OLID identifiers](architecture/olid.md)
@@ -130,3 +132,4 @@ They do **not** represent final product domains. Replace them with actual bounde
 - [Applog](integrations/applog.md)
 - [Auth](integrations/auth.md)
 - [Storage](integrations/storage.md)
+- [Error signals](integrations/error-signals.md)

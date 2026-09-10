@@ -18,7 +18,9 @@ from shared_code.data_model.tables import (
     OrganisationEd,
     Product,
     ProductEd,
+    SearchRankWeight,
     Signal,
+    StaticContent,
     Supplier,
     SupplierEd,
     Tagged,
@@ -71,6 +73,7 @@ def define_tables(db: TypeDAL) -> TypeDAL:
         redefine=True,
         migrate=False,
     )
+
     db.define(
         CountsPerMinute,
         rname="counts_per_minute",
@@ -80,21 +83,33 @@ def define_tables(db: TypeDAL) -> TypeDAL:
         redefine=True,
         migrate=False,
     )
-    db.define(
-        DynamicFilter,
-        rname="dynamic_filter",
-        format="%(slug)s",
-        singular="DynamicFilter",
-        plural="DynamicFilters",
-        redefine=True,
-        migrate=False,
-    )
+
     db.define(
         DynamicSort,
         rname="dynamic_sort",
         format="%(slug)s",
         singular="DynamicSort",
         plural="DynamicSorts",
+        redefine=True,
+        migrate=False,
+    )
+
+    db.define(
+        SearchRankWeight,
+        rname="search_rank_weight",
+        format="%(entity_kind)s#%(key)s",
+        singular="SearchRankWeight",
+        plural="SearchRankWeights",
+        redefine=True,
+        migrate=False,
+    )
+
+    db.define(
+        StaticContent,
+        rname="static_content",
+        format="%(scope)s#%(section)s",
+        singular="StaticContent",
+        plural="StaticContents",
         redefine=True,
         migrate=False,
     )
@@ -194,6 +209,17 @@ def define_tables(db: TypeDAL) -> TypeDAL:
         redefine=True,
         migrate=False,
     )
+
+    db.define(
+        DynamicFilter,
+        rname="dynamic_filter",
+        format="%(slug)s",
+        singular="DynamicFilter",
+        plural="DynamicFilters",
+        redefine=True,
+        migrate=False,
+    )
+
     db.define(
         Vision,
         rname="vision_model",

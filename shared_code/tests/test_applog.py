@@ -8,6 +8,7 @@ from diskcache import Deque
 from pytest import MonkeyPatch
 from typedal import TypeDAL
 
+from shared_code.modules.auth import AuthAdapter
 from shared_code.services.applog import Applogger, DequeApplogger, FileApplogger
 from shared_code.services.applog.handler import process_applog_deque
 
@@ -18,7 +19,7 @@ def test_applogger_from_env_fake_uses_file_logger(monkeypatch: MonkeyPatch, tmp_
     monkeypatch.setenv("APPLOG_FAKE", "1")
     monkeypatch.setenv("APPLOG_PATH", str(applog_path))
 
-    logger = Applogger.from_env()
+    logger = Applogger.with_injected(db=db_psql, auth_adapter=AuthAdapter.for_service("test.applog.file"))
     assert isinstance(logger, FileApplogger)
     ugid = uuid.uuid4()
     assert logger.log_auth_action(action="login", user_gid=ugid, email="x@example.com", success=True) is True
@@ -39,7 +40,7 @@ def test_applogger_from_env_real_uses_deque_logger(monkeypatch: MonkeyPatch, tmp
     monkeypatch.setenv("APPLOG_FAKE", "0")
     monkeypatch.setenv("APPLOG_DEQUE_DIR", str(deque_dir))
 
-    logger = Applogger.from_env()
+    logger = Applogger.with_injected(db=db_psql, auth_adapter=AuthAdapter.for_service("test.applog.deque"))
     assert isinstance(logger, DequeApplogger)
     ugid = uuid.uuid4()
     assert logger.log_auth_action(action="logout", user_gid=ugid, email="y@example.com", success=True) is True
@@ -72,7 +73,7 @@ def test_applog_wrapper_to_pgq_consumer_to_db(
     monkeypatch.setenv("APPLOG_FAKE", "0")
     monkeypatch.setenv("APPLOG_DEQUE_DIR", str(deque_dir))
 
-    logger = Applogger.from_env()
+    logger = Applogger.with_injected(db=db_per_file, auth_adapter=AuthAdapter.for_service("test.applog.e2e"))
 
     assert isinstance(logger, DequeApplogger)
 

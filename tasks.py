@@ -636,13 +636,33 @@ def setup(c: Context) -> None:
     )
 
     # Notifications
-    edwh.check_env(
-        key="NTFY_ERROR_URL",
-        default=f"EDWH-DEV-ERROR-{hostname}",
-        comment="Ntfy.sh error channel, use production-specific channel in production.",
-        prefix="https://ntfy.sh/",
+    error_signal_backend = edwh.check_env(
+        key="ERROR_SIGNAL_BACKEND",
+        default="mock" if is_dev else "ntfy",
+        comment="Backend for stored error-ticket signals: mock, ntfy, or a future backend.",
         force_default=use_default,
     )
+    edwh.check_env(
+        key="ERROR_SIGNAL_QUEUE_PATH",
+        default="/shared_cache/error_signals/pending",
+        comment="Disk-backed queue for pending error-ticket signals.",
+        force_default=use_default,
+    )
+    if error_signal_backend == "mock":
+        edwh.check_env(
+            key="ERROR_SIGNAL_MOCK_PATH",
+            default="/shared_cache/error_signals/mock.jsonl",
+            comment="JSONL output path for mock error-ticket signals.",
+            force_default=use_default,
+        )
+    elif error_signal_backend == "ntfy":
+        edwh.check_env(
+            key="NTFY_ERROR_URL",
+            default=f"EDWH-DEV-ERROR-{hostname}",
+            comment="Ntfy.sh error channel, use a production-specific channel in production.",
+            prefix="https://ntfy.sh/",
+            force_default=use_default,
+        )
     edwh.check_env(
         key="NTFY_WARNING_URL",
         default=f"EDWH-DEV-WARNING-{hostname}",
@@ -872,6 +892,7 @@ def setup(c: Context) -> None:
     c.sudo("chown -R 1050:1050 shared_cache")
 
     edwh.tasks.set_permissions(c, "py4web/apps")
+    edwh.tasks.set_permissions(c, "shared_code/generated")
     edwh.tasks.set_permissions(c, "shared_cache", filepermissions=666, directorypermissions=777)
     edwh.tasks.set_permissions(c, "shared_applog")
     edwh.tasks.set_permissions(c, "shared_user_storage")
@@ -880,6 +901,7 @@ def setup(c: Context) -> None:
     bundler_build(c)
 
     print("Use `edwh up` to start docker containers.")
+    print("Use `edwh types.generate` to build derived types.")
 
 
 @task()

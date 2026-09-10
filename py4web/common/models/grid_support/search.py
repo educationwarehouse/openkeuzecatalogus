@@ -15,6 +15,10 @@ from typedal.types import Field, Query
 
 from py4web import request
 from shared_code.data_model.mixins import SearchMixin
+from shared_code.data_model.mixins.search import (
+    apply_basic_search,
+    basic_search_query,
+)
 
 LIMIT_PARAM = "limit"
 
@@ -27,7 +31,7 @@ class LimitConfig(t.TypedDict):
     param: t.NotRequired[str]
 
 
-type T_Limit = dict[int, str] | t.Iterable[int] | LimitConfig | None | t.Literal[False]
+type T_Limit = dict[int, str] | t.Iterable[int] | LimitConfig | t.Literal[False] | None
 
 
 def get_request_data() -> dict[str, t.Any]:
@@ -198,14 +202,13 @@ class EddieSearch:
         self.search_filters = list(search_filters)
         self.grid_id = self.data.get("_grid_id") or f"eddie-grid-{uuid.uuid4()}"
 
-        if isinstance(table, type) and issubclass(table, SearchMixin):
-            self.search_filters.append(
-                Field(
-                    "q",
-                    default=self.data.get("q"),
-                    _placeholder="Begin met zoeken...",
-                )
+        self.search_filters.append(
+            Field(
+                "q",
+                default=self.data.get("q"),
+                _placeholder="Begin met zoeken...",
             )
+        )
 
         limit_config = self.limit_config(limit)
         self._limit = limit_config
@@ -227,8 +230,12 @@ class EddieSearch:
             builder = QueryBuilder(table).where(self.query)
 
             # process request:
-            if (search_query := self.data.get("q", "").strip()) and issubclass(table, SearchMixin):
-                builder = table.search(search_query, builder=builder)
+            if search_query := self.data.get("q", "").strip():
+                builder = (
+                    table.search(search_query, builder=builder)
+                    if issubclass(table, SearchMixin)
+                    else apply_basic_search(search_query, table, builder)
+                )
 
             # not using self.search_filters here, because that includes stuff like 'q' and 'limit'
             for extra_filter in search_filters:
@@ -254,6 +261,8 @@ class EddieSearch:
                 self.query = builder.query  # convert typedal query builder back into pydal query again
 
             self.builder = builder
+        elif search_query := self.data.get("q", "").strip():
+            self.query &= basic_search_query(search_query, table)
 
     @staticmethod
     def limit_config(limit: T_Limit) -> LimitConfig | None:

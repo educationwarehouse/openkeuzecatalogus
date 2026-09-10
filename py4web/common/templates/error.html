@@ -168,7 +168,7 @@
             <!-- Ticket Section -->
             [[if ticket_id:]]
             <div class="ticket-container">
-                <a href="[[=URL('errors', ticket_id, use_appname='admin')]]" class="btn btn-primary"
+                <a href="[[=URL('admin', 'errors', ticket_id, use_appname=False)]]" class="btn btn-primary"
                    title="Klik om te kopiëren; shift-klik om naar de ticketpagina te gaan"
                    _="on click
                     if not (event.ctrlKey or event.shiftKey or event.metaKey)
@@ -178,7 +178,8 @@
                     then add .btn-success to me
                     then remove .btn-primary from me
                     return false"
-                >Ticket <span class="p-1 font-monospace">[[=ticket_id]]</span> Kopiëren</a>
+                >Ticket <span class="p-1 font-monospace">[[=ticket_id]]</span> Kopiëren
+                </a>
             </div>
             [[pass]]
 
@@ -190,10 +191,12 @@
                         Neem dan contact met ons op via:
                         [[if ticket_id:]]
                         <a href="mailto:support@educationwarehouse.nl?subject=Foutmelding ticket [[=ticket_id]]"
-                           class="alert-link fw-bold">support@educationwarehouse.nl</a>
+                           class="alert-link fw-bold">support@educationwarehouse.nl
+                        </a>
                         [[else:]]
                         <a href="mailto:support@educationwarehouse.nl?subject=Foutmelding [[=error_code]]"
-                           class="alert-link fw-bold">support@educationwarehouse.nl</a>
+                           class="alert-link fw-bold">support@educationwarehouse.nl
+                        </a>
                         [[pass]]
                     </p>
                     [[if ticket_id:]]
@@ -220,10 +223,12 @@
                     [[elif output:]]
                     [[if isinstance(output, dict):]]
                     <dl class="row mb-0">
-                    [[for key, row in output.items():]]
+                        [[for key, row in output.items():]]
                         <dt class="col-sm-2 text-sm-end text-muted small pt-1">[[=key]]</dt>
-                        <dd class="col-sm-10 mb-2"><pre><code>[[=row]]</code></pre></dd>
-                    [[pass]]
+                        <dd class="col-sm-10 mb-2">
+                            <pre><code>[[=row]]</code></pre>
+                        </dd>
+                        [[pass]]
                     </dl>
                     [[else:]]
                     [[=output]]

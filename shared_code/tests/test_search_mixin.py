@@ -5,7 +5,9 @@ import typing as t
 import pytest
 from typedal import TypeDAL
 
-from shared_code.data_model import Method, Product, ProductEd, Supplier, SupplierEd, MethodEd
+from shared_code.data_model import Method, Product, ProductEd, SearchRankWeight, Supplier, SupplierEd, MethodEd
+from shared_code.data_model.mixins.search import basic_search_query
+from shared_code.infra.database.tables import is_readonly_table
 
 
 @pytest.fixture(scope="module")
@@ -60,6 +62,35 @@ def test_search_mixin_matches_single_term(seeded_products: str) -> None:
     assert names == {"Algebra Basisboek", "Algebra Werkboek", "Basisboek Algebra"}
 
 
+def test_basic_search_matches_string_fields_on_a_generic_table(seeded_products: str) -> None:
+    """Generic-table search finds text in string fields without a SearchMixin."""
+    rows = ProductEd.where(basic_search_query("algebra", ProductEd)).collect()
+
+    assert {row.name for row in rows} == {
+        "Algebra Basisboek",
+        "Algebra Werkboek",
+        "Basisboek Algebra",
+    }
+
+
+def test_basic_search_matches_uuid_custom_fields_on_a_generic_table(seeded_products: str) -> None:
+    """Generic-table search supports readable UUID custom fields."""
+    rows = ProductEd.where(basic_search_query(seeded_products, ProductEd)).collect()
+
+    assert {str(row.supplier_gid) for row in rows} == {seeded_products}
+
+
+def test_is_readonly_table_detects_generated_and_maintained_tables(
+    migrated_db_per_file: None, db_per_file: TypeDAL
+) -> None:
+    """Generated tables and tables with rebuild functions are readonly."""
+    assert migrated_db_per_file is None
+
+    assert is_readonly_table(db_per_file, "product_model")
+    assert is_readonly_table(db_per_file, "product")
+    assert not is_readonly_table(db_per_file, "product_ed")
+
+
 def test_search_mixin_requires_all_terms(seeded_products: str) -> None:
     """Multi-term search should require all terms to match."""
     rows = Product.search(
@@ -100,9 +131,10 @@ def test_product_search_supports_quoted_and_negative_terms_and_safe_orderby(seed
         "basisboek",
         builder=Product.where(Product.supplier_gid == seeded_products).select(orderby=~Product.name),
     ).collect()
+    # Previously the existing order took precedence; relevance now comes first.
     assert [row.name for row in ranked_with_existing_order] == [
-        "Biologie Basisboek",
         "Basisboek Algebra",
+        "Biologie Basisboek",
         "Algebra Basisboek",
     ]
 
@@ -174,9 +206,52 @@ def test_product_search_matches_method_and_supplier_names_but_prefers_product_na
 
     assert [row.name for row in rows] == [
         "Zeta Target Product",
-        "Alpha Product",
+        # Supplier-name matches (70) rank above method-name matches (60).
         "Beta Product",
+        "Alpha Product",
     ]
+
+
+def test_product_search_score_overrides_change_result_order(
+    migrated_db_per_file: None,
+    db_per_file: TypeDAL,
+    supplier_factory: t.Callable[..., Supplier],
+    method_factory: t.Callable[..., MethodEd],
+    product_factory: t.Callable[..., ProductEd],
+) -> None:
+    """Unsaved preview scores should affect the relevance order without persisting them."""
+    assert migrated_db_per_file is None
+    assert db_per_file
+
+    direct_supplier = supplier_factory(name="Preview Direct", email_domains=["preview-direct.example.test"])
+    related_supplier = supplier_factory(name="Preview Target", email_domains=["preview-related.example.test"])
+    direct_method = method_factory(supplier_gid=str(direct_supplier.gid), olid="preview-method-direct", name="General")
+    related_method = method_factory(supplier_gid=str(related_supplier.gid), olid="preview-method-related", name="General")
+    product_factory(
+        supplier_gid=str(direct_supplier.gid),
+        method_gid=direct_method.gid,
+        olid="preview-product-direct",
+        name="Target Product",
+    )
+    product_factory(
+        supplier_gid=str(related_supplier.gid),
+        method_gid=related_method.gid,
+        olid="preview-product-related",
+        name="Other Product",
+    )
+
+    supplier_rule = SearchRankWeight.where(
+        (SearchRankWeight.entity_kind == "product") & (SearchRankWeight.label == "Leveranciersnaam")
+    ).first()
+    assert supplier_rule is not None
+
+    rows = Product._apply_search(
+        "target",
+        Product.where(Product.available == "leverbaar").select(orderby=Product.name),
+        score_overrides={supplier_rule.gid: {"contains": 600}},
+    ).collect()
+
+    assert [row.name for row in rows] == ["Other Product", "Target Product"]
 
 
 def test_method_search_matches_supplier_names_but_prefers_method_name(

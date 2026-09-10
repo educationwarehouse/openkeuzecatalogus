@@ -243,6 +243,7 @@ class AbstractImporter(Service, abc.ABC):
         return stats
 
     def _warn_import(self, warning_code: str, message: str) -> None:
+        # todo: StrEnum for warning_code
         warning = ImportRunWarningStat(warning_code=warning_code, message=message)
         if warning not in self._warnings:
             self._warnings.append(warning)
@@ -330,8 +331,8 @@ class AbstractImporter(Service, abc.ABC):
                 success=True,
             )
             return stats
-        except Exception as exc:
-            failure_message = "".join(traceback.format_exception_only(type(exc), exc)).strip()
+        except Exception as exc_outer:
+            failure_message = "".join(traceback.format_exception_only(type(exc_outer), exc_outer)).strip()
             self._log_import_event(
                 action="scraper-import-failed",
                 supplier_gid=supplier_gid,
@@ -359,7 +360,8 @@ class AbstractImporter(Service, abc.ABC):
                 )
             except Exception:
                 self.db.rollback()
-            raise
+
+            raise exc_outer
 
     @classmethod
     def run(cls, **extras: t.Unpack[ImportRunExtras]) -> ImportStats:

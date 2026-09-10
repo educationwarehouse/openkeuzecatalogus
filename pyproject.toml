@@ -64,6 +64,7 @@ target-version = "py314"
 line-length = 120
 extend-exclude = [
     "py4web/apps/_dashboard",
+    "shared_code/generated",
     "shared_code/modules/scrapers/eduv/generated",
     "shared_code/tests",
 ]

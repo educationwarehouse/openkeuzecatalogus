@@ -9,7 +9,12 @@ from .tagged import TaggedModelWithPrio_V1
 
 
 def platform_base_url() -> str:
-    """Build the public platform URL at view-definition time."""
+    """Build the public platform URL at view-definition time.
+
+    The URL is baked into the view SQL at migration time. If the domain
+    changes, a `rematerialize` on the new server will propagate the new
+    URL, with no migration rollback needed.
+    """
     hosting_domain = os.environ["HOSTINGDOMAIN"].rstrip("/")
     subdomain = os.environ.get("PY4WEB_SUBDOMAIN", "").strip(".")
     hostname = f"{subdomain}.{hosting_domain}" if subdomain else hosting_domain

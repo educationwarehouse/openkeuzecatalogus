@@ -6,6 +6,7 @@ from endow import Domain
 from typedal import QueryBuilder
 
 from shared_code.data_model import AnyDict, DynamicFilter, DynamicSort, Method, Product
+from shared_code.data_model.constants import CATALOG_APPLIES_TO_LABELS
 from shared_code.data_model.validators.sort_expression import parse_sort_expression
 
 from .definitions import (
@@ -99,6 +100,13 @@ class CatalogFilters(Domain):
                 widget_kind=row.widget_kind,
                 sort_order=row.sort_order,
             )
+            if metadata.applies_to not in CATALOG_APPLIES_TO_LABELS:
+                print(
+                    "[filters] skipping filter with invalid applies_to:",
+                    metadata.slug,
+                    metadata.applies_to,
+                )
+                continue
             if metadata.applies_to not in (context.entity_kind, "both"):
                 continue
 
@@ -116,19 +124,38 @@ class CatalogFilters(Domain):
 
         elif metadata.filter_kind == "dynamic":
             if not metadata.field_name or metadata.field_name not in context.table.fields:
+                print(
+                    "[filters] skipping dynamic filter with invalid field_name:",
+                    metadata.slug,
+                    metadata.field_name,
+                    context.entity_kind,
+                )
                 return None
             return DynamicFieldFilterDefinition(metadata, context)
 
         elif metadata.filter_kind == "custom":
             if not metadata.field_name or metadata.field_name not in context.table.fields:
+                print(
+                    "[filters] skipping custom filter with invalid field_name:",
+                    metadata.slug,
+                    metadata.field_name,
+                    context.entity_kind,
+                )
                 return None
             if not metadata.handler_key:
+                print("[filters] skipping custom filter without handler_key:", metadata.slug)
                 return None
             handler = CUSTOM_FILTERS.get(metadata.handler_key)
             if not handler:
+                print(
+                    "[filters] skipping custom filter with unknown handler_key:",
+                    metadata.slug,
+                    metadata.handler_key,
+                )
                 return None
             return handler(metadata, context)
 
+        print("[filters] skipping filter with unknown filter_kind:", metadata.slug, metadata.filter_kind)
         return None
 
     def sort_options(self, entity_kind: CatalogEntityKind) -> dict[str, CatalogSortOption[t.Any]]:

@@ -21,6 +21,8 @@ See [Auth and RBAC](../architecture/auth-rbac.md).
 Configured `allowed_actions`:
 - `login`
 - `logout`
+- `request_magic_login`
+- `magic_login`
 - `request_reset_password`
 - `reset_password`
 - `change_password`
@@ -33,6 +35,8 @@ Configured `allowed_actions`:
 - Outbound auth mail is attached by `AppAuth.from_dependencies(...)` via `auth.sender = backend.mailer`.
 - Auth actions are logged through `Applogger.log_auth_action(...)`.
 - Login failures are recorded as `invalid_login_attempt`.
+- Magic-login requests send a one-time login link through the same mailer and record
+  both the request and token-consumption result.
 
 Logged metadata includes:
 - action

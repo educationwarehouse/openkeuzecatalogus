@@ -8,6 +8,7 @@ from email.message import EmailMessage
 from endow import Service
 from pgskewer.helpers import EnqueuedJob, queue_job
 
+from shared_code.services.error_tickets import ErrorTicketService
 from shared_code.util.env import bool_from_env
 
 if t.TYPE_CHECKING:
@@ -35,6 +36,7 @@ class Mailer(Service, abc.ABC):
     """Abstract mailer contract plus shared message construction helpers."""
 
     db: DatabaseContext
+    error_tickets: ErrorTicketService
 
     # start contract to be implemented
     sender: str

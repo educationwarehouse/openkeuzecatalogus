@@ -621,7 +621,7 @@ def lock_test_run(lock_file: Path = TEST_RUN_LOCK_FILE, wait: bool = True, verbo
             if not wait and err.errno in (errno.EACCES, errno.EAGAIN):
                 yield False
                 return
-            raise
+            raise err
         try:
             yield True
         finally:
@@ -637,6 +637,7 @@ def default_testing_env() -> dict[str, t.Any]:
         "SMTP_FAKE": "1",
         "IMAGE_STORAGE_FAKE": "1",
         "APPLOG_FAKE": "1",
+        "ERROR_SIGNAL_BACKEND": "mock",
         "ENTREE_FAKE": "1",
         "ENTREE_CLIENT_ENDPOINT": "http://py4web:8000/auth/entree_mock_authorize",
         "PYTEST_MOCK_EMAIL_DOMAIN": "pytest-mock.local",

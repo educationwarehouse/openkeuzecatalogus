@@ -21,6 +21,8 @@ Voor alle PR's:
 - [ ] test coverage > 80%: [vul percentage in]%
 - [ ] review door tweede teamlid (of bot indien niet productie)
 - [ ] geen overgebleven FIXME's in code
+- [ ] security scans uitgevoerd en goed bevonden (via CI-flow)
+- [ ] SBOM gegenereerd en beschikbaar (via CI-flow)
 - [ ] SSD checks oke *(verplicht bij prd, anders optioneel)*
 - [ ] WCAG checks oke *(verplicht bij prd, anders optioneel)*
 - [ ] SIVON akkoord *(alleen voor prd)*

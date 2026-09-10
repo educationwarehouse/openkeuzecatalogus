@@ -33,7 +33,7 @@ class DequeApplogger(Applogger):
             "name": event.get("kind", "") or "event",
             "signal_source": self.signal_source,
             "evidence": event,
-            "session_gid": None,
+            "session_gid": event.get("session_gid"),
             "user_gid": event.get("user_gid"),
             "ts": normalize_timestamp(timestamp),
             "related": str(related) if related else None,

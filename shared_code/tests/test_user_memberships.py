@@ -105,7 +105,7 @@ def test_build_user_query_returns_empty_query_for_unknown_membership(
     """Unknown membership filters should return no users."""
     assert migrated_db_per_file is None
 
-    rows = list(AuthUser.where(build_user_query(membership_gid="00000000-0000-0000-0000-000000000000")).select())
+    rows = list(AuthUser.where(build_user_query(membership_gid="00000000-0000-0000-0000-000000000000")))
     assert rows == []
 
 

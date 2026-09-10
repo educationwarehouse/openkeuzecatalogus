@@ -6,11 +6,11 @@ from contextvars import ContextVar
 from py4web.core import Fixture
 
 from py4web import request
-from shared_code.infra.error_tickets import AuthInfo, RequestInfo, SnapshotDict, redact_request_info
+from shared_code.services.error_tickets import AuthInfo, RequestInfo, SnapshotDict, redact_request_info
 
 
 class ErrorTicketHelper(Fixture):
-    """Snapshot auth and request data during ``on_error`` for later ticket rendering."""
+    """Snapshot auth and request data during `on_error` for later ticket rendering."""
 
     _snapshot: ContextVar[SnapshotDict | None] = ContextVar("error_ticket_snapshot", default=None)
 

@@ -3,7 +3,7 @@
 from shared_code.data_model import define_tables
 from shared_code.modules.auth import (
     AuthActor,
-    AuthAdapter,
+    edwh_rbac_adapter,
 )
 
 from .auth_cls import AppAuth
@@ -14,7 +14,7 @@ from .session import session
 setup_validator_translations()
 
 
-auth_adapter = AuthAdapter(
+auth_adapter = edwh_rbac_adapter(
     # adapter that binds backend to py4web's auth + rbac
     get_actor=lambda: (
         AuthActor(
@@ -31,14 +31,8 @@ auth_adapter = AuthAdapter(
             name=None,
         )
     ),
-    get_roles=lambda _: set(),
-    get_permissions=lambda _: set(),
-    # todo: currently a duplication of the 'service' one - should possibly check 'subject' with actor.gid ?
-    #       (although that would break during e.g. post-email-validation logic)
-    grant_membership=lambda self, subject, role: self.raw_rbac.add_membership(subject, role),
-    revoke_membership=lambda self, subject, role: self.raw_rbac.remove_membership(subject, role),
-    check_membership=lambda self, role: self.raw_rbac.has_membership(self.id, role) if self.id else False,
-    check_permission=lambda self, permission: False,  # todo
+    get_session_gid=lambda: session.get("uuid"),
+    get_rbac=lambda ctx: ctx.raw_rbac,
 )
 
 backend = Py4webBackend.with_injected(auth_adapter=auth_adapter)

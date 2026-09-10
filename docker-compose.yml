@@ -39,6 +39,9 @@ services:
       NTFY_ERROR_URL: ${NTFY_ERROR_URL}
       NTFY_WARNING_URL: ${NTFY_WARNING_URL}
       NTFY_SORT_URL: ${NTFY_SORT_URL}
+      ERROR_SIGNAL_BACKEND: ${ERROR_SIGNAL_BACKEND:-mock}
+      ERROR_SIGNAL_QUEUE_PATH: ${ERROR_SIGNAL_QUEUE_PATH:-/shared_cache/error_signals/pending}
+      ERROR_SIGNAL_MOCK_PATH: ${ERROR_SIGNAL_MOCK_PATH:-/shared_cache/error_signals/mock.jsonl}
       APPLOG_FAKE: ${APPLOG_FAKE:-0}
       TOOLS_APPLOG_ID: ${TOOLS_APPLOG_ID}
       TOOLS_APPLOG_KEY: ${TOOLS_APPLOG_KEY}
@@ -138,6 +141,8 @@ services:
       migrate:
         condition: service_completed_successfully
       pgq-applog:
+        condition: service_healthy
+      pgq-maintenance:
         condition: service_healthy
     stop_grace_period: 2s
     deploy:
@@ -275,6 +280,15 @@ services:
       <<: *shared_environment
       SERVICE_NAME: pgq-applog
     command: pgq run pgq.consumers.applog:main --batch-size 5
+    deploy:
+      replicas: 1
+
+  pgq-maintenance:
+    <<: *pgq
+    environment:
+      <<: *shared_environment
+      SERVICE_NAME: pgq-maintenance
+    command: pgq run pgq.consumers.maintenance:main --batch-size 1
     deploy:
       replicas: 1
 

@@ -248,6 +248,234 @@
   border: 1px solid #f3ddb0;
 }
 
+.comparison-tray {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 1030;
+  width: min(22rem, calc(100vw - 2rem));
+  padding: 1rem;
+  border: 1px solid #dee2e6;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+
+.comparison-header,
+.comparison-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.comparison-header {
+  margin-bottom: 0.75rem;
+}
+
+.comparison-items {
+  display: grid;
+  gap: 0.5rem;
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
+.comparison-item {
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.comparison-item:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.comparison-page {
+  --comparison-ink: #21313c;
+  --comparison-muted: #687780;
+  --comparison-line: #dce5e6;
+  --comparison-accent: #d8643b;
+  --comparison-highlight: #fff7ed;
+}
+
+.comparison-intro {
+  padding: 1.25rem 0 0.25rem;
+}
+
+.comparison-eyebrow {
+  color: var(--comparison-accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.comparison-filter {
+  color: var(--comparison-ink);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.comparison-filter .form-check-input {
+  margin-right: 0.65rem;
+}
+
+.comparison-matrix {
+  border: 1px solid var(--comparison-line);
+  border-radius: 1rem;
+  box-shadow: 0 0.75rem 2.5rem rgba(33, 49, 60, 0.08);
+  overflow: hidden;
+}
+
+.comparison-scroll {
+  max-width: 100%;
+  overflow: auto;
+  overscroll-behavior-inline: contain;
+}
+
+.comparison-grid {
+  display: grid;
+  grid-template-columns: 20rem repeat(var(--comparison-column-count), 22rem);
+  min-width: max-content;
+}
+
+.comparison-grid-header {
+  background: var(--comparison-ink);
+  color: #fff;
+}
+
+.comparison-label,
+.comparison-value,
+.comparison-heading {
+  border-bottom: 1px solid var(--comparison-line);
+  min-height: 4.25rem;
+  min-width: 0;
+  padding: 1rem 1.125rem;
+}
+
+.comparison-label {
+  align-items: center;
+  background: #f7faf9;
+  color: var(--comparison-ink);
+  display: flex;
+  font-size: 0.875rem;
+  font-weight: 650;
+  left: 0;
+  position: sticky;
+  z-index: 2;
+}
+
+.comparison-label-header {
+  background: var(--comparison-ink);
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.comparison-heading {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.comparison-heading-overline {
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.comparison-heading-name {
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.comparison-value {
+  background: #fff;
+  color: var(--comparison-ink);
+  font-size: 0.925rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.comparison-row-different .comparison-value {
+  background: var(--comparison-highlight);
+}
+
+.comparison-row-different .comparison-label {
+  background: #ffedd5;
+}
+
+.comparison-difference-marker {
+  background: var(--comparison-accent);
+  border-radius: 50%;
+  flex: 0 0 auto;
+  height: 0.5rem;
+  margin-right: 0.55rem;
+  width: 0.5rem;
+}
+
+.comparison-section-title {
+  background: #eef5f3;
+}
+
+.comparison-section-label {
+  background: #eef5f3;
+  color: #315a52;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.comparison-section-rule {
+  border-bottom: 1px solid var(--comparison-line);
+  grid-column: 2 / -1;
+}
+
+.comparison-theme-label {
+  align-items: start;
+  padding-top: 1.125rem;
+}
+
+.comparison-vision-value {
+  min-height: 8rem;
+}
+
+.comparison-vision-source {
+  color: var(--comparison-muted);
+  font-size: 0.8rem;
+}
+
+.comparison-vision-properties {
+  background: rgba(33, 49, 60, 0.05);
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  white-space: pre-wrap;
+}
+
+.comparison-page.only-differences .comparison-row-same {
+  display: none;
+}
+
+@media (max-width: 575.98px) {
+  .comparison-intro {
+    padding-top: 0.5rem;
+  }
+
+  .comparison-matrix {
+    border-radius: 0.75rem;
+  }
+
+  .comparison-label,
+  .comparison-value,
+  .comparison-heading {
+    padding: 0.875rem;
+  }
+}
+
 @media (min-width: 768px) {
   .catalog-results-grid--list .card-body {
     display: grid;

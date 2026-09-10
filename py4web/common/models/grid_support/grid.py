@@ -3,11 +3,12 @@
 import functools
 import traceback
 import typing as t
+import warnings
 from copy import deepcopy
 
 from py4web.utils.form import Form
 from py4web.utils.grid import parse_referrer
-from typedal import TypeDAL, TypedRows, TypedTable
+from typedal import TypeDAL, TypedField, TypedRows, TypedTable
 from typedal.tables import TableMeta
 from typedal.types import Field, Query, Row
 from yatl import TAGGER as HTMLElement
@@ -46,6 +47,7 @@ from .styles import EddieFormStyle, EddieFormStyleFactory, EddieGridStyle, prepa
 
 T_Table = t.TypeVar("T_Table", bound=BaseTable)
 T_ColumnRow = t.TypeVar("T_ColumnRow", bound=BaseTable)
+ArchiveMode = t.Literal["enabled", "readonly", "disabled"]
 
 
 def after_change_applog(action: str, row: Row) -> None:
@@ -110,7 +112,7 @@ class SmartGrid[T: TableWithGid](Grid):
         after_insert: t.Iterable[t.Callable[[Row], None]] = (),
         after_update: t.Iterable[t.Callable[[Row], None]] = (),
         after_delete: t.Iterable[t.Callable[[Row], None]] = (),
-        archive: bool = True,  # archive functionality (for effdt tables)
+        archive: ArchiveMode | bool = "enabled",  # archive functionality (for effdt tables)
         buttons_left: bool = True,  # like web2py supported as `buttons_placement`, default to True for Mike :)
         with_applog: bool = True,
         search_filters: t.Iterable[Field | SearchField] = (),
@@ -120,7 +122,7 @@ class SmartGrid[T: TableWithGid](Grid):
         search_queries: GridSearchQueries = None,
         orderby: GridOrderBy = None,
         columns: GridColumns = None,
-        field_id: Field | None = None,
+        field_id: Field | TypedField[t.Any] | None = None,
         show_id: bool = False,
         left: GridLeft = None,
         headings: t.Sequence[str] | None = None,
@@ -146,9 +148,13 @@ class SmartGrid[T: TableWithGid](Grid):
         }
 
         self.is_effdt = str(table._rname).endswith("_model") and getattr(table, "effdt", None) is not None
-        self.archive = archive and self.is_effdt
-        self.buttons_left = buttons_left
 
+        archive = self.normalize_archive_mode(archive)
+
+        self.archive = archive != "disabled" and self.is_effdt
+        self.archive_restorable = archive == "enabled"
+
+        self.buttons_left = buttons_left
         self.extra_form_html = self._normalize_extra_form_html(extra_form_html)
 
         # create a deepcopy so we can modify it (locally):
@@ -176,7 +182,7 @@ class SmartGrid[T: TableWithGid](Grid):
         orderby = orderby or self._setup_orderby(search, table)
 
         field_gid = self._setup_gid_represent(path, table)
-        field_id = field_id or field_gid
+        field_id = t.cast(Field, field_id or field_gid)
 
         self._setup_widgets(widgets, formstyle)
 
@@ -257,6 +263,24 @@ class SmartGrid[T: TableWithGid](Grid):
         if auto_process:
             self.process()
 
+    @classmethod
+    def normalize_archive_mode(cls, archive: ArchiveMode | bool) -> ArchiveMode:
+        """Normalizes the archive mode input into a standardized ArchiveMode string."""
+        archive_modes = t.get_args(ArchiveMode)
+        archive_mode_options = ", ".join(archive_modes)
+
+        if isinstance(archive, bool):
+            warnings.warn(
+                f"Boolean archive values are deprecated; use one of: {archive_mode_options}.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            return "enabled" if archive else "disabled"
+        elif archive not in archive_modes:
+            raise ValueError(f"Unknown archive mode {archive}; expected one of: {archive_mode_options}.")
+        else:
+            return archive
+
     def _setup_widgets(self, widgets: dict[str, t.Any] | None, formstyle: EddieFormStyleFactory) -> None:
         if not widgets:
             return
@@ -300,10 +324,10 @@ class SmartGrid[T: TableWithGid](Grid):
             return {}
 
         if isinstance(value, dict):
-            return value  # type: ignore
+            return value
 
         if isinstance(value, list):
-            return dict(enumerate(value))  # type: ignore
+            return dict(enumerate(value))
 
         return {-4: value}
 
@@ -371,12 +395,18 @@ class SmartGrid[T: TableWithGid](Grid):
                 deletable=False,
                 buttons_left=True,
                 orderby=[~table.effdt, ~table.id],
-                pre_action_buttons=[
-                    lambda row: GridActionButton(
-                        "Versie Terugzetten",
-                        URL(archive_endpoint, "restore", row.id),
-                        additional_classes=[BUTTON_CLASS, "grid-button"],
-                    ),
+                pre_action_buttons=(
+                    [
+                        lambda row: GridActionButton(
+                            "Versie Terugzetten",
+                            URL(archive_endpoint, "restore", row.id),
+                            additional_classes=[BUTTON_CLASS, "grid-button"],
+                        )
+                    ]
+                    if self.archive_restorable
+                    else []
+                )
+                + [
                     lambda row: GridActionButton(
                         "Archief voor deze rij",
                         URL(archive_endpoint, row.gid),
@@ -389,6 +419,8 @@ class SmartGrid[T: TableWithGid](Grid):
         elif self.parts[-2] == "restore":
             # .../restore/<id>
             row_id = self.parts[-1]
+            if not self.archive_restorable:
+                raise HTTP(403, "You do not have access to restore an archived version.")
 
             user = self.auth_user
             assert user, "can't use grid without logging in"
@@ -408,18 +440,26 @@ class SmartGrid[T: TableWithGid](Grid):
             )
         else:
             # for specific gid:
+            # note: gid has been converted to 'id' at this point:
+            latest_id = self.parts[-1]
+            if self.archive_query and self.db(self.archive_query & (table.id == latest_id)).count() == 0:
+                raise HTTP(401, "Access Denied")
+
             return build_archive_table(
                 table_ed=table,
-                # note: gid has been converted to 'id' at this point:
-                latest_id=self.parts[-1],
+                latest_id=latest_id,
                 class_style=self.param.grid_class_style,
-                action_buttons=[
-                    lambda row: GridActionButton(
-                        "Versie Terugzetten",
-                        URL(request.path, "restore", row.id),
-                        additional_classes=[BUTTON_CLASS, "grid-button"],
-                    )
-                ],
+                action_buttons=(
+                    [
+                        lambda row: GridActionButton(
+                            "Versie Terugzetten",
+                            URL(request.path, "restore", row.id),
+                            additional_classes=[BUTTON_CLASS, "grid-button"],
+                        )
+                    ]
+                    if self.archive_restorable
+                    else []
+                ),
             )
 
     def archive_button(self, *classes: str) -> HTMLElement:

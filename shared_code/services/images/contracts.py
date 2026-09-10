@@ -38,7 +38,7 @@ class ImageStorage(Service, abc.ABC):
         content: bytes,
         content_type: str | None = None,
     ) -> ImageUpload:
-        """Persist bytes under ``filename`` and return its filename and URL."""
+        """Persist bytes under `filename` and return its filename and URL."""
         ...
 
     @abc.abstractmethod

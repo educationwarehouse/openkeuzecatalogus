@@ -290,8 +290,8 @@ def test_automatic_eduv_import_keeps_unrelated_supplier_items_available(
         )
         imported_importer.import_into_db()
 
-        unrelated_products = Product.where(Product.supplier_gid == unrelated_supplier_gid).select().collect()
-        unrelated_methods = Method.where(Method.supplier_gid == unrelated_supplier_gid).select().collect()
+        unrelated_products = Product.where(Product.supplier_gid == unrelated_supplier_gid).collect()
+        unrelated_methods = Method.where(Method.supplier_gid == unrelated_supplier_gid).collect()
 
     assert len(unrelated_products) == 1
     assert len(unrelated_methods) == 1
@@ -354,8 +354,8 @@ def test_eduv_importer_run_imports_fixture_into_database(capsys: pytest.CaptureF
         # 3. Assert in a fresh context
         with database_context("pytest.pgq.scrapers.assert") as db:
             run = ImporterRun.where(ImporterRun.job_key == job_key).join("error_stats").first_or_fail()
-            products = Product.where(Product.supplier_gid == EDUV_PGQ_SUPPLIER_GID).select().collect()
-            methods = Method.where(Method.supplier_gid == EDUV_PGQ_SUPPLIER_GID).select().collect()
+            products = Product.where(Product.supplier_gid == EDUV_PGQ_SUPPLIER_GID).collect()
+            methods = Method.where(Method.supplier_gid == EDUV_PGQ_SUPPLIER_GID).collect()
 
             assert run.success is True
             assert len(methods) == 1
@@ -414,8 +414,8 @@ def test_eduv_v2_importer_run_imports_fixture_into_database(capsys: pytest.Captu
         # 3. Assert in a fresh context
         with database_context("pytest.pgq.scrapers.assert") as db:
             run = ImporterRun.where(ImporterRun.job_key == job_key).join("error_stats").first_or_fail()
-            products = Product.where(Product.supplier_gid == EDUV_PGQ_SUPPLIER_GID).select().collect()
-            methods = Method.where(Method.supplier_gid == EDUV_PGQ_SUPPLIER_GID).select().collect()
+            products = Product.where(Product.supplier_gid == EDUV_PGQ_SUPPLIER_GID).collect()
+            methods = Method.where(Method.supplier_gid == EDUV_PGQ_SUPPLIER_GID).collect()
             error_rows = run.error_stats
 
             assert run.success is True

@@ -8,7 +8,7 @@ from typedal import TypeDAL as DAL
 from typedal import TypedTable
 from typedal.types import Query, Table
 
-from shared_code.data_model.constants import AnyDict
+from shared_code.data_model.constants import EFFECTIVEDATED_UPDATE_EXCLUDED_FIELD_NAMES, AnyDict
 from shared_code.util.exceptions import Required
 from shared_code.util.time import utcnow
 
@@ -98,8 +98,7 @@ def latest_ed(
 
 def _normalize_update_values(values: AnyDict | None) -> AnyDict:
     values = values or {}
-    excluded_keys = {"id", "prio", "effdt", "last_saved_by", "sync_gid"}
-    return {key: value for key, value in values.items() if key not in excluded_keys}
+    return {key: value for key, value in values.items() if key not in EFFECTIVEDATED_UPDATE_EXCLUDED_FIELD_NAMES}
 
 
 def _normalize_prio(prio: int | bool) -> int | bool:
@@ -155,6 +154,21 @@ def update_effectivedated(
 
     If `prio` is not `False`, the new row is based on the most active row and
     may inherit the highest overlapping priority.
+
+    Concurrency note:
+        There is a theoretical race condition between reading the latest row
+        (`latest_ed`) and inserting the new one. A concurrent request could
+        insert a newer row in between, which would be silently superseded.
+        This is considered negligible because:
+        (a) the window is very narrow (one SELECT + one INSERT),
+        (b) effective-dating preserves all history — no data is lost,
+        (c) the `sync_gid` column exists and could be used for optimistic
+            locking if this ever becomes a real problem, and
+        (d) adding database-level locking would be disproportionate overhead
+            for the current write patterns.
+        If the write volume increases significantly (e.g. bulk imports under
+        concurrent load), consider adding a `WHERE effdt = (SELECT max(effdt)
+        ...)` guard to detect concurrent updates.
 
     Args:
         db: Database handle.

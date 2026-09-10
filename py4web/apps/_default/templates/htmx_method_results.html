@@ -12,7 +12,7 @@
         </div>
         <div class="d-flex align-items-center flex-wrap gap-3">
             <span class="small text-secondary">
-                [[=len(rows)]] methodes in beeld[[if active_filter_count:]] na [[=active_filter_count]] filter(s)[[pass]]
+                [[=pagination['total_items']]] methodes in beeld[[if active_filter_count:]] na [[=active_filter_count]] filter(s)[[pass]]
             </span>
             [[include 'components/catalog_view_toggle.html']]
         </div>
@@ -44,7 +44,7 @@
                             <strong class="text-body">Preview:</strong>
                             [[=row.preview_digital_environment or 'Niet opgegeven']]
                         </div>
-                                                <div>
+                        <div>
                             <strong class="text-body">Producten:</strong>
                             [[=len(row.products)]]
                         </div>
@@ -52,7 +52,17 @@
                     <pre class="bg-body-tertiary border rounded p-3 mt-3 mb-0 small overflow-auto">[[=row.as_json()]]</pre>
                 </div>
                 <div class="card-footer bg-transparent border-0 pt-0 pb-4 px-4">
-                    <button class="btn btn-outline-dark btn-sm" type="button">Bekijk methode</button>
+                    <a class="btn btn-outline-dark btn-sm" href="[[=URL('methode', row.gid)]]">Bekijk methode</a>
+                    <label class="form-check-label ms-3">
+                        <input
+                                class="form-check-input comparison-selection"
+                                type="checkbox"
+                                data-comparison-kind="methode"
+                                data-comparison-gid="[[=row.gid]]"
+                                data-comparison-name="[[=row.name or 'Onbenoemde methode']]"
+                        >
+                        Vergelijk
+                    </label>
                 </div>
             </div>
         </div>

@@ -9,8 +9,10 @@ configurations:
       # not using the .min because that breaks when minifying again:
       - https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.js
       - $in_app/assets/js/bootstrap-flash.js
+      - $in_app/assets/js/editor.js
       - $in_app/assets/js/multiselectwidget.ts
       - $in_app/assets/js/catalogfilters.ts
+      - $in_app/assets/js/comparison-selection.ts
     css: # to bundle.css
       - https://cdnjs.cloudflare.com/ajax/libs/ContentTools/1.6.16/content-tools.min.css
       - https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.css

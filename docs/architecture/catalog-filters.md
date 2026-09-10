@@ -24,6 +24,10 @@ Free-text search backed by the table search mixin.
 - Applies the table's search implementation instead of a field-specific comparison.
 - Renders as a search input.
 
+For products and methods that search implementation is relevance-ranked: the result order comes
+from configurable weights stored in the database, not from the filter definition.
+See [Search ranking](search-ranking.md).
+
 ### `dynamic`
 
 Generic field-based filtering.

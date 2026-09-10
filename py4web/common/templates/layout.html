@@ -11,7 +11,42 @@
     [[block page_head]][[end]]
 </head>
 <body class="edwh-messagebus" data-bs-theme=light>
-<main class="container py-5">
+
+
+[[admin_user = globals().get("admin_user") or globals().get("user")]]
+
+[[if admin_user:]]
+<header class="container">
+    <nav class="navbar border-bottom mb-3 py-2">
+        <a class="navbar-brand mb-0 h1 fs-5" href="[[=URL('index')]]">Open Keuzecatalogus</a>
+        <div class="dropdown ms-auto">
+            <button class="btn btn-outline-secondary btn-sm dropdown-toggle"
+                    type="button"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false">
+                <i class="fa-regular fa-user me-1"></i>[[=admin_user.full_name]]
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                    <a class="dropdown-item" href="[[=URL('auth', 'profile', use_appname=False)]]">
+                        <i class="fa-regular fa-user me-2"></i>Profiel
+                    </a>
+                </li>
+                <li>
+                    <hr class="dropdown-divider">
+                </li>
+                <li>
+                    <a class="dropdown-item text-danger" href="[[=URL('auth', 'logout', use_appname=False)]]">
+                        <i class="fa-solid fa-arrow-right-from-bracket me-2"></i>Uitloggen
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+</header>
+[[pass]]
+
+<main class="container py-3">
     [[if globals().get("auth") and auth.is_impersonating():]]
     <div class="alert alert-warning d-flex align-items-center justify-content-between gap-3" role="alert">
         <div>
@@ -34,5 +69,20 @@
 
 [[block page_scripts]][[end]]
 
+[[if locals().get('contenteditable-allowed'):]]
+[[# session var bestaat en session is geactiveerd door fixture en token is ingesteld + gevalideerd door p4w ]]
+<script>
+    // moet aan het eind/na bundle.js!!!
+    window.addEventListener("load", () => window.ew_start_editor())
+</script>
+[[else:]]
+<script>
+    window.addEventListener("load", () => {
+        window.ew_start_editor = () => {
+            console.error("Only available for authenticated users.")
+        }
+    })
+</script>
+[[pass]]
 </body>
 </html>

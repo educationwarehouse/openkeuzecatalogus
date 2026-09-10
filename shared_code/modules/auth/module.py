@@ -156,7 +156,7 @@ class AuthSupportBackend(Domain):
             email=user.email,
             full_name=user.full_name.strip(),
             source="user",
-            already_member=bool(self.auth.raw_rbac.has_membership(subject_id, membership_gid)),
+            already_member=self.auth.has_subject_membership(subject_id, membership_gid),
         )
 
     def _candidate_from_identity(self, identity: t.Any, membership_gid: str) -> InviteCandidate:
@@ -166,7 +166,7 @@ class AuthSupportBackend(Domain):
             email=str(identity.email or ""),
             full_name=str(identity.fullname or identity.firstname or identity.email or ""),
             source="identity",
-            already_member=bool(self.auth.raw_rbac.has_membership(subject_id, membership_gid)),
+            already_member=self.auth.has_subject_membership(subject_id, membership_gid),
         )
 
     def _find_exact_match(self, email: str, membership_gid: str) -> InviteCandidate | None:

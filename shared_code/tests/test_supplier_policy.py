@@ -7,7 +7,7 @@ from typedal import TypeDAL
 from shared_code.data_model import AuthUser, Supplier
 from shared_code.data_model.constants import ROLE_ADMIN
 from shared_code.modules.auth import AuthAdapter
-from shared_code.modules.auth.contract import AuthContext
+from shared_code.modules.auth import AuthContext
 from shared_code.modules.suppliers import SupplierBackend
 from shared_code.modules.suppliers.policy import SupplierPolicy
 

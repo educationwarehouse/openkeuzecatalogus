@@ -13,11 +13,10 @@ from yatl.helpers import TABLE, TBODY, TD, TH, THEAD, TR, XML
 
 from common.controllers.error import yatl_render
 from py4web import HTTP, URL, request, response
+from shared_code.data_model.constants import JSON_IMPORT_EXCLUDED_FIELD_NAMES
 from shared_code.data_model.mixins.effdt import model_to_ed, update_effectivedated
 from shared_code.data_model.tables.base import TableWithGid
 from shared_code.util.strings import format_preview_value
-
-META_FIELDS = frozenset({"id", "created_at", "updated_at", "last_saved_by", "prio", "sync_gid"})
 
 
 @dataclass(frozen=True)
@@ -119,7 +118,7 @@ class JsonImport[T: TableWithGid]:
 
     def importable_fields(self) -> set[str]:
         """Return client-controlled fields, including effective date/status."""
-        return {field.name for field in self.table if field.name not in META_FIELDS}
+        return {field.name for field in self.table if field.name not in JSON_IMPORT_EXCLUDED_FIELD_NAMES}
 
     def validate_payload(self, payload_json: str) -> list[ImportRow]:
         """Validate a JSON5 file and return one preview result per row."""
@@ -208,7 +207,7 @@ class JsonImport[T: TableWithGid]:
         """Evaluate static table defaults for a new-row preview."""
         defaults: dict[str, t.Any] = {}
         for table_field in self.table:
-            if table_field.name in META_FIELDS or table_field.name == "gid":
+            if table_field.name in JSON_IMPORT_EXCLUDED_FIELD_NAMES or table_field.name == "gid":
                 continue
             default = getattr(table_field, "default", None)
             if callable(default):

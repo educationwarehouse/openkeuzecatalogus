@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## 10-09-2026
+
+### Features
+
+- Publieke product- en methodepagina’s uitgebreid met detailweergave, vergelijkfunctionaliteit en bewerkbare statische inhoud
+- Zoekresultaten voorzien van configureerbare relevantiescores en beheerbare zoekrangschikking
+- Magic-login via e-mail toegevoegd als alternatief voor Entree-login
+- Leveranciersgebruikers uitgebreid met selfservice voor eigen leveranciers- en catalogusgegevens
+- Auditlogviewer toegevoegd voor beheerders, inclusief filters en gekoppelde evidence
+
+### Internals
+
+- Error signals en error tickets toegevoegd met queue-based verwerking en notificatie-integratie
+- Onderhoudsqueue toegevoegd voor e-mailverzending en periodieke refresh van materialized views
+- Automatische security scans en CycloneDX SBOM-generatie toegevoegd aan de CI-workflow
+- Publieke payloadtypes, database-tabellen en migratieondersteuning verder gestandaardiseerd
+
 ## 31-08-2026
 
 ### Features

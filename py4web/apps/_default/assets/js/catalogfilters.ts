@@ -224,6 +224,104 @@ document.addEventListener('htmx:afterSwap', (evt) => {
     }
 })
 
+function catalog_results_target(event: Event): HTMLElement | null {
+    const target = (event as CustomEvent<{ target?: Element }>).detail?.target
+
+    if (!(target instanceof HTMLElement)) {
+        return null
+    }
+
+    return target.matches('#product-results, #method-results') ? target : null
+}
+
+function remove_catalog_results_feedback($target: HTMLElement) {
+    $target.querySelectorAll('.catalog-results-feedback').forEach(($feedback) => {
+        $feedback.remove()
+    })
+}
+
+function show_catalog_results_loading($target: HTMLElement) {
+    remove_catalog_results_feedback($target)
+    $target.setAttribute('aria-busy', 'true')
+
+    const $feedback = document.createElement('p')
+    $feedback.className = 'catalog-results-feedback small text-secondary mb-3'
+    $feedback.setAttribute('role', 'status')
+    $feedback.textContent = 'Resultaten bijwerken…'
+    $target.prepend($feedback)
+}
+
+function show_catalog_results_error($target: HTMLElement, message: string) {
+    remove_catalog_results_feedback($target)
+    $target.setAttribute('aria-busy', 'false')
+
+    const $feedback = document.createElement('div')
+    $feedback.className = 'catalog-results-feedback alert alert-danger d-flex justify-content-between align-items-center gap-3 mb-3'
+    $feedback.setAttribute('role', 'alert')
+
+    const $message = document.createElement('span')
+    $message.textContent = message
+    $feedback.append($message)
+
+    const $retry = document.createElement('button')
+    $retry.className = 'btn btn-sm btn-outline-danger text-nowrap'
+    $retry.type = 'button'
+    $retry.dataset.catalogResultsRetry = 'true'
+    $retry.textContent = 'Opnieuw proberen'
+    $feedback.append($retry)
+
+    $target.prepend($feedback)
+}
+
+document.addEventListener('htmx:beforeRequest', (event) => {
+    const $target = catalog_results_target(event)
+    if ($target) {
+        show_catalog_results_loading($target)
+    }
+})
+
+document.addEventListener('htmx:afterRequest', (event) => {
+    const $target = catalog_results_target(event)
+    if ($target) {
+        $target.setAttribute('aria-busy', 'false')
+        $target.querySelector('[role="status"]')?.remove()
+    }
+})
+
+document.addEventListener('htmx:responseError', (event) => {
+    const $target = catalog_results_target(event)
+    if (!$target) {
+        return
+    }
+
+    const status = (event as CustomEvent<{ xhr?: XMLHttpRequest }>).detail?.xhr?.status
+    const message = status === 400
+        ? 'De geselecteerde filters zijn niet geldig. Pas ze aan en probeer opnieuw.'
+        : 'De resultaten konden niet worden bijgewerkt. De getoonde resultaten kunnen verouderd zijn.'
+    show_catalog_results_error($target, message)
+})
+
+document.addEventListener('htmx:sendError', (event) => {
+    const $target = catalog_results_target(event)
+    if ($target) {
+        show_catalog_results_error($target, 'De resultaten konden niet worden bijgewerkt door een verbindingsprobleem.')
+    }
+})
+
+document.addEventListener('htmx:timeout', (event) => {
+    const $target = catalog_results_target(event)
+    if ($target) {
+        show_catalog_results_error($target, 'Het bijwerken van de resultaten duurt te lang. Probeer opnieuw.')
+    }
+})
+
+document.addEventListener('click', (event) => {
+    const $retry = (event.target as Element | null)?.closest<HTMLElement>('[data-catalog-results-retry]')
+    if ($retry) {
+        htmx.trigger(document.body, 'ew:state_changed')
+    }
+})
+
 document.addEventListener('ew:change_page', (event: Event) => {
     const $form = edwh_state()
 

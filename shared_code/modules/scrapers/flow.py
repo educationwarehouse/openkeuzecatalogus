@@ -13,6 +13,7 @@ from endow import Domain
 from typedal import TypeDAL, TypedTable
 
 from shared_code.data_model import Method, MethodEd, Predicate, Product, ProductEd, Supplier, Tagged, Vision
+from shared_code.data_model.constants import INTERNAL_FIELD_NAMES
 from shared_code.infra.database import DatabaseContext
 from shared_code.migrations.migration_support import no_triggers
 from shared_code.modules.scrapers.errors import ImportErrorCode, normalize_import_error_codes
@@ -33,7 +34,6 @@ from shared_code.modules.scrapers.types import (
 )
 from shared_code.services import ImageStorage
 
-META_FIELDS = {"id", "gid", "last_saved_by", "effstatus", "effdt", "sync_gid", "prio", "created_at", "updated_at"}
 # Standardized numeric tolerance for import comparisons (shared across all numeric fields).
 NUMERIC_ABS_TOLERANCE = 0.005
 GROEP_LEVEL_PATTERN = re.compile(r"^groep(?:\s+\d+)?$", flags=re.IGNORECASE)
@@ -78,21 +78,23 @@ def normalize_levels(levels: t.Any) -> list[str]:
 def _payload_fields(model_table: type[TypedTable], compare_exclude_columns: set[str]) -> list[str]:
     """Return business field names that can be compared/inserted for a model table."""
     field_names = (field.name for field in model_table)
-    return [field for field in field_names if field not in META_FIELDS and field not in compare_exclude_columns]
+    return [
+        field for field in field_names if field not in INTERNAL_FIELD_NAMES and field not in compare_exclude_columns
+    ]
 
 
 def _validate_business_fields(table: type[TypedTable], payload: dict[str, t.Any]) -> dict[str, str]:
     """Validate non-meta payload fields for a typed table and return validation errors."""
     table_field_names = {field.name for field in table}
     business_payload = {
-        key: value for key, value in payload.items() if key in table_field_names and key not in META_FIELDS
+        key: value for key, value in payload.items() if key in table_field_names and key not in INTERNAL_FIELD_NAMES
     }
     validation_errors, _ = table._validate_fields(business_payload)  # type: ignore
 
     return {
         str(field_name): str(error)
         for field_name, error in validation_errors.items()
-        if str(field_name) not in META_FIELDS
+        if str(field_name) not in INTERNAL_FIELD_NAMES
     }
 
 
@@ -171,7 +173,7 @@ def _prepare_bundle_compositions(products: list[ImportProduct], product_gid_by_o
     return bundle_source_gids
 
 
-def _resolve_or_create_internal_gid(incoming_data: dict[str, t.Any], gid_by_olid: dict[str, str]) -> str | None:
+def _resolve_or_create_internal_gid(incoming_data: t.Mapping[str, t.Any], gid_by_olid: dict[str, str]) -> str | None:
     """Resolve a gid from incoming data or create one, caching newly created gids by olid."""
     gid = incoming_data.get("gid")
     if gid:
@@ -375,7 +377,7 @@ class ImportFlow(Domain):
         assert ed_table.effdt, f"{ed_table} is not effdt"
 
         resolved_prio = ImportPriority.normalize(prio)
-        compare_exclude_columns = (compare_exclude_columns or set()) | META_FIELDS
+        compare_exclude_columns = (compare_exclude_columns or set()) | INTERNAL_FIELD_NAMES
         incoming_gid = incoming_data.get("gid")
         if incoming_gid is not None and str(incoming_gid) != str(gid):
             raise ValueError(f"incoming_data.gid ({incoming_gid}) does not match gid argument ({gid})")
@@ -730,7 +732,7 @@ class ImportFlow(Domain):
             (row.subject_gid, row.predicate, row.object_gid): row.gid
             for row in Tagged.where(
                 (Tagged.subject_gid.belongs(list(bundle_source_gids))) & (Tagged.predicate == Predicate.BUNDLES)
-            ).select()
+            )
         }
 
         for subject_gid, _, object_gid in incoming_triples:
@@ -1037,7 +1039,7 @@ def prepare_method_data(
     if "levels" in method_data:
         method_data["levels"] = normalize_levels(method_data.get("levels"))
 
-    method_errors = t.cast(list[ImportErrorCode], method_data.pop("_errors", []))
+    method_errors = method_data.pop("_errors", [])
 
     gid = _resolve_or_create_internal_gid(method_data, method_gid_by_olid)
     if not gid:

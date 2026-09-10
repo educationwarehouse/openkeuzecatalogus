@@ -8,7 +8,7 @@ from typedal import Ref, relationship
 from typedal.fields import TextField, TypedField, UUIDField
 
 from shared_code.data_model.mixins.effdt.mixin import EffdtFields
-from shared_code.data_model.representers import comma_separated
+from shared_code.data_model.representers import comma_separated, dutch_bool
 
 if t.TYPE_CHECKING:
     from shared_code.data_model import Supplier  # noqa F401; used by relationship()
@@ -62,6 +62,6 @@ class SharedProductField(EffdtFields):
     more_information = TypedField(str, label="Meer Informatie")
     priority = TypedField(int, label="Prioriteit (2: volledig, 1: aanvullend)")
     bouw = TypedField(list[str], label="Bouw", represent=comma_separated)
-    tto = TypedField(bool, label="TTO")
+    tto = TypedField(bool, label="TTO", represent=dutch_bool)
 
     supplier = relationship(Ref["Supplier"], condition=lambda self, supplier: self.supplier_gid == supplier.gid)

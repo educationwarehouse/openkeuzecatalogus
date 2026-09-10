@@ -26,6 +26,23 @@ Supplier memberships are one part of the broader auth and RBAC model described i
 4. If a match exists, auth grants membership to that supplier identity.
 5. `SupplierPolicy` uses membership inheritance to decide whether the current actor can read or manage supplier-scoped data.
 
+## Supplier Self-Service
+
+Users with `ROLE_SUPPLIER` enter the admin application through the shared
+`admin_or_supplier()` fixture. Policy-scoped queries limit them to supplier rows and
+catalogue data associated with their inherited supplier memberships.
+
+Supplier users can:
+
+- view and update their own supplier row
+- inspect their own current and archived methods and products
+- upload and validate an Edu-V test file and inspect its non-persistent preview
+
+They cannot create or delete suppliers, restore archived catalogue rows, run JSON
+imports, manage memberships, start endpoint imports, view retained import runs, apply
+an uploaded test-file import, or enable the destructive `mark_removed` option. Those
+operations remain guarded by `admin()`.
+
 ## Implementation Notes
 
 - The backend wiring lives in [py4web/common/models/backend/auth_cls.py](../../py4web/common/models/backend/auth_cls.py).

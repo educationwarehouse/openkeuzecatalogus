@@ -42,3 +42,24 @@ Batch behavior:
 - register / verify_email / password flows from auth post-processing
 
 Captured fields include action, user/email context, success flag, IP, user agent, and timestamp.
+
+## Catalogue Events
+
+Public catalogue activity is logged through dedicated helpers:
+
+- `log_catalog_search(...)`: resolved filters, normalized search terms, pagination,
+  result IDs, and search scores (the relevance ranks from
+  [search ranking](../architecture/search-ranking.md))
+- `log_catalog_detail(...)`: requested GID, resolved effective-dated row ID, and
+  resolved vision row IDs
+- `log_catalog_compare(...)`: requested GIDs, resolved row IDs, and resolved vision
+  row IDs
+
+## Admin Audit Viewer
+
+Admins can inspect the 500 most recent persisted signals at `/admin/logs/audit`. The
+read-only grid supports pagination and filters for session, user, event, source, and
+action. Signal details include the full linked evidence payload when present.
+
+User links use both direct signal fields and explicitly logged user associations in
+the evidence payload. The viewer does not modify or delete audit data.

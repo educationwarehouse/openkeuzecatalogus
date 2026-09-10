@@ -16,10 +16,16 @@ from .context import DatabaseContext
 
 @contextlib.contextmanager
 def catch_errors(
-    appname: str, ignore: bool = False, reraise: bool = True, ExceptionLevel: type[BaseException] = Exception
+    appname: str,
+    ignore: bool = False,
+    reraise: bool = True,
+    ExceptionLevel: type[BaseException] = Exception,
+    applog: Applogger | None = None,
 ) -> t.Iterator[None]:
     """Capture exceptions as applog events, with optional ignore/reraise behavior."""
-    applog = Applogger.from_env()
+    applog = applog or Applogger.with_injected(
+        auth_adapter=AuthAdapter.for_service(appname),
+    )
 
     try:
         yield
@@ -60,9 +66,9 @@ def advisory_semaphore_context(
     failed = False
     try:
         yield
-    except BaseException:
+    except BaseException as e:
         failed = True
-        raise
+        raise e
     finally:
         should_unlock = (not transaction_lock) and (release_on_exit or failed)
         if should_unlock:
