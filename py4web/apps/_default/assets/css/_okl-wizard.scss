@@ -1,0 +1,213 @@
+.wizard-process-shell {
+    background: var(--wizard-bg);
+    min-height: calc(100vh - 80px);
+}
+
+.wizard-process-stepper-wrap {
+    position: relative;
+    z-index: 1;
+    border-bottom: 0;
+}
+
+.wizard-process-stepper {
+    --wizard-step-min-width: 170px;
+    --wizard-step-gap: 12px;
+    max-width: calc(var(--okl-page-measure) + 2 * var(--okl-page-gutter));
+    margin: 0 auto;
+    padding: 24px var(--okl-page-gutter);
+    display: grid;
+    gap: 0;
+}
+
+.wizard-process-stepper-track {
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.wizard-process-stepper-track::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+}
+
+.wizard-process-stepper .step-lines {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: var(--wizard-step-gap);
+    margin-bottom: 16px;
+}
+
+.wizard-process-stepper .step-lines span {
+    flex: 1 0 var(--wizard-step-min-width);
+    min-width: var(--wizard-step-min-width);
+    height: 6px;
+    background: var(--okl-sherwood-700);
+    border-radius: 24px;
+}
+
+.wizard-process-stepper .step-lines span.active,
+.wizard-process-stepper .step-lines span.completed {
+    background: var(--wizard-orange);
+    box-shadow: 0 0 16px rgb(255 136 0 / 22%);
+}
+
+.wizard-process-stepper .step-lines span.visited {
+    background: var(--wizard-orange-soft);
+}
+
+.wizard-process-stepper .steps {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: var(--wizard-step-gap);
+}
+
+.wizard-process-stepper .step {
+    flex: 1 0 var(--wizard-step-min-width);
+    min-width: var(--wizard-step-min-width);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #fff;
+    font-weight: 700;
+    font-size: 1rem;
+    text-align: center;
+    text-decoration: none;
+}
+
+.wizard-process-stepper a.step.completed {
+    cursor: pointer;
+}
+
+.wizard-process-stepper a.step.completed:focus-visible {
+    outline: 2px solid var(--wizard-orange);
+    outline-offset: 3px;
+    border-radius: 10px;
+}
+
+.wizard-process-stepper .step.visited .bubble {
+    background: var(--wizard-orange-soft);
+    color: var(--okl-ink) !important;
+}
+
+.wizard-process-stepper .bubble {
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--okl-sherwood-700);
+    color: #fff !important;
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.wizard-process-stepper .bubble i {
+    font-size: 0.9rem;
+    line-height: 1;
+}
+
+.wizard-process-stepper .step.active .bubble,
+.wizard-process-stepper .step.completed:not(.visited) .bubble {
+    background: var(--wizard-orange);
+    color: var(--okl-ink) !important;
+}
+
+.wizard-process-stepper a.step.completed:hover .bubble,
+.wizard-process-stepper a.step.completed:focus .bubble {
+    background: var(--wizard-orange);
+}
+
+.wizard-process-stepper .step.step-marker {
+    font-weight: 600;
+    color: #fff;
+}
+
+.wizard-process-stepper .step.step-marker.active {
+    color: #fff;
+}
+
+.wizard-process-stepper .step.pending {
+    color: #fff;
+    opacity: 0.9;
+}
+
+.wizard-process-container {
+    max-width: calc(var(--okl-page-measure) + 2 * var(--okl-page-gutter));
+    margin: 0 auto;
+    padding: 80px var(--okl-page-gutter);
+}
+
+.wizard-process-shell--stepped {
+    position: relative;
+    overflow-x: clip;
+    background: var(--okl-anakiwa-100);
+}
+
+.wizard-process-shell--stepped .wizard-process-container {
+    position: relative;
+    z-index: 1;
+    isolation: isolate;
+}
+
+.wizard-process-shell--stepped .wizard-hero-block {
+    position: relative;
+    color: #fff;
+}
+
+.wizard-process-shell--stepped .wizard-process-container h1 {
+    color: #fff;
+    font-size: clamp(2rem, 4vw, 3rem);
+    line-height: 1.1;
+}
+
+.wizard-process-shell--stepped .wizard-process-container > div > .container:first-child,
+.wizard-process-shell--stepped .wizard-fase1-header {
+    max-width: 728px;
+    color: #fff;
+}
+
+.wizard-process-shell--stepped .wizard-process-container > div > .container:first-child > div.fw-bold,
+.wizard-process-shell--stepped .attach-points-heading-topline {
+    color: var(--okl-tangerine-500);
+}
+
+.wizard-process-shell--stepped .wizard-fase1-subtitle,
+.wizard-process-shell--stepped .section-description,
+.wizard-process-shell--stepped .attach-points-heading {
+    color: #fff;
+}
+
+@media (max-width: 991.98px) {
+    .wizard-process-stepper {
+        padding-top: 16px;
+        padding-bottom: 16px;
+        --wizard-step-min-width: 164px;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .wizard-process-container {
+        padding-block: 48px;
+    }
+
+    .wizard-process-stepper {
+        padding: 12px var(--okl-page-gutter);
+        --wizard-step-min-width: 184px;
+    }
+
+    .wizard-process-stepper .step {
+        min-height: 48px;
+    }
+
+    .wizard-process-stepper .bubble {
+        width: 28px;
+        height: 28px;
+        flex: 0 0 28px;
+    }
+}

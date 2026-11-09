@@ -1,0 +1,221 @@
+// Shared Bootstrap button variants for every OKL surface. Legacy templates can
+// keep their Bootstrap classes; the visual states are sourced from one brand
+// layer instead of being redefined by each app.
+
+:is(.okl-app, .modal) .btn {
+    --bs-btn-border-radius: var(--okl-radius-pill);
+    --bs-btn-focus-box-shadow: var(--okl-focus-shadow);
+    font-family: var(--okl-font-family);
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    line-height: 1.5;
+}
+
+:is(.okl-app, .modal) .btn-primary,
+:is(.okl-app, .modal) .btn-brand-solid,
+.wizard-form-body :is(button, input)[type="submit"],
+:is(.okl-app, .modal) .okl-auth-form input[type="submit"] {
+    --bs-btn-color: var(--okl-ink);
+    --bs-btn-bg: var(--okl-tangerine-500);
+    --bs-btn-border-color: var(--okl-tangerine-500);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: var(--okl-sherwood-900);
+    --bs-btn-hover-border-color: var(--okl-sherwood-900);
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: var(--okl-sherwood-900);
+    --bs-btn-active-border-color: var(--okl-sherwood-900);
+    --bs-btn-disabled-color: var(--okl-neutral-600);
+    --bs-btn-disabled-bg: var(--okl-neutral-200);
+    --bs-btn-disabled-border-color: var(--okl-neutral-200);
+}
+
+:is(.okl-app, .modal) .btn-outline-primary {
+    --bs-btn-color: var(--okl-action-text);
+    --bs-btn-border-color: var(--okl-tangerine-500);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: var(--okl-sherwood-900);
+    --bs-btn-hover-border-color: var(--okl-sherwood-900);
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: var(--okl-sherwood-900);
+    --bs-btn-active-border-color: var(--okl-sherwood-900);
+    --bs-btn-disabled-color: var(--okl-neutral-600);
+    --bs-btn-disabled-border-color: var(--okl-neutral-300);
+}
+
+:is(.okl-app, .modal) .btn-secondary,
+:is(.okl-app, .modal) .btn-teal,
+:is(.okl-app, .modal) .btn-purple,
+:is(.okl-app, .modal) .btn-indigo,
+:is(.okl-app, .modal) .btn-dark {
+    --bs-btn-color: #fff;
+    --bs-btn-bg: var(--okl-sherwood-700);
+    --bs-btn-border-color: var(--okl-sherwood-700);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: var(--okl-sherwood-900);
+    --bs-btn-hover-border-color: var(--okl-sherwood-900);
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: var(--okl-sherwood-900);
+    --bs-btn-active-border-color: var(--okl-sherwood-900);
+    --bs-btn-disabled-color: var(--okl-neutral-600);
+    --bs-btn-disabled-bg: var(--okl-neutral-200);
+    --bs-btn-disabled-border-color: var(--okl-neutral-200);
+}
+
+:is(.okl-app, .modal) .btn-outline-secondary,
+:is(.okl-app, .modal) .btn-brand,
+:is(.okl-app, .modal) .btn-brand-hollow {
+    --bs-btn-color: var(--okl-ink);
+    --bs-btn-border-color: var(--okl-neutral-300);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: var(--okl-sherwood-900);
+    --bs-btn-hover-border-color: var(--okl-sherwood-900);
+    --bs-btn-active-color: var(--okl-ink);
+    --bs-btn-active-bg: var(--okl-tangerine-500);
+    --bs-btn-active-border-color: var(--okl-tangerine-500);
+    --bs-btn-disabled-color: var(--okl-neutral-600);
+    --bs-btn-disabled-border-color: var(--okl-neutral-200);
+}
+
+:is(.okl-app, .modal) .btn-outline-dark {
+    --bs-btn-color: var(--okl-sherwood-900);
+    --bs-btn-border-color: var(--okl-sherwood-900);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: var(--okl-sherwood-900);
+    --bs-btn-hover-border-color: var(--okl-sherwood-900);
+    --bs-btn-active-color: var(--okl-ink);
+    --bs-btn-active-bg: var(--okl-tangerine-500);
+    --bs-btn-active-border-color: var(--okl-tangerine-500);
+}
+
+:is(.okl-app, .modal) .btn-success {
+    --bs-btn-color: #fff;
+    --bs-btn-bg: var(--okl-sherwood-700);
+    --bs-btn-border-color: var(--okl-sherwood-700);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: var(--okl-sherwood-900);
+    --bs-btn-hover-border-color: var(--okl-sherwood-900);
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: var(--okl-sherwood-900);
+    --bs-btn-active-border-color: var(--okl-sherwood-900);
+}
+
+:is(.okl-app, .modal) .btn-info {
+    --bs-btn-color: var(--okl-ink);
+    --bs-btn-bg: var(--okl-anakiwa-500);
+    --bs-btn-border-color: var(--okl-anakiwa-500);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: var(--okl-sherwood-900);
+    --bs-btn-hover-border-color: var(--okl-sherwood-900);
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: var(--okl-sherwood-900);
+    --bs-btn-active-border-color: var(--okl-sherwood-900);
+}
+
+:is(.okl-app, .modal) .btn-warning {
+    --bs-btn-color: var(--okl-ink);
+    --bs-btn-bg: var(--okl-tangerine-500);
+    --bs-btn-border-color: var(--okl-tangerine-500);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: var(--okl-sherwood-900);
+    --bs-btn-hover-border-color: var(--okl-sherwood-900);
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: var(--okl-sherwood-900);
+    --bs-btn-active-border-color: var(--okl-sherwood-900);
+}
+
+:is(.okl-app, .modal) .btn-danger {
+    --bs-btn-color: #fff;
+    --bs-btn-bg: var(--okl-error-text);
+    --bs-btn-border-color: var(--okl-error-text);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: #c91f1f;
+    --bs-btn-hover-border-color: #c91f1f;
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: #a71919;
+    --bs-btn-active-border-color: #a71919;
+}
+
+.okl-app :is(.btn-brand, .btn-brand-hollow):is(:hover, :focus-visible, .active) .dropdown-icon {
+    filter: brightness(0) invert(1);
+}
+
+.okl-button {
+    gap: 0.5rem;
+    padding: 0.5rem 1.25rem;
+}
+
+.okl-button--secondary {
+    --okl-btn-bg: #fff;
+    --okl-btn-color: #{$sherwood-green-900};
+    --okl-btn-ring: inset 0 0 0 1px #{$tangerine-500};
+}
+
+.okl-button:active {
+    background-color: var(--okl-btn-hover-bg);
+    color: var(--okl-btn-hover-color);
+}
+
+.okl-button[aria-disabled="true"] {
+    pointer-events: none;
+    background-color: #{$okl-neutral-500};
+    color: #{$okl-neutral-300};
+}
+
+:is(.okl-app, .modal) .btn:not(.btn-sm) {
+    min-height: var(--okl-control-height);
+}
+:is(.okl-app, .modal) .btn-sm {
+    min-height: 2.5rem;
+}
+
+.wizard-form-body :is(button, input)[type="submit"] {
+    color: var(--bs-btn-color);
+    background-color: var(--bs-btn-bg);
+    border-color: var(--bs-btn-border-color);
+
+    &:hover,
+    &:focus-visible {
+        color: var(--bs-btn-hover-color);
+        background-color: var(--bs-btn-hover-bg);
+        border-color: var(--bs-btn-hover-border-color);
+    }
+
+    &:active {
+        color: var(--bs-btn-active-color);
+        background-color: var(--bs-btn-active-bg);
+        border-color: var(--bs-btn-active-border-color);
+    }
+
+    &:disabled {
+        color: var(--bs-btn-disabled-color);
+        background-color: var(--bs-btn-disabled-bg);
+        border-color: var(--bs-btn-disabled-border-color);
+    }
+}
+
+.okl-text-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 32px;
+    padding-block: 4px;
+    color: var(--okl-ink);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1rem;
+    text-decoration: none;
+
+    .okl-icon {
+        color: var(--okl-action-text);
+        width: 1rem;
+        height: 1rem;
+    }
+    &:hover {
+        color: var(--okl-sherwood-900);
+        text-decoration: underline;
+        text-underline-offset: 3px;
+    }
+}

@@ -1,0 +1,18 @@
+<aside class="comparison-tray" data-comparison-kind="[[=comparison_kind]]" hidden>
+    <button class="comparison-tray__toggle" type="button" aria-expanded="false" aria-controls="comparison-tray-[[=comparison_kind]]">
+        <i class="okl-icon okl-icon--caret-up" aria-hidden="true"></i>
+        Vergelijk leermiddelen
+        <span class="comparison-count" aria-live="polite" aria-atomic="true">0</span>
+    </button>
+    <div class="comparison-tray__content" id="comparison-tray-[[=comparison_kind]]" hidden>
+        <div class="comparison-kind-toggle" role="group" aria-label="Soort leermiddelen vergelijken">
+            <button type="button" data-comparison-kind="method" aria-pressed="[[='true' if comparison_kind == 'method' else 'false']]">Methodes (<span class="comparison-kind-count">0</span>)</button>
+            <button type="button" data-comparison-kind="product" aria-pressed="[[='true' if comparison_kind == 'product' else 'false']]">Producten (<span class="comparison-kind-count">0</span>)</button>
+        </div>
+        <ul class="comparison-items list-unstyled"></ul>
+        <p class="comparison-minimum-hint">Selecteer minimaal twee [[=comparison_label]] om te vergelijken.</p>
+        <a class="okl-button okl-button--primary disabled comparison-link" aria-disabled="true">
+            Vergelijk geselecteerde [[=comparison_label]]
+        </a>
+    </div>
+</aside>

@@ -1,0 +1,461 @@
+.wizard-start-page {
+    position: relative;
+    overflow: hidden;
+    background:
+        linear-gradient(var(--okl-sherwood-900), var(--okl-sherwood-900)) top / 100% 420px no-repeat,
+        var(--okl-anakiwa-100);
+    min-height: calc(100vh - 80px);
+}
+
+.wizard-start-container {
+    max-width: calc(var(--okl-page-measure) + 2 * var(--okl-page-gutter));
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+    padding: 80px var(--okl-page-gutter) 112px;
+}
+
+.wizard-start-content {
+    max-width: var(--okl-page-measure);
+    margin: 0 auto;
+}
+
+.wizard-start-head {
+    position: relative;
+    display: grid;
+    gap: 24px;
+    margin-bottom: 40px;
+    color: #fff;
+}
+
+.wizard-start-head h1 {
+    margin: 0;
+    color: #fff;
+    line-height: 1.1;
+    font-size: clamp(2rem, 4vw, 3rem);
+}
+
+.wizard-start-head .subtitle {
+    margin: 0;
+    max-width: 920px;
+    color: #fff;
+}
+
+.wizard-start-head a {
+    color: var(--wizard-orange);
+    font-weight: 700;
+}
+
+.wizard-start-cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+    margin-bottom: 64px;
+}
+
+.wizard-start-card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: none;
+    padding: 24px;
+    display: grid;
+    gap: 12px;
+    min-height: 204px;
+}
+
+.wizard-start-card-icon {
+    --okl-icon-size: 20px;
+    width: 40px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    color: var(--okl-sherwood-400);
+    background: var(--okl-sherwood-100);
+    font-size: 1.25rem;
+}
+
+.wizard-start-card:nth-child(2) .wizard-start-card-icon {
+    color: var(--okl-anakiwa-500);
+    background: var(--okl-anakiwa-100);
+}
+
+.wizard-start-card:nth-child(3) .wizard-start-card-icon {
+    color: var(--okl-error);
+    background: var(--okl-error-soft);
+}
+
+.wizard-start-card h3 {
+    margin: 0;
+    color: var(--wizard-dark);
+    font-size: 1.25rem;
+    line-height: 1.3;
+}
+
+.wizard-start-card p {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.wizard-start-page .table-responsive {
+    overflow: visible;
+}
+
+.wizard-start-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 0 36px;
+}
+
+.wizard-start-row h2 {
+    margin: 0;
+    color: var(--wizard-dark);
+    font-size: clamp(1.25rem, 2vw, 1.5rem);
+    line-height: 1.3;
+}
+
+.wizard-start-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.wizard-start-action-btn {
+    height: 40px;
+    padding: 0 16px;
+    border-radius: 999px;
+    border: 1px solid var(--wizard-orange);
+    font-size: 0.875rem;
+    font-weight: 700;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+}
+
+.wizard-start-action-btn.primary {
+    height: 48px;
+    padding-left: 24px;
+    padding-right: 24px;
+    background: var(--wizard-orange);
+    color: #fff;
+}
+
+.wizard-start-action-btn.primary:hover {
+    background: var(--okl-tangerine-600);
+    border-color: var(--okl-tangerine-600);
+    color: #fff;
+}
+
+.wizard-start-action-btn.ghost {
+    background: #fff;
+    color: var(--wizard-orange);
+}
+
+.wizard-start-action-btn.ghost:hover {
+    color: var(--wizard-orange);
+    background: var(--okl-tangerine-50);
+}
+
+.wizard-process-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    border-spacing: 0;
+    margin: 0;
+}
+
+.wizard-process-columns {
+    display: grid;
+    grid-template-columns: 28% 14% 18% 15% minmax(130px, 1fr) 148px;
+    color: var(--wizard-mid);
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 0 10px 16px;
+    white-space: nowrap;
+}
+
+.wizard-process-columns > span:first-child {
+    padding-left: 16px;
+}
+
+.wizard-process-columns > span:last-child {
+    padding-right: 16px;
+}
+
+.wizard-process-table-wrap {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: none;
+    overflow: hidden;
+}
+
+.wizard-process-table col.col-team {
+    width: 28%;
+}
+
+.wizard-process-table col.col-year {
+    width: 14%;
+}
+
+.wizard-process-table col.col-date {
+    width: 18%;
+}
+
+.wizard-process-table col.col-progress {
+    width: 15%;
+}
+
+.wizard-process-table col.col-lead {
+    width: auto;
+}
+
+.wizard-process-table col.col-actions {
+    width: 148px;
+}
+
+.wizard-process-table tbody td {
+    border-top: 1px solid #dde2eb;
+    border-bottom: 0;
+    padding: 16px 10px;
+    vertical-align: middle;
+    background: #fff;
+}
+
+.wizard-process-table tbody tr:first-child td {
+    border-top: 0;
+}
+
+.wizard-process-table tbody td:first-child {
+    padding-left: 16px;
+}
+
+.wizard-process-table tbody td:last-child {
+    padding-right: 20px;
+    overflow: visible;
+}
+
+.wizard-process-table .team-name {
+    color: var(--wizard-dark);
+    font-weight: 700;
+}
+
+.wizard-process-table .team-name a {
+    color: var(--wizard-dark) !important;
+    text-decoration: none !important;
+    font-weight: 700;
+}
+
+.wizard-process-table .team-name a:hover {
+    color: var(--wizard-dark) !important;
+    text-decoration: none !important;
+}
+
+.wizard-process-table .secondary-text {
+    color: var(--wizard-mid);
+}
+
+.status-badge {
+    padding: 4px 16px;
+    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+}
+
+.status-badge.board {
+    background: #cfdbe7;
+    color: #3f6a71;
+}
+
+.status-badge.school,
+.status-badge.gestart {
+    background: var(--okl-warning-soft);
+    color: var(--okl-ink);
+}
+
+.status-badge.team,
+.status-badge.done,
+.status-badge.afgerond {
+    background: var(--okl-info-soft);
+    color: var(--okl-ink);
+}
+
+.status-badge.deleted {
+    background: #dc3545;
+    color: #fff;
+}
+
+.status-badge.default {
+    background: var(--okl-warning-soft);
+    color: var(--wizard-mid);
+}
+
+.wizard-row-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    min-width: 108px;
+    justify-content: flex-end;
+}
+
+.wizard-row-actions a,
+.wizard-row-actions button {
+    color: var(--wizard-orange);
+    width: 36px;
+    height: 36px;
+    border: 0;
+    background: transparent;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+}
+
+.wizard-row-actions a:hover {
+    background: var(--okl-tangerine-50);
+    color: var(--okl-tangerine-500);
+}
+
+.wizard-row-actions i {
+    --okl-icon-size: 20px;
+    font-size: 1.25rem;
+}
+
+.wizard-row-actions .okl-icon--arrow-right {
+    --okl-icon-size: 24px;
+    font-size: 1.5rem;
+}
+
+.wizard-show-more-wrap {
+    margin-top: 48px !important;
+}
+
+.wizard-row-actions button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.wizard-empty-state {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: var(--wizard-shadow-sm);
+    padding: 24px;
+    margin-top: 8px;
+}
+
+@media (max-width: 991.98px) {
+    .wizard-start-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .wizard-start-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .wizard-start-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .wizard-process-columns,
+    .wizard-process-table {
+        min-width: 980px;
+    }
+
+    .wizard-start-page .table-responsive {
+        overflow-x: auto;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .wizard-start-container {
+        padding-block: 48px 64px;
+    }
+
+    .wizard-start-action-btn {
+        height: auto;
+        min-height: 48px;
+        padding-block: 8px;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .wizard-process-columns,
+    .wizard-process-table colgroup {
+        display: none;
+    }
+
+    .wizard-process-table {
+        min-width: 0;
+    }
+
+    .wizard-process-table-wrap {
+        background: transparent;
+        overflow: visible;
+    }
+
+    .wizard-process-table tbody {
+        display: grid;
+        gap: 16px;
+    }
+
+    .wizard-process-table .process-row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding: 16px;
+        border-radius: 16px;
+        background: #fff;
+    }
+
+    .wizard-process-table tbody td,
+    .wizard-process-table tbody td:first-child,
+    .wizard-process-table tbody td:last-child {
+        min-width: 0;
+        padding: 8px;
+        border: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .wizard-process-table td[data-label]::before {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--wizard-mid);
+        font-size: 0.75rem;
+        font-weight: 600;
+        content: attr(data-label);
+    }
+
+    .wizard-process-table .team-name,
+    .wizard-process-table .process-actions {
+        grid-column: 1 / -1;
+    }
+
+    .wizard-row-actions {
+        width: 100%;
+        gap: 8px;
+    }
+
+    .wizard-row-actions a,
+    .wizard-row-actions button {
+        width: 44px;
+        height: 44px;
+        background: var(--okl-tangerine-50);
+    }
+
+    .wizard-show-more-wrap {
+        margin-top: 24px !important;
+    }
+}

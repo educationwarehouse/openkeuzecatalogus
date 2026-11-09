@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="nl">
+    <head>
+        <meta charset="utf-8" />
+        <title>Leermiddelenvisie · [[=team.name]]</title>
+        <meta name="author" content="Open Keuzecatalogus" />
+        <link rel="stylesheet" href="[[=pdf_stylesheet]]" />
+    </head>
+    <body>
+        <header class="document-header">
+            <div class="document-brand">
+                <img class="document-logo" src="[[=logo_data]]" alt="Open Keuzecatalogus Leermiddelen" />
+                <p class="document-initiative">Een initiatief van SIVON</p>
+            </div>
+            <p class="eyebrow">Visie-keuzemodule · resultaat</p>
+            <h1>Jullie leermiddelenvisie op twaalf thema’s</h1>
+            <p class="document-team">[[=team.name]] · [[=dm_process.schoolyear]]</p>
+        </header>
+        <p class="intro">
+            Deze visie geeft richting aan de keuzes in jullie leermiddelenmix en vormt een helder vertrekpunt voor het
+            gesprek met elkaar en met aanbieders.
+        </p>
+        <table class="context" role="presentation">
+            <tr>
+                <td><strong>Vakgebieden</strong>[[=', '.join(dm_process.courses or team.courses or []) or 'Nog niet opgegeven.']]</td>
+                <td><strong>Niveaus</strong>[[=', '.join(dm_process.levels or team.levels or []) or 'Nog niet opgegeven.']]</td>
+            </tr>
+        </table>
+        <nav class="contents" aria-label="Inhoud">
+            <p class="contents-title">In dit document</p>
+            <a href="#vision">De visie · [[=len(theme_vision)]] thema’s</a>
+            [[for group in recommendation_groups:]]
+            [[if group["items"]:]]
+            <a href="#[[=group['id']]]">[[=group["title"]]] · [[=len(group["items"])]]</a>
+            [[pass]]
+            [[pass]]
+        </nav>
+
+        <section id="vision">
+            <h2>De visie</h2>
+            <p class="section-intro">Lees de visie per thema en gebruik de uitspraken als richting voor jullie keuzes.</p>
+            [[for vision in theme_vision:]]
+            <section class="theme[[if not vision.summary:]] theme--empty[[pass]]">
+                <h3><span class="theme-number">[[=vision.sort_order + 1]]</span><span class="theme-title">[[=themes.get(vision.theme, vision.theme)]]</span></h3>
+                <p>[[=vision.summary or 'Voor dit thema is nog geen samenvatting vastgelegd.']]</p>
+            </section>
+            [[pass]]
+        </section>
+
+        [[for group in recommendation_groups:]]
+        [[if group["items"]:]]
+        <section class="recommendation-group" id="[[=group['id']]]">
+            <span class="recommendation-count">[[=len(group["items"])]] [[='methodes' if group["kind"] == 'methode' else 'producten en pakketten']]</span>
+            <h2>[[=group["title"]]]</h2>
+            <p class="section-intro">
+                [[=group["intro"]]]
+                De inhoud van jullie visie wordt nog niet meegenomen in deze selectie.
+            </p>
+            <p class="catalog-guide">Klik op ‘Bekijk in de catalogus’ of scan de QR-code om het leermiddel in de app te bekijken.</p>
+            <table class="recommendation-list">
+                <thead><tr><th scope="col">Leermiddel</th><th scope="col">Aansluiting</th><th scope="col">Meer informatie</th></tr></thead>
+                <tbody>
+                    [[for recommendation in group["items"]:]]
+                    [[item = recommendation.item]]
+                    [[catalog_url = catalog_urls[item.gid]]]
+                    <tr class="recommendation">
+                        <td>
+                            <table class="recommendation-heading" role="presentation"><tr>
+                                <td class="cover">
+                                    [[if cover_image := cover_images.get(item.gid):]]
+                                    <img class="cover-image" src="[[=cover_image]]" alt="" />
+                                    [[else:]]
+                                    <span class="cover-placeholder"><img src="[[=cover_placeholder]]" alt="" /></span>
+                                    [[pass]]
+                                </td>
+                                <td>
+                                    <p class="kind">[[='Methode' if group["kind"] == 'methode' else item.composition_label]]</p>
+                                    <h3>[[=item.name or ('Onbenoemde methode' if group["kind"] == 'methode' else 'Onbenoemd product')]]</h3>
+                                    <p class="supplier">[[=item.supplier.name if item.supplier else 'Aanbieder onbekend']]</p>
+                                </td>
+                            </tr></table>
+                        </td>
+                        <td class="reasons">
+                            [[for reason in recommendation.reasons:]]<p class="reason">[[=reason]]</p>[[pass]]
+                        </td>
+                        <td>
+                            <table class="catalog-action" role="presentation"><tr>
+                                <td class="catalog-qr"><a href="[[=catalog_url]]" aria-label="Bekijk [[=item.name]] in de catalogus"><img src="[[=qr_codes[item.gid]]]" alt="QR-code naar [[=item.name]] in de catalogus" /></a></td>
+                                <td><a class="catalog-link" href="[[=catalog_url]]">Bekijk in de catalogus</a><span class="catalog-qr-hint">Of scan de QR-code</span></td>
+                            </tr></table>
+                        </td>
+                    </tr>
+                    [[pass]]
+                </tbody>
+            </table>
+        </section>
+        [[pass]]
+        [[pass]]
+    </body>
+</html>

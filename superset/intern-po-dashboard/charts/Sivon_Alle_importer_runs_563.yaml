@@ -1,0 +1,60 @@
+slice_name: Sivon Alle importer runs
+description: null
+certified_by: null
+certification_details: null
+viz_type: table
+params:
+  datasource: 31__table
+  viz_type: table
+  slice_id: 563
+  query_mode: raw
+  groupby: []
+  temporal_columns_lookup:
+    started_at: true
+  all_columns:
+  - started_at
+  - importer_run_id
+  - supplier_name
+  - is_last_run
+  - success
+  - failure_message
+  - aantal_warnings
+  - source
+  - duration_ms
+  - supplier_gid
+  percent_metrics: []
+  adhoc_filters:
+  - clause: WHERE
+    comparator: No filter
+    expressionType: SIMPLE
+    operator: TEMPORAL_RANGE
+    subject: started_at
+  order_by_cols:
+  - '["started_at", false]'
+  server_pagination: false
+  row_limit: 10000
+  table_timestamp_format: smart_date
+  include_search: false
+  allow_rearrange_columns: false
+  allow_render_html: true
+  column_config:
+    importer_run_id:
+      showCellBars: false
+  show_cell_bars: true
+  align_pn: false
+  color_pn: true
+  comparison_color_enabled: false
+  comparison_color_scheme: Green
+  conditional_formatting: []
+  comparison_type: values
+  extra_form_data: {}
+  dashboards:
+  - 16
+query_context: '{"datasource":{"id":31,"type":"table"},"force":false,"queries":[{"filters":[{"col":"started_at","op":"TEMPORAL_RANGE","val":"No
+  filter"}],"extras":{"having":"","where":""},"applied_time_extras":{},"columns":["started_at","importer_run_id","supplier_name","is_last_run","success","failure_message","aantal_warnings","source","duration_ms","supplier_gid"],"orderby":[["started_at",false]],"annotation_layers":[],"row_limit":10000,"series_limit":0,"group_others_when_limit_reached":false,"order_desc":true,"url_params":{},"custom_params":{},"custom_form_data":{},"post_processing":[],"time_offsets":[]}],"form_data":{"datasource":"31__table","viz_type":"table","slice_id":563,"query_mode":"raw","groupby":[],"temporal_columns_lookup":{"started_at":true},"all_columns":["started_at","importer_run_id","supplier_name","is_last_run","success","failure_message","aantal_warnings","source","duration_ms","supplier_gid"],"percent_metrics":[],"adhoc_filters":[{"clause":"WHERE","comparator":"No
+  filter","expressionType":"SIMPLE","operator":"TEMPORAL_RANGE","subject":"started_at"}],"order_by_cols":["[\"started_at\",
+  false]"],"server_pagination":false,"row_limit":10000,"table_timestamp_format":"smart_date","include_search":false,"allow_rearrange_columns":false,"allow_render_html":true,"column_config":{"importer_run_id":{"showCellBars":false}},"show_cell_bars":true,"align_pn":false,"color_pn":true,"comparison_color_enabled":false,"comparison_color_scheme":"Green","conditional_formatting":[],"comparison_type":"values","extra_form_data":{},"dashboards":[16],"force":false,"result_format":"json","result_type":"full","include_time":false},"result_format":"json","result_type":"full"}'
+cache_timeout: null
+uuid: 469b97e1-9b10-43b8-9378-d4483f2166c3
+version: 1.0.0
+dataset_uuid: 9a8edd70-5df5-44ef-b860-a60e1d3c3800

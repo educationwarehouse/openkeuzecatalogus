@@ -1,3 +1,23 @@
 [[extend '../../../common/templates/layout.html']]
 
+[[block layout_title]]Open Keuzecatalogus Leermiddelen[[end]]
+
+[[block header_brand]]
+[[include '../../../common/templates/includes/okl_header_brand.html']]
+[[end]]
+
+[[block header_actions]]
+[[include '../../../common/templates/includes/okl_header_actions.html']]
+[[end]]
+
+[[block layout_main]]
+<main class="okl-default-main okl-app">
+    [[include]]
+</main>
+[[end]]
+
+[[block layout_footer]]
+[[include '../../../common/templates/includes/okl_footer.html']]
+[[end]]
+
 [[include]]

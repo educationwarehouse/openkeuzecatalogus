@@ -1,0 +1,18 @@
+<div id="favorite-action-[[=entity_kind]]-[[=entity_gid]]"
+     class="okl-favorite-action"
+     hx-get="[[=URL('htmx/favorieten', entity_kind, entity_gid)]]"
+     hx-trigger="ew:favorites_changed from:body"
+     hx-swap="outerHTML">
+    <button class="okl-button okl-button--secondary"
+            type="button"
+            aria-pressed="[[='true' if is_favorite else 'false']]"
+            hx-post="[[=URL('htmx/favorieten', entity_kind, entity_gid)]]"
+            hx-vals='{"active": [[='false' if is_favorite else 'true']]}'
+            hx-swap="none">
+        [[if is_favorite:]]
+        <i class="okl-icon okl-icon--star-fill" aria-hidden="true"></i>Favoriet
+        [[else:]]
+        <i class="okl-icon okl-icon--star" aria-hidden="true"></i>Toevoegen aan favorieten
+        [[pass]]
+    </button>
+</div>

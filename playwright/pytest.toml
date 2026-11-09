@@ -1,0 +1,8 @@
+[pytest]
+timeout = "120"
+timeout_method = "thread"
+required_plugins = ["pytest-timeout"]
+cache_dir = "/shared_cache/pytest/playwright-cache"
+markers = [
+    "accessibility: advisory axe-core accessibility scans",
+]

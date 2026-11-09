@@ -1,0 +1,146 @@
+.message-body {
+    padding: 0;
+    border-width: 0;
+}
+
+.error-page {
+    max-width: 900px;
+    margin: clamp(24px, 6vw, 60px) auto;
+    padding: 0 20px;
+}
+
+.error-card {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+}
+
+.error-header {
+    text-align: center;
+    padding: 50px 30px 40px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.error-code {
+    font-size: 120px;
+    font-weight: bold;
+    line-height: 1;
+    margin-bottom: 20px;
+    color: var(--okl-sherwood-900);
+}
+
+.error-title {
+    font-size: 28px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: var(--okl-dark-grey);
+}
+
+.error-subtitle {
+    font-size: 18px;
+    color: var(--okl-neutral-600);
+    margin-bottom: 0;
+    font-weight: normal;
+}
+
+.error-content {
+    padding: 30px;
+}
+
+.error-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.ticket-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.ticket-container a {
+    transition: background-color 0.2s ease;
+    border-radius: 8px;
+}
+
+.ticket-container a:hover {
+    box-shadow: var(--okl-shadow-sm);
+}
+
+.support-section {
+    padding: 30px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.support-section .alert {
+    margin: 0;
+    border-radius: 8px;
+}
+
+.debug-section {
+    padding: 30px;
+}
+
+.debug-section .alert {
+    margin: 0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.debug-section .alert:hover {
+    filter: brightness(0.98);
+}
+
+.debug-content {
+    background: var(--bs-body-bg);
+    padding: 16px 24px;
+    border-radius: 8px;
+    color: #212529;
+}
+
+.debug-content pre {
+    background: var(--bs-gray-200);
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin: 0;
+    overflow-x: auto;
+}
+
+.debug-content code {
+    color: #212529;
+    font-family: "Courier New", monospace;
+    font-size: 0.85em;
+}
+
+.unselectable {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.message-body .hero {
+    display: flex;
+    flex-direction: row;
+}
+
+.message-body article {
+    color: #5f5f5f;
+    width: fit-content;
+    margin-top: 10px;
+    padding: 10px;
+    z-index: 1;
+    position: relative;
+}
+
+.message-body .hero {
+    pointer-events: initial;
+}

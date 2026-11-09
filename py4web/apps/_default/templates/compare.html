@@ -1,84 +1,107 @@
 [[extend 'layout.html']]
 
-<section class="comparison-page vstack gap-4">
-    <header class="comparison-intro d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3">
-        <div>
-            <p class="comparison-eyebrow mb-2">Keuzehulp</p>
-            <h1 class="mb-2">[[=title]]</h1>
-            <p class="text-secondary mb-0">
-                Bekijk eigenschappen en onderwijsvisies naast elkaar. Gekleurde rijen bevatten verschillen.
-            </p>
+<section class="comparison-page">
+    <header class="comparison-hero">
+        <div class="okl-page-container">
+            <a class="okl-detail-back" href="[[=URL('methodes' if entity_kind == 'method' else 'producten')]]">
+                <i class="okl-icon okl-icon--arrow-left" aria-hidden="true"></i> Terug naar catalogus
+            </a>
+            <div class="comparison-hero__heading">
+                <h1>Vergelijken</h1>
+                <label class="comparison-filter form-check form-switch">
+                    <input class="form-check-input comparison-differences-toggle" type="checkbox">
+                    <span class="form-check-label">Toon alleen verschillen</span>
+                </label>
+            </div>
         </div>
-        <label class="comparison-filter form-check form-switch mb-0">
-            <input class="form-check-input comparison-differences-toggle" type="checkbox">
-            <span class="form-check-label">Toon alleen verschillen</span>
-        </label>
     </header>
 
-    [[if missing_count:]]
-    <div class="alert alert-warning mb-0" role="alert">
-        [[=missing_count]] geselecteerde items zijn niet meer openbaar beschikbaar en worden niet getoond.
-    </div>
-    [[pass]]
+    <div class="okl-page-container comparison-content">
+        [[if missing_count:]]
+        <div class="alert alert-warning" role="alert">
+            [[=missing_count]] geselecteerde items zijn niet meer openbaar beschikbaar en worden niet getoond.
+        </div>
+        [[pass]]
 
-    [[if not records:]]
-    <div class="alert alert-secondary mb-0" role="alert">
-        Geen van de geselecteerde items is nog openbaar beschikbaar.
-    </div>
-    [[else:]]
-    <div class="comparison-matrix" style="--comparison-column-count: [[=len(records)]];">
-        <div class="comparison-scroll">
-            <div class="comparison-grid comparison-grid-header">
-                <div class="comparison-label comparison-label-header">Eigenschap</div>
-                [[for record in records:]]
-                <div class="comparison-heading">
-                    <span class="comparison-heading-overline">[[='Methode' if entity_kind == 'methode' else 'Product']]</span>
-                    <strong class="comparison-heading-name">[[=record['name']]]</strong>
-                </div>
-                [[pass]]
-            </div>
-
-            <section class="comparison-section" aria-labelledby="comparison-properties">
-                <h2 id="comparison-properties" class="visually-hidden">Eigenschappen</h2>
-                [[for field in fields:]]
-                <div class="comparison-grid comparison-row [[='comparison-row-different' if field['different'] else 'comparison-row-same']]">
-                    <div class="comparison-label">
-                        [[if field['different']:]]<span class="comparison-difference-marker" aria-hidden="true"></span>[[pass]]
-                        [[=field['label']]]
+        [[if not records:]]
+        <div class="okl-catalog-empty">Geen van de geselecteerde items is nog openbaar beschikbaar.</div>
+        [[else:]]
+        <div class="comparison-matrix" style="--comparison-column-count: [[=len(records)]];">
+            <p class="comparison-scroll-hint js-comparison-scroll-hint" hidden>
+                <i class="okl-icon okl-icon--arrow-right" aria-hidden="true"></i>
+                Veeg of scroll opzij voor alle leermiddelen.
+            </p>
+            <div class="comparison-scroll" tabindex="0" role="region" aria-label="Vergelijkingstabel; scroll horizontaal voor alle leermiddelen">
+                <div class="comparison-grid comparison-grid-media">
+                    <div class="comparison-label comparison-label-header">[[='Methode' if entity_kind == 'method' else 'Product']]</div>
+                    [[for record in records:]]
+                    [[remaining_gids = [other['gid'] for other in records if other['gid'] != record['gid']]]]
+                    <div class="comparison-heading">
+                        <div class="comparison-heading__image">
+                            [[if record['image_url']:]]
+                            <img class="js-okl-cover-image" src="[[=record['image_url']]]" alt="Omslag van [[=record['name']]]">
+                            <i class="okl-icon okl-icon--book-open okl-cover-fallback" aria-hidden="true" hidden></i>
+                            [[else:]]<i class="okl-icon okl-icon--book-open" aria-hidden="true"></i>[[pass]]
+                        </div>
+                        <a class="comparison-heading-name" href="[[=URL('methode' if entity_kind == 'method' else 'product', record['gid'])]]">[[=record['name']]]</a>
+                        <a class="comparison-heading-remove"
+                           data-comparison-kind="[[=entity_kind]]"
+                           data-comparison-gid="[[=record['gid']]]"
+                           href="[[=URL('compare', entity_kind, '/'.join(remaining_gids)) if len(remaining_gids) >= 2 else URL('methodes' if entity_kind == 'method' else 'producten')]]"
+                           aria-label="[[=record['name']]] uit vergelijking verwijderen">
+                            <i class="okl-icon okl-icon--x" aria-hidden="true"></i>
+                        </a>
                     </div>
-                    [[for value in field['values']:]]
-                    <div class="comparison-value text-break">[[=value]]</div>
                     [[pass]]
                 </div>
-                [[pass]]
-            </section>
 
-            <section class="comparison-section comparison-visions-section" aria-labelledby="comparison-visions">
-                <div class="comparison-section-title comparison-grid">
-                    <div id="comparison-visions" class="comparison-label comparison-section-label">Visies per thema
-                    </div>
-                    <div class="comparison-section-rule"></div>
-                </div>
-                [[for vision_row in visions:]]
-                <div class="comparison-grid comparison-row comparison-vision-row [[='comparison-row-different' if vision_row['different'] else 'comparison-row-same']]">
-                    <div class="comparison-label comparison-theme-label">
-                        [[if vision_row['different']:]]<span class="comparison-difference-marker"
-                                                             aria-hidden="true"></span>[[pass]]
-                        [[=vision_row['theme']]]
-                    </div>
-                    [[for vision in vision_row['values']:]]
-                    <div class="comparison-value comparison-vision-value text-break">
-                        <p class="mb-2">[[=vision['content']]]</p>
-                        <p class="comparison-vision-source mb-0">Bron: [[=vision['source']]]</p>
-                        [[if vision['properties'] != '{}':]]
-                        <pre class="comparison-vision-properties mb-0">[[=vision['properties']]]</pre>
+                <section class="comparison-section" aria-labelledby="comparison-properties">
+                    <h2 id="comparison-properties" class="visually-hidden">Eigenschappen</h2>
+                    [[for field in fields:]]
+                    [[if field['name'] == 'more_information': continue]]
+                    <div class="comparison-grid comparison-row [[='comparison-row-different' if field['different'] else 'comparison-row-same']]">
+                        <div class="comparison-label">[[=field['label']]]</div>
+                        [[for value in field['values']:]]
+                        <div class="comparison-value text-break">[[include 'components/comparison_value.html']]</div>
                         [[pass]]
                     </div>
                     [[pass]]
+                </section>
+
+                <section class="comparison-section comparison-visions-section" aria-labelledby="comparison-visions">
+                    <div class="comparison-grid comparison-section-title">
+                        <div id="comparison-visions" class="comparison-label comparison-section-label">Visies per thema</div>
+                        <div class="comparison-section-rule"></div>
+                    </div>
+                    [[for vision_row in visions:]]
+                    <div class="comparison-grid comparison-row comparison-vision-row [[='comparison-row-different' if vision_row['different'] else 'comparison-row-same']]">
+                        <div class="comparison-label comparison-theme-label">[[=vision_row['theme']]]</div>
+                        [[for vision in vision_row['values']:]]
+                        <div class="comparison-value comparison-vision-value text-break">
+                            <p>[[=vision['content']]]</p>
+                            <small>Bron: [[=vision['source']]]</small>
+                            [[if vision['properties'] != '{}':]]
+                            <details class="okl-data-disclosure">
+                                <summary>Aanvullende kenmerken</summary>
+                                [[=display_vision_properties(vision['properties'])]]
+                            </details>
+                            [[pass]]
+                        </div>
+                        [[pass]]
+                    </div>
+                    [[pass]]
+                </section>
+                [[for field in fields:]]
+                [[if field['name'] != 'more_information': continue]]
+                <div class="comparison-grid comparison-row">
+                    <div class="comparison-label">[[=field['label']]]</div>
+                    [[for value in field['values']:]]
+                    <div class="comparison-value">[[include 'components/comparison_value.html']]</div>
+                    [[pass]]
                 </div>
                 [[pass]]
-            </section>
+            </div>
         </div>
+        [[pass]]
     </div>
-    [[pass]]
 </section>

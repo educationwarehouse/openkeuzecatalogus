@@ -1,0 +1,256 @@
+:root {
+    --okl-hero-artwork:
+        url("/static/landing/images/okl-decor-catalog-a.svg") right -13px top 0 / 508px 833px no-repeat,
+        url("/static/landing/images/okl-decor-catalog-a.svg") right -150px top 53px / 508px 833px no-repeat,
+        url("/static/landing/images/okl-decor-catalog-b.svg") right -313px top 104px / 508px 833px no-repeat;
+}
+
+body:has(.okl-app, .okl-landing) {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.okl-footer {
+    padding: 80px 0 24px;
+    background: #154734;
+    color: #fff;
+    font-family: var(--okl-font-family);
+    font-size: 1rem;
+    line-height: 1.5;
+}
+.okl-footer > .container {
+    width: min(100%, calc(var(--okl-page-measure) + 2 * var(--okl-page-gutter)));
+    max-width: none;
+    padding-inline: var(--okl-page-gutter);
+}
+.okl-footer__top {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 40px;
+}
+.okl-footer__brand {
+    min-width: 0;
+    max-width: 100%;
+}
+.okl-footer__logo {
+    display: block;
+    flex: 0 0 auto;
+    width: $okl-brand-logo-width;
+    max-width: 100%;
+    height: $okl-brand-logo-height;
+}
+.okl-footer__byline {
+    @include okl-brand-byline;
+}
+.okl-footer__payoff {
+    flex: 0 1 auto;
+    margin: 0;
+    max-width: none;
+    color: #fff;
+    font-family: inherit;
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: right;
+    white-space: nowrap;
+}
+.okl-footer__payoff-accent {
+    color: #ff8800;
+}
+.okl-footer__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 32px;
+    margin: 0 0 64px;
+}
+.okl-footer__grid > * {
+    width: auto;
+    padding: 0;
+    min-width: 0;
+    margin: 0 !important;
+}
+.okl-footer__socials {
+    justify-self: end;
+}
+.okl-footer a {
+    color: #fff;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+}
+.okl-footer nav {
+    gap: 12px !important;
+}
+.okl-footer nav a {
+    padding-block: 3px;
+}
+.okl-footer a:hover {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+.okl-footer a:focus-visible {
+    outline: 2px solid #ff8800;
+    outline-offset: 4px;
+}
+.okl-footer__heading {
+    font-size: 16px;
+    font-weight: 700;
+}
+.okl-footer__contact-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+.okl-footer__contact-link::before {
+    display: block;
+    flex: 0 0 24px;
+    width: 24px;
+    height: 24px;
+    background-color: currentcolor;
+    content: "";
+    mask-position: center;
+    mask-repeat: no-repeat;
+    mask-size: contain;
+}
+.okl-footer__contact-link--mail::before {
+    mask-image: url("/static/icons/envelope.svg");
+}
+.okl-footer__contact-link--globe::before {
+    mask-image: url("/static/icons/globe.svg");
+}
+.okl-footer__legal {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 24px;
+    padding-top: 24px;
+    border-top: 1px solid #ffffff40;
+}
+.okl-footer__legal a {
+    font-size: 0.8125rem;
+}
+.okl-footer .okl-social {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    background: transparent;
+    transition: transform var(--okl-motion-normal) var(--okl-motion-ease);
+
+    img {
+        display: block;
+        width: 100%;
+        height: 100%;
+    }
+    &:hover,
+    &:focus-visible {
+        transform: scale(1.06);
+    }
+}
+.okl-site-header {
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+    transition:
+        transform 200ms ease,
+        box-shadow 200ms ease;
+}
+.okl-site-header.is-scrolled {
+    box-shadow: 0 4px 20px #15473420;
+}
+.okl-site-header.is-hidden {
+    transform: translateY(-100%);
+}
+.okl-site-header:focus-within {
+    transform: none;
+}
+.okl-site-header [aria-current="page"],
+.okl-site-header [aria-current="location"] {
+    color: #ffb45e;
+    text-decoration: underline;
+    text-underline-offset: 6px;
+}
+
+body:has(.okl-app, .okl-landing) .ct-ignition {
+    left: auto;
+    right: 16px;
+    width: 48px;
+    height: 48px;
+
+    .ct-ignition__button {
+        left: auto;
+        right: 0;
+    }
+    .ct-ignition__button--cancel {
+        right: 64px;
+    }
+}
+
+@media (max-width: 575.98px) {
+    body:has(.okl-app, .okl-landing) .ct-ignition {
+        top: 68px;
+        right: 8px;
+        width: 44px;
+        height: 44px;
+
+        .ct-ignition__button {
+            width: 44px;
+            height: 44px;
+            border: 6px solid transparent;
+            background-clip: padding-box;
+            line-height: 32px;
+            font-size: 18px;
+        }
+
+        .ct-ignition__button--cancel {
+            right: 52px;
+        }
+    }
+}
+
+@media (max-width: 991.98px) {
+    .okl-footer__payoff {
+        text-align: left;
+        white-space: normal;
+    }
+}
+@media (max-width: 575.98px) {
+    .okl-footer {
+        padding-top: 48px;
+    }
+    .okl-footer__grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 28px 20px;
+    }
+    .okl-footer__socials {
+        justify-self: end;
+    }
+    .okl-footer__brand {
+        flex-wrap: nowrap;
+        min-width: 0;
+    }
+    .okl-footer__logo {
+        width: clamp(144px, 40vw, 160px);
+        height: auto;
+        flex: 0 0 auto;
+    }
+    .okl-footer__byline {
+        align-self: stretch;
+        width: auto;
+        height: auto;
+        padding-left: 10px;
+        font-size: 12px;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .okl-site-header,
+    .okl-footer .okl-social {
+        transition: none;
+    }
+}

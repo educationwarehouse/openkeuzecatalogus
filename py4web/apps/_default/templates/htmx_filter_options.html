@@ -1,0 +1,20 @@
+[[for option in selected_options:]]
+<label class="dropdown-item d-flex align-items-center selected">
+    <input class="form-check-input" type="[[=input_type]]" value="[[=option.value]]" checked>
+    <span class="item-label">[[=option.label]]</span>
+</label>
+[[pass]]
+[[for option in options:]]
+<label class="dropdown-item d-flex align-items-center">
+    <input class="form-check-input" type="[[=input_type]]" value="[[=option.value]]">
+    <span class="item-label">[[=option.label]]</span>
+</label>
+[[pass]]
+[[if has_more:]]
+<div class="catalog-option-more"
+     hx-get="[[=URL('htmx/filter-options', entity_kind, slug, vars={'q': query, 'offset': next_offset, 'limit': limit})]]"
+     hx-trigger="intersect once" hx-target="this" hx-swap="outerHTML"
+     hx-include="closest .capsule-dropdown">
+    Meer opties laden…
+</div>
+[[pass]]

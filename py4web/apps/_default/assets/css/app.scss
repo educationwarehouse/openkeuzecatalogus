@@ -1,29 +1,93 @@
-// 1. Include functions first (so you can manipulate colors, SVGs, calc, etc)
+// One Bootstrap compilation and component layer for every OKL app.
+// 0. Webfont faces. First, so the @font-face rules head the compiled sheet.
+@import "landing/fonts";
+
+// 1. Functions required by token colour operations.
 @import "shared_code/modules/css/bootstrap/functions";
 
-// 2. Include any default variable overrides here
-
-//$base-theme-colors: (
-//        "primary": $primary,
-//        "secondary": $secondary,
-//        "success": $success,
-//        "info": $info,
-//        "warning": $warning,
-//        "danger": $danger,
-//        "light": $light,
-//        "dark": $dark,
-//);
+// 2 & 3. Design tokens, then the Bootstrap overrides derived from them.
+@import "landing/brand-tokens";
+@import "okl-brand";
+@import "landing/brand-bootstrap";
 
 // scss-docs-start import-stack (see bootstrap/bootstrap.scss)
-// Configuration
+// 4. Configuration
 @import "shared_code/modules/css/bootstrap/variables";
-
 @import "shared_code/modules/css/bootstrap/variables-dark";
+
+// 5. Extra theme colours. Must sit after variables (so $theme-colors exists) and
+// before maps (so the full set of .btn-*/.bg-*/.text-bg-* variants is generated).
+//
+// Each entry generates button, alert, table and list-group variants. Add flat
+// surface and text colours to the utilities map instead.
+$theme-colors: map-merge(
+    $theme-colors,
+    (
+        "brand": $sherwood-green-900,
+        "highlight": $jonquil-300,
+    )
+);
+
 @import "shared_code/modules/css/bootstrap/maps";
 @import "shared_code/modules/css/bootstrap/mixins";
 @import "shared_code/modules/css/bootstrap/utilities";
 
-// Layout & components
+// 7. Extend the utilities API with surface and text colours without generating
+// the component variants produced by $theme-colors.
+$okl-surface-values: (
+    "brand-raised": $okl-surface-brand-raised,
+    "brand-band": $okl-surface-brand-band,
+    "mint": $okl-surface-mint,
+    "mint-subtle": $okl-surface-mint-subtle,
+    "lilac": $okl-surface-lilac,
+    "sky": $okl-surface-sky,
+    "sky-solid": $anakiwa-500,
+    "lilac-solid": $light-wisteria-300,
+    "action": $okl-action,
+    "action-strong": $okl-action-strong,
+    // Tint values paired with solid status colours.
+    "red-tint": $okl-red-100,
+    "emerald-tint": $okl-emerald-100,
+    "sky-tint": $anakiwa-100,
+    "amber-tint": $tangerine-100,
+    "neutral-tint": $okl-neutral-100,
+);
+
+$okl-text-values: (
+    "heading": $okl-text-heading,
+    "heading-alt": $okl-text-heading-alt,
+    "ink": $okl-ink,
+    "muted-500": $okl-text-muted,
+    "subtle": $okl-text-subtle,
+    "action": $okl-text-action,
+    "action-strong": $okl-text-action-display,
+    "accent-lilac": $okl-accent-lilac,
+    "accent-sky": $okl-accent-sky,
+    "eyebrow-lilac": $okl-eyebrow-lilac,
+    "eyebrow-sky": $okl-eyebrow-sky,
+    "eyebrow-mint": $okl-eyebrow-mint,
+    "on-brand-muted": $okl-text-on-brand-muted,
+);
+
+$utilities: map-merge(
+    $utilities,
+    (
+        "background-color": map-merge(
+                map-get($utilities, "background-color"),
+                (
+                    values: map-merge(map-get(map-get($utilities, "background-color"), "values"), $okl-surface-values),
+                )
+            ),
+        "color": map-merge(
+                map-get($utilities, "color"),
+                (
+                    values: map-merge(map-get(map-get($utilities, "color"), "values"), $okl-text-values),
+                )
+            ),
+    )
+);
+
+// 8. Layout & components
 @import "shared_code/modules/css/bootstrap/root";
 @import "shared_code/modules/css/bootstrap/reboot";
 @import "shared_code/modules/css/bootstrap/type";
@@ -59,432 +123,46 @@
 @import "shared_code/modules/css/bootstrap/utilities/api";
 // scss-docs-end import-stack
 
-.capsule-dropdown {
-  position: relative;
+// 9 & 10. Brand layer, then app-specific UI.
+@import "landing/brand-components";
+
+// -----------------------------------------------------------------------------
+// Component tweaks that need Bootstrap's generated CSS variables to exist first.
+// -----------------------------------------------------------------------------
+// Bootstrap's shade-based hover variables cannot express the required
+// tangerine-to-green hue change, so the component custom property is overridden.
+.btn-primary {
+    --bs-btn-color: #fff;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: #{$sherwood-green-900};
+    --bs-btn-hover-border-color: #{$sherwood-green-900};
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: #{$sherwood-green-900};
+    --bs-btn-active-border-color: #{$sherwood-green-900};
 }
 
-.capsule-dropdown .btn {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  width: 100%;
-  min-height: calc(1.5em + 1.5rem + 2px);
-  padding: 0.75rem 1rem;
-  border: 1px solid #ced4da;
-  border-radius: 1.5rem;
-  background: #fff;
-  text-align: left;
+.btn-outline-brand {
+    --bs-btn-hover-color: #fff;
 }
-
-.capsule-dropdown .btn[aria-expanded="true"] {
-  border-color: #ffc107;
-  border-bottom-color: transparent;
-  border-radius: 1.5rem 1.5rem 0 0;
-}
-
-.capsule-dropdown .dropdown-toggle::after {
-  display: none;
-}
-
-.capsule-dropdown .selected-text {
-  display: flex;
-  flex: 1;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  min-height: 1.5rem;
-  margin-right: 0.75rem;
-}
-
-.capsule-dropdown .selected-text.is-placeholder {
-  display: block;
-  color: #6c757d;
-}
-
-.capsule-dropdown .dropdown-icon {
-  width: 1rem;
-  height: 1rem;
-  margin-top: 0.35rem;
-  flex: 0 0 1rem;
-  background: url("data:image/svg+xml,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20fill-rule%3D%22evenodd%22%20clip-rule%3D%22evenodd%22%20d%3D%22M7.51706%2011.068L2.1926%205.74349C1.9358%205.4867%201.9358%205.07037%202.1926%204.8136L2.81361%204.19259C3.06997%203.93623%203.48545%203.93574%203.7424%204.19149L7.98202%208.41125L12.2216%204.19149C12.4786%203.93574%2012.894%203.93623%2013.1504%204.19259L13.7714%204.8136C14.0282%205.0704%2014.0282%205.48673%2013.7714%205.74349L8.44698%2011.068C8.19019%2011.3248%207.77386%2011.3248%207.51706%2011.068Z%22%20fill%3D%22%23d39e00%22%2F%3E%3C%2Fsvg%3E") no-repeat center;
-  background-size: contain;
-  transition: transform 0.2s ease;
-}
-
-.capsule-dropdown .btn[aria-expanded="true"] .dropdown-icon {
-  transform: rotate(180deg);
-}
-
-.capsule-dropdown .selected-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  border: 1px solid #e6c65c;
-  border-radius: 9999px;
-  background: #fff8dd;
-  padding: 0.15rem 0.65rem;
-}
-
-.capsule-dropdown .selected-pill-label {
-  color: #7a5c00;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.capsule-dropdown .selected-pill-remove {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1rem;
-  height: 1rem;
-  border: 1px solid #d39e00;
-  border-radius: 9999px;
-  color: #7a5c00;
-  font-size: 0.75rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.capsule-dropdown-menu {
-  display: none;
-  position: absolute;
-  inset: 100% 0 auto 0;
-  z-index: 1000;
-  min-width: 100%;
-  padding: 0;
-  border: 1px solid #ffc107;
-  border-top: none;
-  border-radius: 0 0 1.5rem 1.5rem;
-  background: #fff;
-  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-}
-
-.capsule-dropdown .dropdown-menu.show {
-  display: block;
-}
-
-.capsule-search-container {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  border-bottom: 1px solid #dee2e6;
-  background: #fff;
-}
-
-.capsule-search-input {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border: none;
-  outline: none;
-  background: #fffdf3;
-}
-
-.search-results {
-  max-height: min(18rem, 45vh);
-  overflow-y: auto;
-}
-
-.capsule-dropdown .dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  cursor: pointer;
-}
-
-.capsule-dropdown .dropdown-item:hover {
-  background: #fffdf3;
-}
-
-.capsule-dropdown .dropdown-item.selected {
-  background: #fff8dd;
-}
-
-.capsule-dropdown .dropdown-item .form-check-input {
-  margin-top: 0;
-}
-
-.capsule-dropdown .item-label {
-  flex: 1;
-}
-
-.capsule-dropdown-footer {
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem 1rem;
-  border-top: 1px solid #dee2e6;
-  background: #fff;
-}
-
-.capsule-dropdown .selected-count {
-  color: #6c757d;
-}
-
-.capsule-dropdown .close-dropdown-btn {
-  border: 1px solid #d39e00;
-  border-radius: 9999px;
-  background: #ffc107;
-  color: #212529;
-  padding: 0.35rem 0.9rem;
-  font-weight: 600;
-}
-
-.catalog-view-toggle .btn.active,
-.catalog-view-toggle .btn[aria-pressed="true"] {
-  background: #212529;
-  border-color: #212529;
-  color: #fff;
-}
-
-.catalog-results-grid--list > .catalog-result-item {
-  flex: 0 0 100%;
-  max-width: 100%;
-}
-
-.catalog-results-grid--list .card {
-  border: 1px solid #f3ddb0;
-}
-
-.comparison-tray {
-  position: fixed;
-  right: 1rem;
-  bottom: 1rem;
-  z-index: 1030;
-  width: min(22rem, calc(100vw - 2rem));
-  padding: 1rem;
-  border: 1px solid #dee2e6;
-  border-radius: 0.75rem;
-  background: #fff;
-}
-
-.comparison-header,
-.comparison-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.comparison-header {
-  margin-bottom: 0.75rem;
-}
-
-.comparison-items {
-  display: grid;
-  gap: 0.5rem;
-  max-height: 12rem;
-  overflow-y: auto;
-}
-
-.comparison-item {
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid #e9ecef;
-}
-
-.comparison-item:last-child {
-  padding-bottom: 0;
-  border-bottom: 0;
-}
-
-.comparison-page {
-  --comparison-ink: #21313c;
-  --comparison-muted: #687780;
-  --comparison-line: #dce5e6;
-  --comparison-accent: #d8643b;
-  --comparison-highlight: #fff7ed;
-}
-
-.comparison-intro {
-  padding: 1.25rem 0 0.25rem;
-}
-
-.comparison-eyebrow {
-  color: var(--comparison-accent);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.comparison-filter {
-  color: var(--comparison-ink);
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.comparison-filter .form-check-input {
-  margin-right: 0.65rem;
-}
-
-.comparison-matrix {
-  border: 1px solid var(--comparison-line);
-  border-radius: 1rem;
-  box-shadow: 0 0.75rem 2.5rem rgba(33, 49, 60, 0.08);
-  overflow: hidden;
-}
-
-.comparison-scroll {
-  max-width: 100%;
-  overflow: auto;
-  overscroll-behavior-inline: contain;
-}
-
-.comparison-grid {
-  display: grid;
-  grid-template-columns: 20rem repeat(var(--comparison-column-count), 22rem);
-  min-width: max-content;
-}
-
-.comparison-grid-header {
-  background: var(--comparison-ink);
-  color: #fff;
-}
-
-.comparison-label,
-.comparison-value,
-.comparison-heading {
-  border-bottom: 1px solid var(--comparison-line);
-  min-height: 4.25rem;
-  min-width: 0;
-  padding: 1rem 1.125rem;
-}
-
-.comparison-label {
-  align-items: center;
-  background: #f7faf9;
-  color: var(--comparison-ink);
-  display: flex;
-  font-size: 0.875rem;
-  font-weight: 650;
-  left: 0;
-  position: sticky;
-  z-index: 2;
-}
-
-.comparison-label-header {
-  background: var(--comparison-ink);
-  color: rgba(255, 255, 255, 0.68);
-  font-size: 0.75rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.comparison-heading {
-  display: grid;
-  gap: 0.25rem;
-}
-
-.comparison-heading-overline {
-  color: rgba(255, 255, 255, 0.64);
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.comparison-heading-name {
-  font-size: 1rem;
-  line-height: 1.25;
-}
-
-.comparison-value {
-  background: #fff;
-  color: var(--comparison-ink);
-  font-size: 0.925rem;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
-}
-
-.comparison-row-different .comparison-value {
-  background: var(--comparison-highlight);
-}
-
-.comparison-row-different .comparison-label {
-  background: #ffedd5;
-}
-
-.comparison-difference-marker {
-  background: var(--comparison-accent);
-  border-radius: 50%;
-  flex: 0 0 auto;
-  height: 0.5rem;
-  margin-right: 0.55rem;
-  width: 0.5rem;
-}
-
-.comparison-section-title {
-  background: #eef5f3;
-}
-
-.comparison-section-label {
-  background: #eef5f3;
-  color: #315a52;
-  font-size: 0.8rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.comparison-section-rule {
-  border-bottom: 1px solid var(--comparison-line);
-  grid-column: 2 / -1;
-}
-
-.comparison-theme-label {
-  align-items: start;
-  padding-top: 1.125rem;
-}
-
-.comparison-vision-value {
-  min-height: 8rem;
-}
-
-.comparison-vision-source {
-  color: var(--comparison-muted);
-  font-size: 0.8rem;
-}
-
-.comparison-vision-properties {
-  background: rgba(33, 49, 60, 0.05);
-  border-radius: 0.375rem;
-  font-size: 0.75rem;
-  margin-top: 0.75rem;
-  padding: 0.75rem;
-  white-space: pre-wrap;
-}
-
-.comparison-page.only-differences .comparison-row-same {
-  display: none;
-}
-
-@media (max-width: 575.98px) {
-  .comparison-intro {
-    padding-top: 0.5rem;
-  }
-
-  .comparison-matrix {
-    border-radius: 0.75rem;
-  }
-
-  .comparison-label,
-  .comparison-value,
-  .comparison-heading {
-    padding: 0.875rem;
-  }
-}
-
-@media (min-width: 768px) {
-  .catalog-results-grid--list .card-body {
-    display: grid;
-    gap: 1rem 1.5rem;
-    grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr);
-    align-items: start;
-  }
-
-  .catalog-results-grid--list .card-body > pre {
-    grid-column: 1 / -1;
-  }
-}
+@import "okl-platform";
+@import "okl-auth";
+@import "okl-buttons";
+@import "okl-interactions";
+@import "okl-motion";
+@import "okl-loading";
+@import "okl-catalog";
+@import "okl-catalog-list";
+@import "okl-forms";
+@import "okl-select";
+@import "okl-vision";
+@import "okl-shared-shell";
+@import "okl-navigation";
+@import "okl-icons";
+@import "okl-layout";
+@import "okl-wizard";
+@import "okl-attach-points";
+@import "okl-choice-canvas";
+@import "okl-pros-cons";
+@import "okl-phase-one";
+@import "okl-priorities";
+@import "okl-error";

@@ -1,34 +1,58 @@
 [[extend "layout.html"]]
 <!-- TEMPLATE: auth.html -->
-<style>
-    .auth-container {
-        max-width: 30%;
-        min-width: 400px;
-        margin-top: 40px;
-        margin-left: auto;
-        margin-right: auto;
-        border: 1px solid #e1e1e1;
-        border-radius: 10px;
-        padding: 20px;
-    }
+[[auth_action = request.path.split('/auth/', 1)[-1].split('/', 1)[0]]]
+[[is_login = auth_action == 'login']]
+[[
+auth_headings = {
+    'register': ('Maak je account aan', 'Meld je aan voor de Visie-keuzemodule van en voor scholen.'),
+    'profile': ('Jouw profiel', 'Bekijk en wijzig je accountgegevens.'),
+    'request_reset_password': ('Wachtwoord vergeten?', 'Vul je e-mailadres in om je wachtwoord opnieuw in te stellen.'),
+    'reset_password': ('Nieuw wachtwoord', 'Kies een nieuw wachtwoord voor je account.'),
+    'change_password': ('Wachtwoord wijzigen', 'Stel een nieuw wachtwoord in voor je account.'),
+    'verify_email': ('E-mailadres bevestigen', 'Bevestig je e-mailadres om je account te gebruiken.'),
+}
+auth_heading, auth_intro = auth_headings.get(auth_action, ('Jouw account', 'Beheer je toegang tot de Open Keuzecatalogus Leermiddelen.'))
+]]
 
-    .auth-container a {
-        margin: 4px;
-    }
+<section class="okl-login-page okl-login-page--[[=auth_action]]" data-auth-login="[[='true' if is_login else 'false']]">
+    <div class="okl-login-campaign" role="region" aria-label="Over de Visie-keuzemodule">
+        <div class="okl-login-visual">
+            <img src="[[=STATIC('images', 'okl-onze-leermiddelen.webp', app_name='private')]]"
+                 alt="Twee onderwijsprofessionals bekijken samen een boek">
+            <div class="okl-login-caption">
+                <h2>Onze leermiddelen, onze verantwoordelijkheid</h2>
+                <p>Samen creëren we een leermiddelenmarkt die leerlingen en leraren ondersteunt en inspireert.</p>
+                <a href="[[=URL('index', use_appname=False)]]#hoe-werkt-het">
+                    Lees meer over de Visie-keuzemodule
+                    <img src="[[=STATIC('images', 'okl-arrow-right.svg', app_name='private')]]" alt="" width="16" height="16">
+                </a>
+            </div>
+        </div>
+    </div>
 
-    a[href*="oauth2kennisnet"] {
-        display: inline-block;
-        width: 220px;
-        height: 48px;
-        margin-top: 1rem;
-        background-image: url('[[=URL("static/images/inloggen-via-entree.png")]]');
-        background-size: contain;
-        background-repeat: no-repeat;
-        text-indent: -9999px;
-        overflow: hidden;
-    }
-</style>
+    <div class="okl-login-panel">
+        <div class="okl-login-panel__inner">
+            <div class="okl-login-brand">
+                <a class="okl-login-wordmark" href="[[=URL('index', use_appname=False)]]" aria-label="Open Keuzecatalogus Leermiddelen">
+                    <img src="[[=STATIC('images', 'logo-okl-on-light.svg', app_name='private')]]"
+                         alt="Open Keuzecatalogus Leermiddelen"
+                         width="190"
+                         height="46">
+                </a>
+                <span>Een initiatief van SIVON</span>
+            </div>
 
-<div class="auth-container">
-    [[=form]]
-</div>
+            [[if is_login:]]
+            <h1>Welkom bij de<br><span>Open Keuzecatalogus Leermiddelen</span></h1>
+            <p class="okl-login-intro">Log in op de Visie-keuzemodule van en voor scholen.</p>
+            [[else:]]
+            <h1>[[=auth_heading]]</h1>
+            <p class="okl-login-intro">[[=auth_intro]]</p>
+            [[pass]]
+
+            <div class="okl-auth-form">
+                [[=form]]
+            </div>
+        </div>
+    </div>
+</section>

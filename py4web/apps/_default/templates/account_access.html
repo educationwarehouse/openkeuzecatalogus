@@ -1,0 +1,22 @@
+[[extend 'layout.html']]
+
+<section class="okl-catalog-page" aria-labelledby="account-access-title">
+    <header class="okl-catalog-hero">
+        <div class="okl-page-container okl-catalog-hero__inner">
+            <h1 id="account-access-title">Geen toegang tot deze pagina</h1>
+        </div>
+    </header>
+
+    <div class="okl-page-container py-5">
+        <div class="row">
+            <div class="col-12 col-lg-8">
+                <p>Je account heeft geen toegang tot deze pagina. Vraag de beheerder van je organisatie om de juiste rechten voor je account te regelen.</p>
+                <p class="mb-4">Heb je hulp nodig? Neem contact op met <a href="mailto:support@educationwarehouse.nl">support@educationwarehouse.nl</a>. Je kunt ondertussen je profiel controleren of teruggaan naar de startpagina.</p>
+                <div class="d-flex flex-wrap gap-3">
+                    <a class="okl-button okl-button--primary" href="[[=URL('auth', 'profile', use_appname=False)]]">Bekijk je profiel</a>
+                    <a class="okl-button okl-button--secondary" href="[[=URL('index', use_appname=False)]]">Naar de startpagina</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

@@ -1,0 +1,256 @@
+.okl-default-main,
+.okl-private-main {
+    min-width: 0;
+}
+
+.okl-default-main {
+    background: #fff;
+}
+
+/* Login */
+body:has(.okl-login-page):not(:has(.okl-login-page--profile, .okl-login-page--change_password)) > header,
+body:has(.okl-login-page):not(:has(.okl-login-page--profile, .okl-login-page--change_password)) > .okl-footer {
+    display: none;
+}
+
+.okl-login-page {
+    min-height: 100svh;
+    display: grid;
+    grid-template-columns: minmax(0, 56.4%) minmax(420px, 1fr);
+    background: #fff;
+}
+
+.okl-login-campaign {
+    display: grid;
+    place-items: center;
+    margin: 8px;
+    overflow: hidden;
+    border-radius: 24px;
+    background: var(--okl-wisteria-300);
+}
+
+.okl-login-visual {
+    position: relative;
+    width: min(526px, 62.25%);
+    aspect-ratio: 526 / 566;
+}
+
+.okl-login-visual::before,
+.okl-login-visual::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 0;
+    width: min(620px, 117.87%);
+    height: 74.2%;
+    border-radius: 16px;
+    background: #aa6ce0;
+    content: "";
+    transform: translate(-50%, -50%);
+}
+
+.okl-login-visual::after {
+    width: min(572px, 108.75%);
+    height: 84.1%;
+    background: var(--okl-wisteria-500);
+}
+
+.okl-login-visual > img {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    border-radius: 18px;
+    object-fit: cover;
+    object-position: center 30%;
+}
+
+.okl-login-caption {
+    position: absolute;
+    right: 9px;
+    bottom: 9px;
+    left: 9px;
+    z-index: 2;
+    padding: 18px;
+    border-radius: 12px;
+    background: #fff;
+    color: var(--okl-ink);
+}
+
+.okl-login-caption h2 {
+    margin: 0 0 8px;
+    font-size: 1.35rem;
+}
+
+.okl-login-caption p {
+    margin: 0 0 12px;
+    font-size: 0.9rem;
+}
+
+.okl-login-caption a {
+    color: var(--okl-ink);
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.okl-login-caption a i {
+    margin-left: 8px;
+    color: var(--okl-tangerine-500);
+}
+
+.okl-login-caption a img {
+    margin-left: 4px;
+}
+
+.okl-login-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    place-items: center;
+    padding: 64px clamp(32px, 6vw, 84px);
+}
+
+.okl-login-panel__inner {
+    min-width: 0;
+    width: min(100%, 520px);
+}
+
+.okl-login-brand {
+    display: flex;
+    align-items: center;
+    gap: $okl-brand-gap;
+    margin-bottom: 36px;
+}
+
+.okl-login-brand > span {
+    @include okl-brand-byline($on-light: true);
+}
+
+.okl-login-wordmark {
+    display: block;
+    flex: 0 0 auto;
+    text-decoration: none;
+}
+
+.okl-login-wordmark img {
+    display: block;
+    width: $okl-brand-logo-width;
+    height: $okl-brand-logo-height;
+}
+
+.okl-login-panel h1 {
+    margin: 0 0 24px;
+    color: var(--okl-dark-grey);
+    font-size: clamp(2.35rem, 4vw, 3rem);
+    font-weight: 700;
+    line-height: 1.08;
+}
+
+.okl-login-panel h1 span {
+    color: var(--okl-action-text);
+}
+
+.okl-login-intro {
+    margin-bottom: 24px;
+}
+
+.okl-auth-form form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.okl-auth-form form > div:first-child:empty {
+    display: none;
+}
+
+.okl-auth-form .form-group {
+    margin: 0;
+}
+
+.okl-login-page--login .okl-auth-form label:not(.form-check-label) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.okl-auth-form label:not(.form-check-label) {
+    margin-bottom: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.okl-auth-form .form-text {
+    color: var(--okl-neutral-600);
+    font-size: 0.875rem;
+}
+
+.okl-auth-form textarea.form-control,
+.okl-auth-form select[multiple] {
+    border-radius: var(--okl-radius-lg);
+}
+
+.okl-auth-form .form-control {
+    min-height: 48px;
+    padding-inline: var(--okl-control-padding-x);
+    border: 1px solid var(--okl-neutral-300);
+    border-radius: var(--okl-radius-pill);
+    box-shadow: none;
+}
+
+.okl-auth-form .form-control:focus {
+    border-color: var(--okl-tangerine-500);
+    box-shadow: 0 0 0 3px var(--okl-tangerine-100);
+}
+
+.okl-auth-form input[type="submit"] {
+    width: 100%;
+    min-height: 48px;
+    border: 1px solid var(--okl-tangerine-500);
+    border-radius: var(--okl-radius-pill);
+    font-weight: 700;
+}
+
+.okl-auth-form .form-group:last-of-type > div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+.okl-auth-form a {
+    color: var(--okl-ink);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.okl-auth-form a[href*="oauth2kennisnet"] {
+    order: 2;
+    width: min(100%, 220px);
+    aspect-ratio: 11 / 2;
+    align-self: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: url("../images/inloggen-via-entree.png") center / contain no-repeat;
+    text-indent: -9999px;
+}
+
+.okl-auth-form a[href*="request_reset_password"] {
+    order: 3;
+}
+
+.okl-auth-form a[href*="register"] {
+    order: 4;
+    color: var(--okl-action-text);
+}
+
+.okl-login-page--login .okl-auth-form a[href*="register"]::before {
+    color: var(--okl-ink);
+    content: "Heb je nog geen account? ";
+    font-weight: 400;
+}

@@ -1,0 +1,112 @@
+slice_name: SIVON Product wijzigingen per import run
+description: null
+certified_by: null
+certification_details: null
+viz_type: table
+params:
+  datasource: 32__table
+  viz_type: table
+  query_mode: raw
+  groupby: []
+  time_grain_sqla: P1D
+  temporal_columns_lookup:
+    created_at: true
+    updated_at: true
+    effdt: true
+    publication_date: true
+    deprecation_date: true
+    end_of_life_date: true
+    supported_until_date: true
+  metrics: []
+  all_columns:
+  - importer_supplier_name
+  - zelfde_lev
+  - id
+  - gid
+  - isbn
+  - name
+  - method_gid
+  - supplier_gid
+  - levels
+  - subjects
+  - image_url
+  - description
+  - available
+  - edition
+  - authors
+  - language
+  - license_duration
+  - level_x_year
+  - sample_copies_link
+  - more_information
+  - recommended_price
+  - physical_digital_mix
+  - digital_folio_mix
+  - browser
+  - devices
+  - operating_systems
+  - elo_integration
+  - weight
+  - dimensions
+  - demo_environment_link
+  - olid
+  - created_at
+  - updated_at
+  - priority
+  - composition
+  - tto
+  - bouw
+  - effdt
+  - effstatus
+  - prio
+  - last_saved_by
+  - sync_gid
+  - import_error_codes
+  - publication_date
+  - payment_models
+  - product_usages
+  - related_products
+  - specific_access_urls
+  - specific_access_url_types
+  - copyright_type
+  - deprecation_date
+  - end_of_life_date
+  - follow_up_product
+  - for_sale
+  - intended_end_user_role
+  - is_consumption_product
+  - sale_unit_size
+  - supported_until_date
+  percent_metrics: []
+  adhoc_filters:
+  - clause: WHERE
+    subject: effdt
+    operator: TEMPORAL_RANGE
+    comparator: No filter
+    expressionType: SIMPLE
+  order_by_cols: []
+  order_desc: true
+  server_pagination: false
+  server_page_length: 10
+  row_limit: 1000
+  percent_metric_calculation: row_limit
+  show_totals: false
+  table_timestamp_format: smart_date
+  include_search: false
+  allow_rearrange_columns: false
+  allow_render_html: true
+  show_cell_bars: true
+  align_pn: false
+  color_pn: true
+  comparison_color_enabled: false
+  comparison_color_scheme: Green
+  comparison_type: values
+  extra_form_data: {}
+  dashboards: []
+query_context: '{"datasource":{"id":32,"type":"table"},"force":false,"queries":[{"filters":[{"col":"effdt","op":"TEMPORAL_RANGE","val":"No
+  filter"}],"extras":{"time_grain_sqla":"P1D","having":"","where":""},"applied_time_extras":{},"columns":["importer_supplier_name","zelfde_lev","id","gid","isbn","name","method_gid","supplier_gid","levels","subjects","image_url","description","available","edition","authors","language","license_duration","level_x_year","sample_copies_link","more_information","recommended_price","physical_digital_mix","digital_folio_mix","browser","devices","operating_systems","elo_integration","weight","dimensions","demo_environment_link","olid","created_at","updated_at","priority","composition","tto","bouw","effdt","effstatus","prio","last_saved_by","sync_gid","import_error_codes","publication_date","payment_models","product_usages","related_products","specific_access_urls","specific_access_url_types","copyright_type","deprecation_date","end_of_life_date","follow_up_product","for_sale","intended_end_user_role","is_consumption_product","sale_unit_size","supported_until_date"],"orderby":[],"annotation_layers":[],"row_limit":1000,"series_limit":0,"group_others_when_limit_reached":false,"order_desc":true,"url_params":{},"custom_params":{},"custom_form_data":{},"post_processing":[],"time_offsets":[]}],"form_data":{"datasource":"32__table","viz_type":"table","query_mode":"raw","groupby":[],"time_grain_sqla":"P1D","temporal_columns_lookup":{"created_at":true,"updated_at":true,"effdt":true,"publication_date":true,"deprecation_date":true,"end_of_life_date":true,"supported_until_date":true},"metrics":[],"all_columns":["importer_supplier_name","zelfde_lev","id","gid","isbn","name","method_gid","supplier_gid","levels","subjects","image_url","description","available","edition","authors","language","license_duration","level_x_year","sample_copies_link","more_information","recommended_price","physical_digital_mix","digital_folio_mix","browser","devices","operating_systems","elo_integration","weight","dimensions","demo_environment_link","olid","created_at","updated_at","priority","composition","tto","bouw","effdt","effstatus","prio","last_saved_by","sync_gid","import_error_codes","publication_date","payment_models","product_usages","related_products","specific_access_urls","specific_access_url_types","copyright_type","deprecation_date","end_of_life_date","follow_up_product","for_sale","intended_end_user_role","is_consumption_product","sale_unit_size","supported_until_date"],"percent_metrics":[],"adhoc_filters":[{"clause":"WHERE","subject":"effdt","operator":"TEMPORAL_RANGE","comparator":"No
+  filter","expressionType":"SIMPLE"}],"order_by_cols":[],"order_desc":true,"server_pagination":false,"server_page_length":10,"row_limit":1000,"percent_metric_calculation":"row_limit","show_totals":false,"table_timestamp_format":"smart_date","include_search":false,"allow_rearrange_columns":false,"allow_render_html":true,"show_cell_bars":true,"align_pn":false,"color_pn":true,"comparison_color_enabled":false,"comparison_color_scheme":"Green","comparison_type":"values","extra_form_data":{},"dashboards":[],"force":false,"result_format":"json","result_type":"full","include_time":false},"result_format":"json","result_type":"full"}'
+cache_timeout: null
+uuid: 6d4d67d4-b8a7-4734-82e1-16bf680b8dc4
+version: 1.0.0
+dataset_uuid: bfc8c6f9-07c1-4006-a482-8e0fd284edaf

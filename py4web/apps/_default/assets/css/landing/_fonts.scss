@@ -1,0 +1,47 @@
+// =============================================================================
+// Grift — self-hosted webfont faces
+// =============================================================================
+// Grift (Fenotype) is the primary brand face. The woff2 files live in
+// `public/fonts/`, outside the bundle, so the paths below are relative to the
+// compiled stylesheet at `public/static/bundle.min.css` — not to this file.
+//
+// Only the weights the design actually uses are shipped: 400 (body), 600
+// (buttons, badges) and 700 (headings, nav, labels). No italics; the `<i>`
+// elements in the markup are empty CSS decorations, not italic text.
+//
+// Adding a face means three steps: copy the woff2 into `public/fonts/`, add an
+// `@font-face` block here, and add a `<link rel="preload">` in
+// `public/index.html` if it renders above the fold. Weights with no face are
+// synthesised by the browser, which looks noticeably worse than the real cut.
+//
+// woff2 only. Every browser that Bootstrap 5.3 supports reads it, so the woff
+// and ttf variants in the vendor package are redundant weight.
+// =============================================================================
+
+$okl-font-path: "/private/static/fonts" !default;
+
+// These versioned fonts have the broken Windows hinting removed. Process future
+// vendor replacements with `ew dehint-fonts --paths ...` and use a new filename to bust caches.
+@font-face {
+    font-family: "Grift";
+    src: url("#{$okl-font-path}/Grift-Regular-v2.woff2") format("woff2");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Grift";
+    src: url("#{$okl-font-path}/Grift-SemiBold-v2.woff2") format("woff2");
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Grift";
+    src: url("#{$okl-font-path}/Grift-Bold-v2.woff2") format("woff2");
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}

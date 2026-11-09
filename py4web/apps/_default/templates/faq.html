@@ -1,0 +1,99 @@
+[[extend '../../../common/templates/layout.html']]
+[[block layout_title]]Veelgestelde vragen — Open Keuzecatalogus[[end]]
+[[block page_head]]
+    <meta name="description" content="Veelgestelde vragen over de Open Keuzecatalogus Leermiddelen.">
+    <meta name="robots" content="index, follow, max-image-preview:large">
+    <link rel="canonical" href="https://openkeuzecatalogus.nl/faq">
+    <meta property="og:locale" content="nl_NL">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Open Keuzecatalogus Leermiddelen">
+    <meta property="og:title" content="Veelgestelde vragen — Open Keuzecatalogus">
+    <meta property="og:description" content="Veelgestelde vragen over de Open Keuzecatalogus Leermiddelen.">
+    <meta property="og:url" content="https://openkeuzecatalogus.nl/faq">
+    <meta property="og:image" content="https://openkeuzecatalogus.nl/images/okl-social-preview.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Open Keuzecatalogus Leermiddelen — vind leermiddelen die passen bij jullie visie">
+    <meta name="twitter:card" content="summary_large_image">
+    <script type="application/ld+json">[[=faq_schema]]</script>
+    <link rel="icon" type="image/png" href="[[=STATIC('favicon', 'favicon-96x96.png', app_name='private')]]" sizes="96x96">
+    <link rel="icon" type="image/svg+xml" href="[[=STATIC('favicon', 'favicon.svg', app_name='private')]]">
+    <link rel="shortcut icon" href="[[=STATIC('favicon', 'favicon.ico', app_name='private')]]">
+    <link rel="apple-touch-icon" sizes="180x180" href="[[=STATIC('favicon', 'apple-touch-icon.png', app_name='private')]]">
+    <meta name="apple-mobile-web-app-title" content="Catalogus">
+    <link rel="manifest" href="[[=STATIC('favicon', 'site.webmanifest', app_name='private')]]">
+    <link rel="preload" href="[[=STATIC('fonts', 'Grift-Regular-v2.woff2', app_name='private')]]" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="[[=STATIC('fonts', 'Grift-SemiBold-v2.woff2', app_name='private')]]" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="[[=STATIC('fonts', 'Grift-Bold-v2.woff2', app_name='private')]]" as="font" type="font/woff2" crossorigin>
+    <script defer src="https://umami.edwh.nl/script.js" data-website-id="e68441aa-f893-451e-aa67-2e84d2cdc734"></script>
+[[end]]
+[[block header_config]][[show_shared_header = False]][[end]]
+[[block layout_main]]
+<main>
+<div class="okl-landing js-okl-landing">
+[[okl_navigation = navigation_context()]]
+[[include 'components/landing_header.html']]
+<section class="okl-section">
+    <div class="container">
+        <div class="okl-faq-intro mb-10">
+            <a href="/" class="okl-btn-text mb-4 d-inline-block">&larr; Terug naar de landingspagina</a>
+            <h1 class="display-1 okl-pretty text-ink mb-4">[[=faq_data['intro']]]</h1>
+            <div class="okl-search okl-faq-search">
+                <label for="faq-search" class="visually-hidden">Zoek in de veelgestelde vragen</label>
+                <input type="search"
+                       id="faq-search"
+                       class="okl-faq-search__input"
+                       placeholder="Zoek op trefwoord, bijvoorbeeld ‘Edu-V’ of ‘thema’…"
+                       autocomplete="off">
+            </div>
+            <p class="okl-faq-search__empty mb-0 mt-4 d-none js-faq-empty">
+                Geen vragen gevonden. Probeer een ander zoekwoord of <a href="/#contact">neem contact op</a>.
+            </p>
+        </div>
+        <div class="d-flex flex-column gap-10 js-faq-categories">
+            [[for category_index, category in enumerate(faq_data['categories']):]]
+            <div class="okl-faq-category js-faq-category" id="faq-category-[[=category_index]]">
+                <h2 class="display-3 text-heading-alt mb-4">[[=category['title']]]</h2>
+                <div class="accordion okl-accordion" id="faq-accordion-[[=category_index]]">
+                    [[for question_index, question in enumerate(category['questions']):]]
+                    [[collapse_id = f"faq-answer-{category_index}-{question_index}"]]
+                    <div class="accordion-item js-faq-item" data-faq-search="[[=question['search_text']]]">
+                        <h3 class="accordion-header">
+                            <button class="accordion-button collapsed"
+                                    type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#[[=collapse_id]]"
+                                    aria-expanded="false"
+                                    aria-controls="[[=collapse_id]]">[[=question['q']]]</button>
+                        </h3>
+                        <div id="[[=collapse_id]]"
+                             class="accordion-collapse collapse"
+                             data-bs-parent="#faq-accordion-[[=category_index]]">
+                            <div class="accordion-body d-flex flex-column gap-3">
+                                [[for block in question['a']:]]
+                                [[if block['type'] == 'p':]]
+                                <p>[[=block['text']]]</p>
+                                [[elif block['type'] == 'ul':]]
+                                <ul>[[for item in block['items']:]]<li>[[=item]]</li>[[pass]]</ul>
+                                [[pass]]
+                                [[pass]]
+                            </div>
+                        </div>
+                    </div>
+                    [[pass]]
+                </div>
+            </div>
+            [[pass]]
+        </div>
+    </div>
+</section>
+[[include 'components/landing_footer.html']]
+</div>
+</main>
+<script data-collect-dnt="true" async defer src="https://inzichtin-delen.meteddie.nl/latest.js"></script>
+<noscript>
+    <img src="https://inzichtin-delen.meteddie.nl/noscript.gif?collect-dnt=true" alt=""
+         referrerpolicy="no-referrer-when-downgrade">
+</noscript>
+[[end]]

@@ -1,0 +1,27 @@
+[[if items:]]
+<ul class="okl-favorites-recent">
+    [[for item in items:]]
+    <li class="okl-favorites-recent__item">
+        <a class="okl-favorites-recent__link"
+           href="[[=URL('product' if item.entity_kind == 'product' else 'methode', item.entity_gid) if item.available else URL('favorieten')]]">
+            <small>[[=item.entity_label]]</small>
+            <span>[[=item.name]]</span>
+            [[if not item.available:]]
+            <small class="okl-favorites-recent__unavailable">Niet meer beschikbaar</small>
+            [[pass]]
+        </a>
+        <button class="okl-favorites-recent__remove"
+                type="button"
+                hx-post="[[=URL('htmx/favorieten', item.entity_kind, item.entity_gid)]]"
+                hx-vals='{"active": false}'
+                hx-swap="none">
+            <i class="okl-icon okl-icon--x" aria-hidden="true"></i>
+            <span class="visually-hidden">Verwijder [[=item.name]] uit favorieten</span>
+        </button>
+    </li>
+    [[pass]]
+</ul>
+[[else:]]
+<p class="okl-favorites-recent__empty">Nog geen favorieten.</p>
+[[pass]]
+<a class="okl-favorites-recent__all" href="[[=URL('favorieten')]]">Alle favorieten bekijken</a>

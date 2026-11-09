@@ -1,11 +1,249 @@
 [[extend 'layout.html']]
+[[item = detail['method'] if entity_kind == 'method' else detail['product']]]
+[[method = detail['method']]]
+[[supplier = detail['supplier']]]
+[[visions = detail['visions']]]
+[[related_products = detail['products'] if entity_kind == 'method' else detail['same_method_products']]]
+[[item_gid = item.get('gid', '')]]
 
-<section class="vstack gap-4">
-    <div>
-        <a class="link-secondary" href="[[=back_url]]">&larr; [[=back_label]]</a>
+<article class="okl-detail-page">
+    <section class="okl-detail-hero">
+        <div class="okl-page-container">
+            <a class="okl-detail-back" href="[[=back_url]]"><i class="okl-icon okl-icon--arrow-left" aria-hidden="true"></i> [[=back_label]]</a>
+            <div class="okl-detail-hero__grid">
+                <div class="okl-detail-media">
+                    [[if item.get('image_url'):]]
+                    <img class="js-okl-cover-image"
+                         src="[[=item['image_url']]]"
+                         alt="Omslag van [[=heading]]"
+                         >
+                    <i class="okl-icon okl-icon--book-open okl-cover-fallback" aria-hidden="true" hidden></i>
+                    [[else:]]
+                    <i class="okl-icon okl-icon--book-open" aria-hidden="true"></i>
+                    [[pass]]
+                </div>
+
+                <div class="okl-detail-summary">
+                    <p class="okl-detail-type">[[='Methode' if entity_kind == 'method' else 'Product']]</p>
+                    <h1>[[=heading]]</h1>
+
+                    <ul class="okl-detail-meta" aria-label="Kerngegevens">
+                        <li><span class="okl-detail-meta__label">Aanbieder</span> [[=supplier.get('name') or 'Onbekend']]</li>
+                        [[if item.get('levels'):]]<li><span class="okl-detail-meta__label">Onderwijslaag</span> [[=', '.join(item['levels'])]]</li>[[pass]]
+                        [[if item.get('subjects'):]]<li><span class="okl-detail-meta__label">Vakgebied</span> [[=', '.join(item['subjects'])]]</li>[[pass]]
+                        [[if entity_kind == 'product' and item.get('composition'):]]<li><span class="okl-detail-meta__label">Productvorm</span> [[=display_catalog_value(item['composition'], entity_kind='product', field_name='composition')]]</li>[[pass]]
+                        [[if item.get('isbn'):]]<li class="okl-detail-isbn"><span class="okl-detail-meta__label">ISBN</span> [[=item['isbn']]]</li>[[pass]]
+                    </ul>
+
+                    <p class="okl-detail-description">[[=item.get('description') or 'Voor dit leermiddel is nog geen beschrijving beschikbaar.']]</p>
+
+                    [[more_info = item.get('more_information') or item.get('preview_digital_environment') or item.get('demo_environment_link')]]
+                    [[more_info_url = catalog_external_url(more_info)]]
+                    [[if more_info_url:]]
+                    <a class="okl-detail-more" href="[[=more_info_url]]" target="_blank" rel="noopener">
+                        [[if item.get('more_information'):]]Meer informatie bij de aanbieder[[else:]]Bekijk de digitale omgeving[[pass]]
+                        <i class="okl-icon okl-icon--arrow-square-out" aria-hidden="true"></i>
+                        <span class="visually-hidden">(opent in een nieuw tabblad)</span>
+                    </a>
+                    [[elif more_info:]]
+                    <p class="okl-detail-more">[[=more_info]]</p>
+                    [[pass]]
+
+                    <label class="okl-button okl-button--primary okl-detail-compare">
+                        <input class="visually-hidden comparison-selection"
+                               type="checkbox"
+                               data-comparison-kind="[[=entity_kind]]"
+                               data-comparison-gid="[[=item_gid]]"
+                               data-comparison-name="[[=heading]]">
+                        <i class="okl-icon okl-icon--compare" aria-hidden="true"></i>
+                        <span class="okl-compare-label-add">Toevoegen aan vergelijking</span>
+                        <span class="okl-compare-label-added">Toegevoegd aan vergelijking</span>
+                    </label>
+
+                    [[if favorite_url:]]
+                    <div class="okl-favorite-action" hx-get="[[=favorite_url]]" hx-trigger="load" hx-swap="outerHTML">
+                        <button class="okl-button okl-button--secondary" type="button" aria-disabled="true">
+                            <i class="okl-icon okl-icon--star" aria-hidden="true"></i>Favoriet laden...
+                        </button>
+                    </div>
+                    [[else:]]
+                    <a class="okl-button okl-button--secondary okl-favorite-action"
+                       href="[[=favorite_login_url]]"
+                       title="Log in om dit item als favoriet te bewaren">
+                        <i class="okl-icon okl-icon--star" aria-hidden="true"></i>Toevoegen aan favorieten
+                    </a>
+                    [[pass]]
+
+                    <a class="okl-detail-report" href="[[=catalog_report_url(heading)]]">
+                        <i class="okl-icon okl-icon--pencil-simple" aria-hidden="true"></i> Fout gespot? Vertel het ons.
+                    </a>
+
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="okl-page-container okl-insights" aria-labelledby="insights-title">
+        <h2 id="insights-title">Inzichten</h2>
+        [[if visions:]]
+        <p>Lees de visie van de maker over deze verschillende onderwerpen.</p>
+        [[else:]]
+        <p>De aanbieder heeft voor dit leermiddel nog geen visie gedeeld. Bekijk hieronder de beschikbare specificaties.</p>
+        [[pass]]
+        <div class="okl-insights-grid">
+            [[for index, vision in enumerate(visions, start=1):]]
+            <details class="okl-insight" [[if index == 1:]]open[[pass]]>
+                <summary>
+                    <span>[[=index]]</span>
+                    <strong>[[=vision['theme']]]</strong>
+                    <i class="okl-icon okl-icon--caret-down" aria-hidden="true"></i>
+                </summary>
+                <div>
+                    <p>[[=vision['content']]]</p>
+                    <small>Bron: [[=vision['source']]]</small>
+                    [[if vision.get('properties'):]]
+                    <details class="okl-data-disclosure">
+                        <summary>Aanvullende kenmerken</summary>
+                        [[=display_catalog_value(vision['properties'])]]
+                    </details>
+                    [[pass]]
+                </div>
+            </details>
+            [[pass]]
+        </div>
+    </section>
+
+    [[specifications = catalog_fields(item, entity_kind)]]
+    <section class="okl-page-container okl-detail-specifications" aria-labelledby="specifications-title">
+        <h2 id="specifications-title">Specificaties</h2>
+        <dl>
+            [[for specification in specifications[:12]:]]
+            <div><dt>[[=specification['label']]]</dt><dd>[[=specification['value']]]</dd></div>
+            [[pass]]
+        </dl>
+        [[if len(specifications) > 12:]]
+        <details class="okl-data-disclosure">
+            <summary>Alle specificaties bekijken <span>([[=len(specifications)]])</span></summary>
+            <dl>
+                [[for specification in specifications[12:]:]]
+                <div><dt>[[=specification['label']]]</dt><dd>[[=specification['value']]]</dd></div>
+                [[pass]]
+            </dl>
+        </details>
+        [[pass]]
+        <details class="okl-data-disclosure">
+            <summary>Gegevens van de aanbieder</summary>
+            <dl>
+                [[for specification in catalog_fields(supplier, 'supplier'):]]
+                <div><dt>[[=specification['label']]]</dt><dd>[[=specification['value']]]</dd></div>
+                [[pass]]
+            </dl>
+        </details>
+        [[if entity_kind == 'product' and method:]]
+        <details class="okl-data-disclosure">
+            <summary>Gegevens van de methode: [[=method.get('name') or 'Methode']]</summary>
+            <p><a href="[[=URL('methode', method['gid'])]]">Bekijk deze methode <i class="okl-icon okl-icon--arrow-right" aria-hidden="true"></i></a></p>
+            <dl>
+                [[for specification in catalog_fields(method, 'method'):]]
+                <div><dt>[[=specification['label']]]</dt><dd>[[=specification['value']]]</dd></div>
+                [[pass]]
+            </dl>
+        </details>
+        [[pass]]
+    </section>
+
+    [[if related_products:]]
+    <section class="okl-page-container okl-related-products js-okl-reveal-group" aria-labelledby="related-products-title">
+        <h2 id="related-products-title">Producten behorende bij de methode “[[=method.get('name') or heading]]”</h2>
+        <div class="okl-related-products__list js-okl-reveal-list" id="related-products-list">
+            [[for product in related_products:]]
+            <article class="okl-related-product js-okl-reveal-item [[='okl-related-product--package' if product.get('composition') == 'package' else '']]">
+                <a class="okl-related-product__image" href="[[=URL('product', product['gid'])]]" tabindex="-1" aria-hidden="true">
+                    [[if product.get('image_url'):]]
+                    <img class="js-okl-cover-image" src="[[=product['image_url']]]" alt="" loading="lazy">
+                    <i class="okl-icon okl-icon--book-open okl-cover-fallback" aria-hidden="true" hidden></i>
+                    [[else:]]
+                    <i class="okl-icon okl-icon--book-open" aria-hidden="true"></i>
+                    [[pass]]
+                </a>
+                <div>
+                    <h3><a href="[[=URL('product', product['gid'])]]">[[=product.get('name') or 'Onbekend product']]</a></h3>
+                    <p>[[=supplier.get('name') or 'Aanbieder onbekend']][[if product.get('levels'):]] | [[=', '.join(product['levels'])]][[pass]]</p>
+                    [[if product.get('isbn'):]]<p>ISBN: [[=product['isbn']]]</p>[[pass]]
+                    <a class="okl-button okl-button--primary" href="[[=URL('product', product['gid'])]]">Bekijk product</a>
+                </div>
+                [[if product.get('composition') == 'package':]]<span class="okl-package-badge"><i class="okl-icon okl-icon--cube" aria-hidden="true"></i> Productpakket</span>[[pass]]
+                <label class="okl-compare-choice">
+                    <input class="form-check-input comparison-selection"
+                           type="checkbox"
+                           aria-label="Vergelijk [[=product.get('name') or 'Onbekend product']]"
+                           data-comparison-kind="product"
+                           data-comparison-gid="[[=product['gid']]]"
+                           data-comparison-name="[[=product.get('name') or 'Onbekend product']]">
+                    <span>Vergelijk</span>
+                </label>
+            </article>
+            [[pass]]
+        </div>
+        [[if len(related_products) > 4:]]
+        <button class="okl-related-products-more js-okl-reveal-more"
+                type="button"
+                hidden
+                data-okl-reveal-batch="4"
+                aria-controls="related-products-list"
+                aria-expanded="false">
+            <span>Toon meer producten</span>
+            <i class="okl-icon okl-icon--caret-down" aria-hidden="true"></i>
+        </button>
+        [[pass]]
+    </section>
+    [[pass]]
+
+    [[if similar_items:]]
+    <section class="okl-page-container okl-related-products" aria-labelledby="similar-items-title">
+        <h2 id="similar-items-title">Soortgelijke [[='methodes' if entity_kind == 'method' else 'producten']]</h2>
+        <div class="catalog-results-grid catalog-results-grid--grid">
+            [[for row in similar_items:]]
+            [[similar_url = URL('methode' if entity_kind == 'method' else 'product', row.gid, vars={'source': 'similar'})]]
+            <article class="okl-catalog-card catalog-result-item">
+                <a class="okl-catalog-card__image" href="[[=similar_url]]" tabindex="-1" aria-hidden="true">
+                    [[if row.image_url:]]
+                    <img class="js-okl-cover-image" src="[[=row.image_url]]" alt="" loading="lazy">
+                    <i class="okl-icon okl-icon--book-open okl-cover-fallback" aria-hidden="true" hidden></i>
+                    [[else:]]
+                    <i class="okl-icon okl-icon--book-open" aria-hidden="true"></i>
+                    [[pass]]
+                </a>
+                <div class="okl-catalog-card__body">
+                    <div class="okl-catalog-card__heading">
+                        <h3><a href="[[=similar_url]]">[[=row.name or 'Onbenoemd leermiddel']]</a></h3>
+                        <p>[[=row.supplier.name if row.supplier else 'Aanbieder onbekend']]</p>
+                        [[if row.subjects:]]<p>[[=', '.join(row.subjects)]]</p>[[pass]]
+                        [[if row.levels:]]<p>[[=', '.join(row.levels)]]</p>[[pass]]
+                    </div>
+                    <a class="okl-button okl-button--primary okl-catalog-card__view" href="[[=similar_url]]">
+                        Bekijk [[='methode' if entity_kind == 'method' else 'product']]
+                        <i class="okl-icon okl-icon--arrow-right" aria-hidden="true"></i>
+                    </a>
+                </div>
+                <label class="okl-compare-choice">
+                    <input class="form-check-input comparison-selection"
+                           type="checkbox"
+                           aria-label="Vergelijk [[=row.name or 'Onbenoemd leermiddel']]"
+                           data-comparison-kind="[[=entity_kind]]"
+                           data-comparison-gid="[[=row.gid]]"
+                           data-comparison-name="[[=row.name or 'Onbenoemd leermiddel']]">
+                    <span>Vergelijk</span>
+                </label>
+            </article>
+            [[pass]]
+        </div>
+    </section>
+    [[pass]]
+
+    <div class="okl-comparison-trays">
+    [[comparison_kind = entity_kind]]
+    [[comparison_label = 'methodes' if entity_kind == 'method' else 'producten']]
+    [[include 'components/comparison_tray.html']]
     </div>
-
-    <h1 class="mb-0">[[=heading]]</h1>
-
-    <pre class="bg-body-tertiary border rounded p-4 mb-0 overflow-auto">[[=payload_json]]</pre>
-</section>
+</article>

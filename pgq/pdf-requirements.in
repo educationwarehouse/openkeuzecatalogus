@@ -1,0 +1,4 @@
+# Dependencies specific to the PDF worker.
+
+-r requirements.txt
+weasyprint>=70,<71

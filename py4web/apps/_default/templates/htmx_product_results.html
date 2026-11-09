@@ -1,84 +1,68 @@
-<div class="vstack gap-4">
-    [[pagination = rows.pagination]]
-    [[current_page = pagination['current_page']]]
-    [[total_pages = pagination['total_pages']]]
-    [[prev_page = pagination['prev_page']]]
-    [[next_page = pagination['next_page']]]
+[[pagination = rows.pagination]]
+[[current_page = pagination['current_page']]]
+[[total_pages = pagination['total_pages']]]
+[[prev_page = pagination['prev_page']]]
+[[next_page = pagination['next_page']]]
 
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-        <div>
-            <h2 class="h4 mb-1">Productresultaten</h2>
-            <p class="text-secondary mb-0">Openbaar overzicht van beschikbare producten.</p>
-        </div>
-        <div class="d-flex align-items-center flex-wrap gap-3">
-            <span class="small text-secondary">
-                [[=pagination['total_items']]] producten in beeld[[if active_filter_count:]] na [[=active_filter_count]] filter(s)[[pass]]
-            </span>
-            [[include 'components/catalog_view_toggle.html']]
-        </div>
-    </div>
+<div class="okl-catalog-results__header">
+    <h2>Producten <span>[[=pagination['total_items']]] resultaten[[if active_filter_count:]] na [[=active_filter_count]] filter(s)[[pass]]</span></h2>
+    [[include 'components/catalog_view_toggle.html']]
+</div>
 
-    <div class="row g-3 catalog-results-grid [[='catalog-results-grid--list' if view_mode == 'list' else 'catalog-results-grid--grid']]">
-        [[for row in rows:]]
-        <div class="col-12 col-md-6 catalog-result-item">
-            <div class="card h-100 border-0 shadow-sm">
-                [[if row.image_url:]]
-                <img
-                        class="card-img-top object-fit-cover"
-                        src="[[=row.image_url]]"
-                        alt="Omslag van [[=row.name or 'onbenoemd product']]"
-                        loading="lazy"
-                        style="height: 12rem;"
-                >
-                [[pass]]
-                <div class="card-body p-4">
-                    <span class="badge text-bg-warning-subtle text-warning-emphasis mb-3">[[=row.composition_label]]</span>
-                    <h3 class="h5">[[=row.name or 'Onbenoemd product']]</h3>
-                    <p class="text-secondary">[[=row.description or 'Geen beschrijving beschikbaar.']]</p>
-                    <div class="d-flex justify-content-between small text-secondary">
-                        <span>[[=row.isbn or 'Geen ISBN']]</span>
-                        <strong class="text-body">
-                            [[=row.recommended_price if row.recommended_price is not None else 'Op aanvraag']]
-                        </strong>
-                    </div>
-                    <div class="small text-secondary mt-3">
-                        <div>
-                            <strong class="text-body">Onderwijslaag:</strong>
-                            [[=', '.join(row.levels) if row.levels else 'Niet opgegeven']]
-                        </div>
-                        <div>
-                            <strong class="text-body">Demo:</strong>
-                            [[=row.demo_environment_link or 'Niet beschikbaar']]
-                        </div>
-                    </div>
-                    <pre class="bg-body-tertiary border rounded p-3 mt-3 mb-0 small overflow-auto">[[=row.as_json()]]</pre>
-                </div>
-                <div class="card-footer bg-transparent border-0 pt-0 pb-4 px-4">
-                    <a class="btn btn-outline-dark btn-sm" href="[[=URL('product', row.gid)]]">Bekijk product</a>
-                    <label class="form-check-label ms-3">
-                        <input
-                                class="form-check-input comparison-selection"
-                                type="checkbox"
-                                data-comparison-kind="product"
-                                data-comparison-gid="[[=row.gid]]"
-                                data-comparison-name="[[=row.name or 'Onbenoemd product']]"
-                        >
-                        Vergelijk
-                    </label>
-                </div>
+<div class="catalog-results-grid [[='catalog-results-grid--list' if view_mode == 'list' else 'catalog-results-grid--grid']]">
+    [[for row in rows:]]
+    <article class="okl-catalog-card catalog-result-item [[='okl-catalog-card--package' if row.composition == 'package' else '']]">
+        <a class="okl-catalog-card__image" href="[[=URL('product', row.gid)]]" tabindex="-1" aria-hidden="true">
+            [[if row.image_url:]]
+            <img class="js-okl-cover-image" src="[[=row.image_url]]" alt="" loading="lazy">
+            <i class="okl-icon okl-icon--book-open okl-cover-fallback" aria-hidden="true" hidden></i>
+            [[else:]]
+            <i class="okl-icon okl-icon--book-open" aria-hidden="true"></i>
+            [[pass]]
+        </a>
+        <div class="okl-catalog-card__body">
+            <div class="okl-catalog-card__heading">
+                <h3><a href="[[=URL('product', row.gid)]]">[[=row.name or 'Onbekend product']]</a></h3>
+                <p>[[=row.supplier.name if row.supplier else 'Aanbieder onbekend']] | [[=row.method.name if row.method else 'Methode onbekend']] | [[=', '.join(row.subjects) if row.subjects else 'Vakgebied niet opgegeven']]</p>
+                <p class="okl-catalog-card__isbn">ISBN: [[=row.isbn or 'Niet opgegeven']]</p>
             </div>
+            <details class="okl-card-details">
+                <summary>Productinformatie</summary>
+                <p>[[=row.description or 'Geen beschrijving beschikbaar.']]</p>
+                <dl class="okl-data-list">
+                    <div><dt>Productvorm</dt><dd>[[=row.composition_label]]</dd></div>
+                    <div><dt>Onderwijslaag</dt><dd>[[=', '.join(row.levels) if row.levels else 'Niet opgegeven']]</dd></div>
+                    <div><dt>Adviesprijs</dt><dd>[[=display_catalog_value(row.recommended_price, entity_kind='product', field_name='recommended_price') if row.recommended_price is not None else 'Op aanvraag']]</dd></div>
+                    <div><dt>Demo</dt><dd>[[=display_catalog_value(row.demo_environment_link)]]</dd></div>
+                </dl>
+            </details>
+            <a class="[[='okl-text-action' if view_mode == 'list' else 'okl-button okl-button--primary']] okl-catalog-card__view" href="[[=URL('product', row.gid)]]">Bekijk product <i class="okl-icon okl-icon--arrow-right" aria-hidden="true"></i></a>
         </div>
+        [[if row.composition == 'package':]]
+        <span class="okl-package-badge"><i class="okl-icon okl-icon--cube" aria-hidden="true"></i> [[=row.composition_label]]</span>
         [[pass]]
-        [[if not rows:]]
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body p-4 text-secondary">
-                    Er zijn nog geen openbare producten beschikbaar.
-                </div>
-            </div>
-        </div>
-        [[pass]]
-    </div>
+        <label class="okl-compare-choice">
+            <input class="form-check-input comparison-selection"
+                   type="checkbox"
+                   aria-label="Vergelijk [[=row.name or 'Onbekend product']]"
+                   data-comparison-kind="product"
+                   data-comparison-gid="[[=row.gid]]"
+                   data-comparison-name="[[=row.name or 'Onbekend product']]">
+            <span>Vergelijk</span>
+        </label>
+    </article>
+    [[pass]]
 
+    [[if not rows:]]
+    <div class="okl-catalog-empty">
+        <h3>Geen producten gevonden</h3>
+        <p>Probeer een andere zoekterm of verwijder een filter om meer producten te vinden.</p>
+        <button type="reset" form="catalog-filter-controls" class="okl-button okl-button--primary">Wis alle filters</button>
+    </div>
+    [[pass]]
+</div>
+
+<div class="okl-catalog-pagination">
+    <span>Producten op pagina [[=current_page]] van [[=total_pages or 1]]</span>
     [[include 'components/pagination.html']]
 </div>

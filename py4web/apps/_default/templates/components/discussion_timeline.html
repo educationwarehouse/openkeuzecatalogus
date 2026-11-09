@@ -1,0 +1,68 @@
+<div class="okl-discussion__compact">
+    <div class="okl-discussion__track">
+        <div class="okl-discussion__compact-years">
+            [[for year in timeline.get('years'):]]
+            <div class="okl-discussion__compact-year js-year-anchor" data-year="[[=year.get('year')]]">
+                <span class="okl-discussion__compact-year-label">[[=year.get('year')]]</span>
+                <span class="okl-discussion__compact-axis"></span>
+                <div class="okl-discussion__compact-columns">
+                    <span class="okl-discussion__compact-column js-motion-item" data-year="[[=year.get('year')]]">
+                        <span class="okl-discussion__compact-markers">
+                            [[for event in year.get('events'):]]
+                            <a class="okl-discussion__marker" href="[[=event.url]]"
+                               target="_blank" rel="noopener noreferrer"
+                               data-type="[[=event.source_type]]" data-entry="[[=event.id]]"
+                               data-title="[[=event.title]]"
+                               data-meta="[[=event.author]] · [[=event.event_date.strftime('%d-%m-%Y')]]"
+                               aria-label="Open [[=timeline.get('type_labels').get(event.source_type).lower()]]: [[=event.title]] ([[=event.author]] · [[=event.event_date.strftime('%d-%m-%Y')]]); opent in nieuw tabblad"></a>
+                            [[pass]]
+                        </span>
+                    </span>
+                </div>
+            </div>
+            [[pass]]
+        </div>
+    </div>
+</div>
+<div class="okl-discussion__full" aria-label="Volledige bijdragen per jaar en periode"
+     style="--discussion-full-width: [[=timeline.get('width')]]px; --discussion-full-min-width: [[=timeline.get('width') + 44]]px">
+    <div class="okl-discussion__full-axis-sticky">
+        <div class="okl-discussion__full-axis-scroller">
+            <div class="okl-discussion__full-years" aria-hidden="true">
+                [[for year in timeline.get('years'):]]
+                <span class="js-year-anchor" data-year="[[=year.get('year')]]" style="left: [[=year.get('offset')]]px">[[=year.get('year')]]</span>
+                [[pass]]
+            </div>
+            <div class="okl-discussion__full-line" aria-hidden="true">
+                [[for year in timeline.get('years'):]]
+                <span data-year="[[=year.get('year')]]" style="left: [[=year.get('offset')]]px"></span>
+                [[pass]]
+                <span class="okl-discussion__axis-end"></span>
+            </div>
+        </div>
+    </div>
+    <div class="okl-discussion__event-groups" style="grid-template-columns: [[=timeline.get('columns')]]">
+        [[for period in timeline.get('periods'):]]
+        <div class="okl-discussion__event-group js-motion-item"
+             data-year="[[=period.get('year')]]" data-period="Q[[=period.get('quarter')]]"
+             style="grid-column: [[=period.get('column')]]"
+             aria-label="Bijdragen uit Q[[=period.get('quarter')]] [[=period.get('year')]]">
+            [[for event in period.get('events')[:3]:]]
+            [[include 'components/discussion_event_card.html']]
+            [[pass]]
+            [[if len(period.get('events')) > 3:]]
+            <details class="okl-discussion__event-rest" name="okl-discussion-rest">
+                <summary class="okl-discussion__event-card okl-discussion__event-card--more">
+                    <span>+[[=len(period.get('events')) - 3]] andere bijdragen in Q[[=period.get('quarter')]] [[=period.get('year')]]</span>
+                </summary>
+                <div class="okl-discussion__event-rest-list">
+                    [[for event in period.get('events')[3:]:]]
+                    [[include 'components/discussion_event_card.html']]
+                    [[pass]]
+                </div>
+            </details>
+            [[pass]]
+        </div>
+        [[pass]]
+    </div>
+</div>

@@ -1,0 +1,54 @@
+[[extend 'layout.html']]
+
+<section class="okl-catalog-page" aria-labelledby="favorites-title">
+    <header class="okl-catalog-hero">
+        <div class="okl-page-container okl-catalog-hero__inner">
+            <div>
+                <h1 id="favorites-title">Mijn favorieten</h1>
+                <p class="okl-catalog-introduction">Bewaar producten en methodes om ze snel terug te vinden.</p>
+            </div>
+        </div>
+    </header>
+
+    <div class="okl-page-container vstack gap-4 py-5">
+        <ul class="nav nav-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button id="favorite-product-tab"
+                        class="nav-link active"
+                        type="button"
+                        data-bs-toggle="tab"
+                        data-bs-target="#favorite-products"
+                        role="tab">
+                    Producten
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button id="favorite-method-tab"
+                        class="nav-link"
+                        type="button"
+                        data-bs-toggle="tab"
+                        data-bs-target="#favorite-methods"
+                        role="tab">
+                    Methodes
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <div id="favorite-products"
+                 class="tab-pane fade show active"
+                 role="tabpanel"
+                 hx-get="[[=URL('htmx/favorieten/product')]]"
+                 hx-trigger="load">
+                <p class="text-secondary">Favorieten laden…</p>
+            </div>
+            <div id="favorite-methods"
+                 class="tab-pane fade"
+                 role="tabpanel"
+                 hx-get="[[=URL('htmx/favorieten/method')]]"
+                 hx-trigger="shown.bs.tab from:#favorite-method-tab">
+                <p class="text-secondary">Open dit tabblad om methodes te laden.</p>
+            </div>
+        </div>
+    </div>
+</section>

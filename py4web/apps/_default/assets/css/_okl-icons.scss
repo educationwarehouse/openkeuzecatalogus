@@ -1,0 +1,149 @@
+// Exact Figma exports with Phosphor regular for additional interface actions.
+.okl-icon,
+.fa,
+.fas,
+.far,
+.fa-solid,
+.fa-regular,
+.fa-duotone {
+    display: inline-block;
+    flex: 0 0 auto;
+    width: var(--okl-icon-size, 1.25em);
+    height: var(--okl-icon-size, 1.25em);
+    background-color: currentColor;
+    mask: var(--okl-icon-image) center / contain no-repeat;
+    vertical-align: -0.2em;
+    font-style: normal;
+
+    &[hidden] {
+        display: none;
+    }
+}
+
+// Backend-generated grids retain their class names while using the same SVG set.
+$okl-icon-aliases: (
+    arrows-alt: arrows-out,
+    bold: text-b,
+    columns: columns,
+    header: text-h,
+    italic: text-italic,
+    image: image,
+    link: link,
+    list-ul: list-bullets,
+    list-ol: list-numbers,
+    question-circle: question,
+    quote-left: quotes,
+    archive: archive,
+    arrow-down-wide-short: sort-descending,
+    arrow-left: arrow-left,
+    arrow-right: arrow-right,
+    arrow-right-from-bracket: sign-out,
+    arrow-up-right-from-square: arrow-square-out,
+    book: book,
+    book-open: book-open,
+    box: cube,
+    box-archive: archive,
+    boxes-stacked: stack,
+    bug: bug,
+    building-columns: bank,
+    chart-line: chart-line,
+    check: check,
+    check-circle: check-circle,
+    chevron-down: caret-down,
+    chevron-left: caret-left,
+    chevron-right: caret-right,
+    circle-check: check-circle,
+    circle-info: info,
+    clipboard: clipboard-text,
+    clipboard-check: clipboard-text,
+    clipboard-list: clipboard-text,
+    clock-rotate-left: clock-counter-clockwise,
+    cloud-arrow-down: cloud-arrow-down,
+    cog: gear,
+    comment-dots: chat-dots,
+    copy: copy,
+    diagram-project: tree-structure,
+    download: download-simple,
+    edit: pencil-simple,
+    ellipsis: dots-three,
+    eraser: eraser,
+    envelope: envelope,
+    exclamation-circle: warning,
+    eye: eye,
+    file-arrow-up: file-arrow-up,
+    file-circle-check: file-text,
+    file-excel: file-xls,
+    file-import: file-arrow-up,
+    filter: funnel,
+    fire: fire,
+    flag-checkered: flag-checkered,
+    gauge-high: gauge,
+    ghost: ghost,
+    id-card: identification-card,
+    link-slash: link-break,
+    magnifying-glass: magnifying-glass,
+    play: play,
+    plus: plus,
+    rotate-right: arrow-clockwise,
+    sliders: sliders-horizontal,
+    sort-down: caret-down,
+    sort-up: caret-up,
+    spinner-third: circle-notch,
+    table: table,
+    tags: tag,
+    trash: trash,
+    truck: truck,
+    up-right-from-square: arrow-square-out,
+    user: user,
+    user-cog: user-gear,
+);
+
+@each $alias, $icon in $okl-icon-aliases {
+    .fa-#{$alias} {
+        --okl-icon-image: url("/static/icons/#{$icon}.svg");
+    }
+}
+
+.fa::before,
+.fas::before,
+.far::before,
+.fa-solid::before,
+.fa-regular::before,
+.fa-duotone::before {
+    content: none;
+}
+.fa-2x {
+    font-size: 2em;
+}
+.fa-spin {
+    animation: okl-icon-spin 1s linear infinite;
+}
+@keyframes okl-icon-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .fa-spin {
+        animation: none;
+    }
+}
+
+$okl-icons:
+    arrow-right, arrow-left, arrow-clockwise, trash, archive, eye, pencil-simple, download-simple, caret-down, caret-up,
+    dots-six-vertical, book, book-open, funnel, info, file-text, hand, thumbs-up, thumbs-down, plus-square,
+    minus-square, user, copy, warning, minus-circle, plus-circle, plus-circle-24, minus-circle-24, plus, x-circle, x,
+    lock, magnifying-glass, list, cube, arrows-left-right, arrow-square-out, check, envelope, globe, compare, play,
+    flag-checkered, sparkles, star, star-fill;
+
+@each $icon in $okl-icons {
+    .okl-icon--#{$icon} {
+        --okl-icon-image: url("/static/icons/#{$icon}.svg");
+    }
+}
+
+@media (forced-colors: active) {
+    .okl-icon {
+        background-color: CanvasText;
+    }
+}

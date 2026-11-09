@@ -1,0 +1,161 @@
+table_name: SIVON KPI aantal US per stage
+main_dttm_col: null
+currency_code_column: null
+description: null
+default_endpoint: null
+offset: 0
+cache_timeout: null
+catalog: null
+schema: main
+sql: "--select * from sprint_status\n--select stage_name, count(*) from sprint_status\
+  \ group by stage_name\n\n\nSELECT\n-- select 0 as voortgang_in_userstories, \n--\
+  \       0 as planning_in_userstories, \n--       0 as doorlooptijd_wijzigingen_in_dagen\n\
+  --       -- Roadmap en wijzigingsbeheer: voortgang vs planning, doorlooptijd wijzigingen\n\
+  \n\n  -- select sprint, state, count(distinct task_id) \n  --   from sprint_status\n\
+  \  --   group by sprint, state\n  \n-- SELECT\n--   sprint,\n--   COUNT(DISTINCT\
+  \ CASE WHEN state = '04_waiting_normal'    THEN task_id END) AS inbox,\n--   COUNT(DISTINCT\
+  \ CASE WHEN state = '01_in_progress'       THEN task_id END) AS onder_handen,\n\
+  --   COUNT(DISTINCT CASE WHEN state = '02_changes_requested' THEN task_id END) AS\
+  \ wijzigingen_gevraagd,\n--   COUNT(DISTINCT CASE WHEN state = '03_approved'   \
+  \       THEN task_id END) AS goedgekeurd,\n-- --  COUNT(DISTINCT CASE WHEN state\
+  \ = '1_canceled'           THEN task_id END) AS geannuleerd,\n--   COUNT(DISTINCT\
+  \ CASE WHEN state = '1_done'               THEN task_id END) AS klaar\n-- FROM sprint_status\n\
+  -- where sprint >0\n-- GROUP BY sprint\n-- ORDER BY sprint;\n\n  sprint,\n  COUNT(DISTINCT\
+  \ CASE WHEN stage_name = 'Product backlog'                  THEN task_id END) AS\
+  \ product_backlog,\n  COUNT(DISTINCT CASE WHEN stage_name = 'Ready (DoR OK)'   \
+  \                THEN task_id END) AS ready_dor_ok,\n  COUNT(DISTINCT CASE WHEN\
+  \ stage_name = 'In Sprint'                        THEN task_id END) AS in_sprint,\n\
+  \  COUNT(DISTINCT CASE WHEN stage_name = 'In review'                        THEN\
+  \ task_id END) AS in_review,\n  COUNT(DISTINCT CASE WHEN stage_name = 'Ter acceptatie\
+  \ (interne review)'  THEN task_id END) AS acceptatie_intern,\n  COUNT(DISTINCT CASE\
+  \ WHEN stage_name = 'Ter acceptatie PO'                THEN task_id END) AS acceptatie_po,\n\
+  \  COUNT(DISTINCT CASE WHEN state in ('1_done')                      THEN task_id\
+  \ END) AS goedgekeurd\nFROM sprint_status\nWHERE sprint > 0 \n  and epic_name is\
+  \ not null \n  and epic_name is not ''\n  and state in ('1_done','03_approved','02_changes_requested','01_in_progress','04_waiting_normal')\n\
+  GROUP BY sprint\nORDER BY sprint;"
+params: null
+template_params: null
+filter_select_enabled: true
+fetch_values_predicate: null
+extra: null
+normalize_columns: false
+always_filter_main_dttm: false
+folders: null
+uuid: 6926cdbe-ca65-471f-a038-1c09a5f16ccb
+metrics:
+- metric_name: count
+  verbose_name: COUNT(*)
+  metric_type: count
+  expression: COUNT(*)
+  description: null
+  d3format: null
+  currency: null
+  extra: null
+  warning_text: null
+columns:
+- column_name: ready_dor_ok
+  verbose_name: null
+  is_dttm: false
+  is_active: true
+  type: INT
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: ''
+  description: null
+  python_date_format: null
+  datetime_format: null
+  extra: null
+- column_name: acceptatie_intern
+  verbose_name: null
+  is_dttm: false
+  is_active: true
+  type: INT
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: ''
+  description: null
+  python_date_format: null
+  datetime_format: null
+  extra: null
+- column_name: acceptatie_po
+  verbose_name: null
+  is_dttm: false
+  is_active: true
+  type: INT
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: ''
+  description: null
+  python_date_format: null
+  datetime_format: null
+  extra: null
+- column_name: product_backlog
+  verbose_name: null
+  is_dttm: false
+  is_active: true
+  type: INT
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: ''
+  description: null
+  python_date_format: null
+  datetime_format: null
+  extra: null
+- column_name: in_review
+  verbose_name: null
+  is_dttm: false
+  is_active: true
+  type: INT
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: ''
+  description: null
+  python_date_format: null
+  datetime_format: null
+  extra: null
+- column_name: in_sprint
+  verbose_name: null
+  is_dttm: false
+  is_active: true
+  type: INT
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: ''
+  description: null
+  python_date_format: null
+  datetime_format: null
+  extra: null
+- column_name: goedgekeurd
+  verbose_name: null
+  is_dttm: false
+  is_active: true
+  type: INT
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: ''
+  description: null
+  python_date_format: null
+  datetime_format: null
+  extra: null
+- column_name: sprint
+  verbose_name: null
+  is_dttm: false
+  is_active: true
+  type: INT
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: ''
+  description: null
+  python_date_format: null
+  datetime_format: null
+  extra: null
+version: 1.0.0
+database_uuid: b4afc684-2024-4117-b307-11ff686448e1

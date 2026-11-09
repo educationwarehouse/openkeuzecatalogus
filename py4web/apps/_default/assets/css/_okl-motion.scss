@@ -1,0 +1,138 @@
+main.okl-app .okl-reveal-pending {
+    opacity: 0;
+}
+main.okl-app .okl-reveal-pending:focus-within {
+    opacity: 1;
+}
+
+@media print, (prefers-reduced-motion: reduce) {
+    main.okl-app .okl-reveal-pending {
+        opacity: 1;
+    }
+}
+
+.okl-navigation-progress {
+    position: fixed;
+    z-index: 1090;
+    inset: 0 0 auto;
+    height: 4px;
+    background: var(--okl-tangerine-500);
+    view-transition-name: okl-loading;
+}
+
+::view-transition-group(okl-loading),
+::view-transition-new(okl-loading) {
+    animation: none;
+}
+
+::view-transition-old(okl-loading) {
+    display: none;
+}
+
+@media (forced-colors: active) {
+    .okl-navigation-progress {
+        background: Highlight;
+        forced-color-adjust: none;
+    }
+}
+
+::view-transition-old(root) {
+    animation: okl-page-out var(--okl-motion-step) var(--okl-motion-expressive) both;
+}
+
+::view-transition-new(root) {
+    animation: okl-page-in var(--okl-motion-step) var(--okl-motion-expressive) both;
+}
+
+::view-transition-group(okl-header),
+::view-transition-group(okl-step-title),
+::view-transition-group(okl-step-artwork),
+::view-transition-group(okl-product-cover) {
+    animation-duration: var(--okl-motion-step);
+    animation-timing-function: var(--okl-motion-expressive);
+}
+
+:root {
+    --okl-step-direction: 1;
+}
+:root[data-okl-direction="back"] {
+    --okl-step-direction: -1;
+}
+
+html[data-okl-navigation-kind="wizard"] {
+    &::view-transition-old(root),
+    &::view-transition-new(root) {
+        animation: none;
+    }
+
+    &::view-transition-group(okl-step-content),
+    &::view-transition-group(okl-step-controls),
+    &::view-transition-group(okl-step-navigation),
+    &::view-transition-group(okl-step-title),
+    &::view-transition-group(okl-step-indicator) {
+        animation-duration: var(--okl-motion-journey);
+        animation-timing-function: var(--okl-motion-expressive);
+    }
+
+    &::view-transition-old(okl-step-content) {
+        animation: okl-step-out var(--okl-motion-journey) var(--okl-motion-expressive) both;
+    }
+    &::view-transition-new(okl-step-content) {
+        animation: okl-step-in var(--okl-motion-journey) var(--okl-motion-expressive) both;
+    }
+    &::view-transition-old(okl-step-indicator) {
+        display: none;
+    }
+    &::view-transition-new(okl-step-indicator) {
+        animation: none;
+    }
+    &::view-transition-image-pair(okl-step-indicator) {
+        overflow: hidden;
+        border-radius: 999px;
+        animation: okl-step-liquid var(--okl-motion-journey) var(--okl-motion-expressive) both;
+    }
+}
+
+@keyframes okl-step-out {
+    to {
+        opacity: 0;
+        transform: translateX(calc(-1 * var(--okl-step-direction) * 100%));
+    }
+}
+@keyframes okl-step-in {
+    from {
+        opacity: 0;
+        transform: translateX(calc(var(--okl-step-direction) * 100%));
+    }
+}
+@keyframes okl-step-liquid {
+    0%,
+    100% {
+        scale: 1;
+    }
+    45% {
+        scale: 1.18 0.85;
+    }
+}
+
+@keyframes okl-page-out {
+    to {
+        opacity: 0;
+        translate: calc(-1 * var(--okl-step-direction) * var(--okl-motion-distance)) 0;
+    }
+}
+
+@keyframes okl-page-in {
+    from {
+        opacity: 0;
+        translate: calc(var(--okl-step-direction) * var(--okl-motion-distance)) 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(*),
+    ::view-transition-new(*),
+    ::view-transition-group(*) {
+        animation: none !important;
+    }
+}

@@ -1,0 +1,45 @@
+slice_name: Sivon KPI Datakwaliteit en integriteit
+description: null
+certified_by: null
+certification_details: null
+viz_type: table
+params:
+  datasource: 23__table
+  viz_type: table
+  query_mode: raw
+  groupby:
+  - leverancier_naam
+  - validatie_uitkomst
+  - fout_code
+  time_grain_sqla: P1D
+  temporal_columns_lookup: {}
+  all_columns:
+  - leverancier_naam
+  - fout_code
+  - validatie_uitkomst
+  percent_metrics: []
+  adhoc_filters: []
+  order_by_cols: []
+  order_desc: true
+  server_pagination: false
+  server_page_length: 10
+  row_limit: 10000
+  percent_metric_calculation: row_limit
+  show_totals: false
+  table_timestamp_format: smart_date
+  include_search: false
+  allow_rearrange_columns: false
+  allow_render_html: true
+  show_cell_bars: true
+  align_pn: false
+  color_pn: true
+  comparison_color_enabled: false
+  comparison_color_scheme: Green
+  comparison_type: values
+  extra_form_data: {}
+  dashboards: []
+query_context: '{"datasource":{"id":23,"type":"table"},"force":false,"queries":[{"filters":[],"extras":{"time_grain_sqla":"P1D","having":"","where":""},"applied_time_extras":{},"columns":["leverancier_naam","fout_code","validatie_uitkomst"],"orderby":[],"annotation_layers":[],"row_limit":10000,"series_limit":0,"group_others_when_limit_reached":false,"order_desc":true,"url_params":{},"custom_params":{},"custom_form_data":{},"post_processing":[],"time_offsets":[]}],"form_data":{"datasource":"23__table","viz_type":"table","query_mode":"raw","groupby":["leverancier_naam","validatie_uitkomst","fout_code"],"time_grain_sqla":"P1D","temporal_columns_lookup":{},"all_columns":["leverancier_naam","fout_code","validatie_uitkomst"],"percent_metrics":[],"adhoc_filters":[],"order_by_cols":[],"order_desc":true,"server_pagination":false,"server_page_length":10,"row_limit":10000,"percent_metric_calculation":"row_limit","show_totals":false,"table_timestamp_format":"smart_date","include_search":false,"allow_rearrange_columns":false,"allow_render_html":true,"show_cell_bars":true,"align_pn":false,"color_pn":true,"comparison_color_enabled":false,"comparison_color_scheme":"Green","comparison_type":"values","extra_form_data":{},"dashboards":[],"force":false,"result_format":"json","result_type":"full","include_time":false},"result_format":"json","result_type":"full"}'
+cache_timeout: null
+uuid: 16ebbb0f-4bf0-4522-b798-786620c9f06a
+version: 1.0.0
+dataset_uuid: 5568319c-da76-4b30-b58b-df083cb27161

@@ -1,0 +1,19 @@
+[[okl_navigation = locals().get('okl_navigation') or (navigation_context() if 'navigation_context' in locals() else {'section': '', 'label': 'Menu', 'current': 'location'})]]
+<div class="okl-header-brand">
+    <button class="okl-navigation__toggle" type="button" aria-expanded="false"
+            aria-controls="okl-navigation-drawer" aria-haspopup="dialog" hidden>
+        <img class="okl-navigation__mark" src="[[=STATIC('images', 'okl-navigation-menu.svg', app_name='private')]]"
+             width="62" height="52" alt="">
+        <span class="okl-navigation__toggle-label">Menu</span>
+    </button>
+    <a class="navbar-brand okl-header-logo"
+       href="[[=URL('index', use_appname=False)]]"
+       aria-label="Open Keuzecatalogus Leermiddelen">
+        <img src="[[=STATIC('images', 'logo-okl-on-dark.svg', app_name='private')]]"
+             alt="Open Keuzecatalogus Leermiddelen"
+             width="189"
+             height="46">
+    </a>
+    <span class="okl-header-byline">Een initiatief van SIVON</span>
+    <span class="okl-header-location" hidden><span>Je bent hier:</span> <strong>[[=okl_navigation['label']]]</strong></span>
+</div>

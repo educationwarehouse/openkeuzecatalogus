@@ -1,0 +1,322 @@
+// =============================================================================
+// OKL brand tokens
+// =============================================================================
+// Preserve the supplied values, including values outside the 4/8px grid.
+// Import this file after
+// bootstrap/functions (so tint-color/shade-color are available) and before
+// bootstrap/variables (so _brand-bootstrap.scss can build Bootstrap's
+// !default overrides out of these).
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// Brand: Sherwood Green
+// -----------------------------------------------------------------------------
+$sherwood-green-50: #effbf6;
+$sherwood-green-100: #def7ed;
+$sherwood-green-200: #bcebd9;
+$sherwood-green-300: #8cd9ba;
+$sherwood-green-400: #55c399;
+$sherwood-green-500: #33a378;
+$sherwood-green-600: #278662;
+$sherwood-green-700: #216e51;
+$sherwood-green-800: #1b5a42;
+$sherwood-green-900: #154734;
+$sherwood-green-950: #0b281e;
+
+// -----------------------------------------------------------------------------
+// Brand: Tangerine
+// -----------------------------------------------------------------------------
+$tangerine-50: #fff6eb;
+$tangerine-100: #ffe8cc;
+$tangerine-200: #ffd199;
+$tangerine-300: #ffb65c;
+$tangerine-400: #ff9b29;
+$tangerine-500: #ff8800;
+$tangerine-600: #d66400;
+$tangerine-700: #ad4500;
+$tangerine-800: #852c00;
+$tangerine-900: #631c03;
+$tangerine-950: #3a1003;
+
+// -----------------------------------------------------------------------------
+// Brand: Jonquil
+// -----------------------------------------------------------------------------
+$jonquil-50: #fafeec;
+$jonquil-100: #f6fed7;
+$jonquil-200: #edfea2;
+$jonquil-300: #e2f877;
+$jonquil-400: #d5f042;
+$jonquil-500: #cce817;
+$jonquil-600: #abbf18;
+$jonquil-700: #889518;
+$jonquil-800: #6c7619;
+$jonquil-900: #525918;
+$jonquil-950: #333710;
+
+// -----------------------------------------------------------------------------
+// Brand: Light Wisteria
+// -----------------------------------------------------------------------------
+$light-wisteria-50: #f8f1fd;
+$light-wisteria-100: #eedffb;
+$light-wisteria-200: #ddc1f6;
+$light-wisteria-300: #c99fed;
+$light-wisteria-400: #aa6ce0;
+$light-wisteria-500: #9147d1;
+$light-wisteria-600: #7730b5;
+$light-wisteria-700: #642c96;
+$light-wisteria-800: #4f2673;
+$light-wisteria-900: #3c2055;
+$light-wisteria-950: #271636;
+
+// -----------------------------------------------------------------------------
+// Brand: Anakiwa
+// -----------------------------------------------------------------------------
+$anakiwa-50: #f0f9ff;
+$anakiwa-100: #e0f2ff;
+$anakiwa-200: #c2e8ff;
+$anakiwa-300: #a3e0ff;
+$anakiwa-400: #6bc8f7;
+$anakiwa-500: #3baeeb;
+$anakiwa-600: #1e8fd5;
+$anakiwa-700: #1472b4;
+$anakiwa-800: #10588c;
+$anakiwa-900: #0d426b;
+$anakiwa-950: #082b47;
+
+// -----------------------------------------------------------------------------
+// UI neutrals
+// -----------------------------------------------------------------------------
+$okl-neutral-50: #fafafa;
+$okl-neutral-100: #f5f5f5;
+$okl-neutral-200: #e5e5e5;
+$okl-neutral-300: #d4d4d4;
+$okl-neutral-400: #a3a3a3;
+$okl-neutral-500: #737373;
+$okl-neutral-600: #525252;
+$okl-neutral-700: #404040;
+$okl-neutral-800: #262626;
+$okl-neutral-900: #171717;
+$okl-neutral-950: #0a0a0a;
+$okl-ink: #1d1d1b;
+
+// -----------------------------------------------------------------------------
+// Semantic status colours
+// -----------------------------------------------------------------------------
+$okl-red-100: #ffdddd;
+$okl-red-500: #ff2727;
+$okl-emerald-100: #e0f5e9;
+$okl-emerald-500: #2f9a71;
+
+// -----------------------------------------------------------------------------
+// Prefer semantic aliases in components so palette changes remain centralized.
+// -----------------------------------------------------------------------------
+$okl-surface-brand: $sherwood-green-900; // hero, header, footer, dark bands
+$okl-surface-brand-raised: $sherwood-green-800; // accordion rows, check discs on green
+$okl-surface-brand-band: $sherwood-green-700; // a band nested inside a 900 field
+$okl-surface-mint: $sherwood-green-100; // closing band
+$okl-surface-mint-subtle: $sherwood-green-50;
+$okl-surface-lilac: $light-wisteria-50; // how-it-works band
+$okl-surface-sky: $anakiwa-50; // worked-example band
+
+$okl-text-heading: $sherwood-green-900;
+$okl-text-heading-alt: $sherwood-green-800; // secondary headings on white
+$okl-text-muted: $okl-neutral-600; // Text UI muted: card body copy
+$okl-text-subtle: $okl-neutral-600; // supporting UI copy must retain 4.5:1 on light surfaces
+$okl-text-on-brand-muted: $okl-text-muted; // hero card meta on white glass cards
+
+$okl-action: $tangerine-500; // designer-confirmed secondary orange for fills and decoration
+$okl-action-strong: $tangerine-500;
+$okl-text-action: #b35f00; // nearest brand-hue text colour above 4.5:1 on white
+$okl-text-action-display: #de7700; // nearest brand-hue display colour above 3:1 on white
+$okl-highlight: $jonquil-300; // eyebrows on green, numbered tiles, arrow glyphs
+
+$okl-accent-lilac: #ad6de4; // closest large-text lilac above 3:1 on Wisteria 50
+$okl-eyebrow-lilac: #9543dc; // closest small-text lilac above 4.5:1 on Wisteria 50
+$okl-accent-sky: $anakiwa-600; // designer blue 600 passes 3:1 as large text on Sky 50
+$okl-eyebrow-sky: #1976b1; // closest small-text blue above 4.5:1 on Sky 50
+$okl-eyebrow-mint: $sherwood-green-400; // accessible on the dark brand surface
+$okl-theme-text-orange-white: #b35f00;
+$okl-theme-text-orange-subtle: #ac5b00;
+$okl-theme-text-orange-tint: #a05600;
+$okl-theme-text-blue: #1871a9; // closest blue above 4.5:1 on Anakiwa 100
+$okl-theme-text-green: #6f7914; // closest green above 4.5:1 on Jonquil 50
+$okl-timeline-text: #298361; // closest Sherwood hue above 4.5:1 on white
+
+$okl-border-hairline: $okl-neutral-200;
+$okl-border-strong: $okl-neutral-300;
+$okl-border-on-brand: $sherwood-green-700;
+$okl-border-on-dark-translucent: rgba(255, 255, 255, 0.25);
+
+// -----------------------------------------------------------------------------
+// Grift (Fenotype, commercial) is the only face in the design; the Figma file
+// defines both `font-family/heading-font` and `font-family/body-font` as Grift.
+// It is self-hosted from public/fonts/ — see _fonts.scss for the shipped
+// weights. The stack falls back to system faces only while the webfont loads.
+//
+// Earlier revisions listed Figtree here as a Google-hosted stand-in for Grift,
+// and Lexend Deca as a separate button face. Neither appears in the design
+// system; both were placeholders from before Grift was licensed. They are gone,
+// which also removes the last third-party request from the page.
+// -----------------------------------------------------------------------------
+$okl-font-core:
+    "Grift",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
+
+// Buttons keep their own token so the seam survives if the design ever splits
+// the families again, but today it resolves to the same face.
+$okl-font-button: $okl-font-core;
+
+// Preserve the specified type scale.
+$okl-text-display: 3rem; // 48px
+$okl-text-title: 2.5rem; // 40px
+$okl-text-h3: 2rem; // 32px
+$okl-text-h4: 1.5rem; // 24px
+$okl-text-h5: 1.25rem; // 20px
+$okl-text-h6: 1.125rem; // 18px
+$okl-text-small: 0.875rem; // 14px
+$okl-text-meta: 0.75rem; // 12px
+
+$okl-lh-display: 1.1;
+
+// -----------------------------------------------------------------------------
+// The 1512px reference viewport uses 116px gutters and a 1280px content width.
+// Sections use 112px of vertical padding (56px for
+// the closing band); card rows use a 40px gap.
+// -----------------------------------------------------------------------------
+$okl-page-measure: 1280px;
+$okl-section-padding-y: 7rem; // 112px
+$okl-section-padding-y-tight: 3.5rem; // 56px
+$okl-card-gap: 2.5rem; // 40px
+
+// How far a roadmap timeline row reaches up past the row before it, which is
+// what makes the two columns read as interlocking rather than as a table.
+$okl-timeline-overlap: 3.5rem; // 56px
+
+// -----------------------------------------------------------------------------
+// Shape
+// -----------------------------------------------------------------------------
+$okl-radius-sm: 0.5rem; // 8px  — chips, accordions, search fields, icon tiles
+$okl-radius-md: 0.75rem; // 12px — filled numbered rows
+$okl-radius-lg: 1rem; // 16px — cards, bands, banners
+$okl-radius-xl: 1.5rem; // 24px — large panels
+$okl-radius-button: 3.5rem; // 56px — pill buttons
+
+// -----------------------------------------------------------------------------
+// Inset shadows preserve box geometry when rendering internal borders.
+// -----------------------------------------------------------------------------
+$okl-hairline: inset 0 0 0 1px $okl-border-hairline;
+$okl-hairline-strong: inset 0 0 0 1px $okl-border-strong;
+$okl-hairline-on-dark: inset 0 0 0 1px $okl-border-on-dark-translucent;
+
+$okl-shadow-card:
+    0 1px 3px 0 rgba(15, 23, 43, 0.1),
+    0 1px 2px -1px rgba(15, 23, 43, 0.1);
+$okl-shadow-card-raised:
+    0 4px 6px -1px rgba(15, 23, 43, 0.1),
+    0 2px 4px -2px rgba(15, 23, 43, 0.1);
+
+$okl-blur-glass: blur(44px); // the two white cards floating over the hero
+
+$okl-decor-opacity: 0.2; // spine motif over a tinted field
+$okl-decor-opacity-strong: 0.5; // spine motif over deep green
+
+// Motion tokens favour short, compositor-friendly transitions.
+$okl-ease-standard: cubic-bezier(0.2, 0, 0.2, 1);
+$okl-ease-expressive: cubic-bezier(0.16, 1, 0.3, 1);
+$okl-duration-fast: 120ms;
+$okl-duration-base: 200ms;
+$okl-motion-duration-fast: 360ms;
+$okl-motion-duration-base: 650ms;
+$okl-motion-duration-slow: 900ms;
+$okl-motion-distance: 1.5rem;
+$okl-motion-stagger: 90ms;
+$okl-motion-timeline-sweep: 700ms;
+$okl-motion-timeline-stagger: 60ms;
+
+// Runtime values are shared by Bootstrap, platform components and motion.
+$okl-control-height: 3rem;
+$okl-control-padding-x: 1.5rem;
+$okl-control-padding-y: 0.75rem;
+
+:root {
+    --okl-focus-color: #{$okl-action};
+    --okl-focus-shadow: 0 0 0 0.25rem #{rgba($okl-action, 0.25)};
+    --okl-font-family: #{$okl-font-core};
+    --okl-sherwood-100: #{$sherwood-green-100};
+    --okl-sherwood-400: #{$sherwood-green-400};
+    --okl-sherwood-700: #{$sherwood-green-700};
+    --okl-sherwood-800: #{$sherwood-green-800};
+    --okl-sherwood-900: #{$sherwood-green-900};
+    --okl-tangerine-50: #{$tangerine-50};
+    --okl-tangerine-100: #{$tangerine-100};
+    --okl-tangerine-500: #{$tangerine-500};
+    --okl-tangerine-600: #{$tangerine-600};
+    --okl-wisteria-300: #{$light-wisteria-300};
+    --okl-wisteria-500: #{$light-wisteria-500};
+    --okl-anakiwa-50: #{$anakiwa-50};
+    --okl-anakiwa-100: #{$anakiwa-100};
+    --okl-anakiwa-500: #{$anakiwa-500};
+    --okl-neutral-200: #{$okl-neutral-200};
+    --okl-neutral-300: #{$okl-neutral-300};
+    --okl-neutral-600: #{$okl-neutral-600};
+    --okl-ink: #{$okl-ink};
+    --okl-dark-grey: #25303d;
+    --okl-error: #{$okl-red-500};
+    --okl-error-text: #b21e1e;
+    --okl-action-text: #{$okl-theme-text-orange-white};
+    --okl-error-soft: #{$okl-red-100};
+    --okl-info-soft: #{$okl-emerald-100};
+    --okl-warning-soft: #ffedd5;
+    --okl-plus: #c7e5db;
+    --okl-minus: #f5d9f0;
+    --okl-radius-sm: #{$okl-radius-sm};
+    --okl-radius-lg: #{$okl-radius-lg};
+    --okl-radius-xl: #{$okl-radius-xl};
+    --okl-radius-pill: 999px;
+    --okl-shadow-sm: #{$okl-shadow-card};
+    --okl-motion-fast: #{$okl-duration-fast};
+    --okl-motion-normal: #{$okl-duration-base};
+    --okl-motion-ease: #{$okl-ease-standard};
+    --okl-motion-expressive: #{$okl-ease-expressive};
+    --okl-motion-reveal: #{$okl-motion-duration-base};
+    --okl-motion-step: #{$okl-motion-duration-fast};
+    --okl-motion-journey: 520ms;
+    --okl-motion-stagger: #{$okl-motion-stagger};
+    --okl-motion-timeline-sweep: #{$okl-motion-timeline-sweep};
+    --okl-motion-timeline-stagger: #{$okl-motion-timeline-stagger};
+    --okl-motion-distance: #{$okl-motion-distance};
+    --okl-control-height: #{$okl-control-height};
+    --okl-control-padding-x: #{$okl-control-padding-x};
+    --okl-control-padding-y: #{$okl-control-padding-y};
+    --wizard-orange: var(--okl-tangerine-500);
+    --wizard-orange-soft: var(--okl-tangerine-100);
+    --wizard-bg: var(--okl-anakiwa-100);
+    --wizard-dark: var(--okl-dark-grey);
+    --wizard-mid: var(--okl-neutral-600);
+    --wizard-border: var(--okl-neutral-200);
+    --wizard-white: #fff;
+    --wizard-shadow-sm: var(--okl-shadow-sm);
+    --pro-color: #3f6a71;
+    --pro-bg: #ccd7cf;
+    --con-color: #b44e56;
+    --con-bg: #fae7e3;
+    --leermiddelen-search-accent: var(--okl-tangerine-500);
+    --leermiddelen-search-accent-soft: rgba(255, 136, 0, 0.16);
+    --leermiddelen-search-surface: #fbfaf7;
+    --leermiddelen-search-surface-strong: #f7f1e8;
+    --leermiddelen-search-border: #eadfd3;
+    --leermiddelen-search-text: #2c3138;
+    --leermiddelen-search-muted: #6d737a;
+    --leermiddelen-search-bought: #f8dfca;
+    --leermiddelen-search-created: #f6e6b6;
+    --leermiddelen-search-other: #dbe9c8;
+    --okl-shell-measure: 1280px;
+    --okl-page-measure: 1280px;
+    --okl-page-gutter: clamp(24px, 4vw, 64px);
+}

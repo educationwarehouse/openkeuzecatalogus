@@ -1,0 +1,28 @@
+// Shared by the web shell and PDF; dimensions follow Figma's logo/SIVON lockup.
+$okl-brand-logo-width: 190px;
+$okl-brand-logo-height: 46px;
+$okl-brand-gap: 16px;
+
+@mixin okl-brand-byline($on-light: false) {
+    display: flex;
+    align-items: center;
+    align-self: center;
+    box-sizing: content-box;
+    width: 144px;
+    height: $okl-brand-logo-height;
+    min-width: 0;
+    margin: 0;
+    padding-left: $okl-brand-gap;
+    border-left: 1px solid $okl-border-on-brand;
+    color: #fff;
+    font-family: $okl-font-core;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.5;
+    white-space: normal;
+
+    @if $on-light {
+        border-color: $okl-border-strong;
+        color: $okl-ink;
+    }
+}

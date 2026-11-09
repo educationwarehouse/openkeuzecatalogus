@@ -1,0 +1,1062 @@
+[[extend '../../../common/templates/layout.html']]
+[[block layout_title]]Open Keuzecatalogus[[end]]
+[[block page_head]]
+    <meta name="description"
+          content="De Open Keuzecatalogus Leermiddelen helpt lerarenteams om methodes en aanvullend materiaal te vinden, te vergelijken en hun keuze te onderbouwen vanuit de eigen onderwijsvisie.">
+    <meta name="robots" content="index, follow, max-image-preview:large">
+    <link rel="canonical" href="https://openkeuzecatalogus.nl/">
+    <meta property="og:locale" content="nl_NL">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Open Keuzecatalogus Leermiddelen">
+    <meta property="og:title" content="Open Keuzecatalogus Leermiddelen">
+    <meta property="og:description"
+          content="Vind en vergelijk leermiddelen die passen bij jullie onderwijsvisie.">
+    <meta property="og:url" content="https://openkeuzecatalogus.nl/">
+    <meta property="og:image" content="https://openkeuzecatalogus.nl/images/okl-social-preview.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Open Keuzecatalogus Leermiddelen — vind leermiddelen die passen bij jullie visie">
+    <meta name="twitter:card" content="summary_large_image">
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@graph": [
+            {
+                "@type": "WebSite",
+                "@id": "https://openkeuzecatalogus.nl/#website",
+                "url": "https://openkeuzecatalogus.nl/",
+                "name": "Open Keuzecatalogus Leermiddelen",
+                "inLanguage": "nl-NL",
+                "publisher": {
+                    "@id": "https://openkeuzecatalogus.nl/#organization"
+                }
+            },
+            {
+                "@type": "Organization",
+                "@id": "https://openkeuzecatalogus.nl/#organization",
+                "name": "SIVON",
+                "url": "https://sivon.nl/",
+                "sameAs": [
+                    "https://www.linkedin.com/company/sivon/"
+                ]
+            }
+        ]
+    }
+    </script>
+    <link rel="icon" type="image/png" href="[[=STATIC('favicon', 'favicon-96x96.png', app_name='private')]]" sizes="96x96">
+    <link rel="icon" type="image/svg+xml" href="[[=STATIC('favicon', 'favicon.svg', app_name='private')]]">
+    <link rel="shortcut icon" href="[[=STATIC('favicon', 'favicon.ico', app_name='private')]]">
+    <link rel="apple-touch-icon" sizes="180x180" href="[[=STATIC('favicon', 'apple-touch-icon.png', app_name='private')]]">
+    <meta name="apple-mobile-web-app-title" content="Catalogus">
+    <link rel="manifest" href="[[=STATIC('favicon', 'site.webmanifest', app_name='private')]]">
+    <link rel="preload" href="[[=STATIC('fonts', 'Grift-Regular-v2.woff2', app_name='private')]]" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="[[=STATIC('fonts', 'Grift-SemiBold-v2.woff2', app_name='private')]]" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="[[=STATIC('fonts', 'Grift-Bold-v2.woff2', app_name='private')]]" as="font" type="font/woff2" crossorigin>
+    <script defer src="https://umami.edwh.nl/script.js" data-website-id="e68441aa-f893-451e-aa67-2e84d2cdc734"></script>
+[[end]]
+[[block header_config]][[show_shared_header = False]][[end]]
+[[block layout_main]]
+<main>
+
+<div class="okl-landing js-okl-landing">
+[[okl_navigation = navigation_context()]]
+[[include 'components/landing_header.html']]
+
+<section class="okl-hero okl-section okl-decor">
+    <div class="container">
+        <div class="row align-items-center g-5 okl-hero__grid">
+            <div class="col-lg-5" data-motion-group="hero-copy">
+                <h1 class="display-1 text-white okl-pretty mb-4 js-motion-item">
+                    Vind leermiddelen die passen bij
+                    <span class="d-lg-block text-highlight">jullie visie</span>
+                </h1>
+                <p class="text-white mb-4 js-motion-item">
+                    De Open Keuzecatalogus helpt lerarenteams om leermiddelen, zoals methodes, open leermateriaal
+                    en aanvullende materialen, te vinden en te vergelijken en keuzes te maken die passen bij de eigen
+                    visie én doelgroep.
+                </p>
+                <div class="d-flex flex-wrap gap-3 mb-5 js-motion-item">
+                    <a href="[[=URL('producten')]]" class="okl-btn okl-btn--on-dark okl-btn--glass okl-btn--hero">
+                        <span class="okl-btn__label">Naar de catalogus</span>
+                    </a>
+                    <a href="#hoe-werkt-het" class="okl-btn okl-btn--outline-on-dark">
+                        <span class="okl-btn__label">Bekijk hoe het werkt</span>
+                    </a>
+                </div>
+                <ul class="list-unstyled okl-check-grid mb-0 js-motion-item">
+                    <li class="okl-check">
+                        <span class="okl-check__disc" aria-hidden="true"></span>
+                        <span class="okl-check__label">Al het aanbod in één overzicht</span>
+                    </li>
+                    <li class="okl-check">
+                        <span class="okl-check__disc" aria-hidden="true"></span>
+                        <span class="okl-check__label">Databronnen en actualiteit zichtbaar</span>
+                    </li>
+                    <li class="okl-check">
+                        <span class="okl-check__disc" aria-hidden="true"></span>
+                        <span class="okl-check__label">Alle aanbieders een gelijkwaardige plek</span>
+                    </li>
+                    <li class="okl-check">
+                        <span class="okl-check__disc" aria-hidden="true"></span>
+                        <span class="okl-check__label">Een platform van en voor het onderwijs</span>
+                    </li>
+                </ul>
+            </div>
+            <div class="col-lg-7">
+                <div class="okl-hero__art" data-motion="hero-art">
+                    <span class="okl-hero__spine okl-hero__spine--back" aria-hidden="true">
+                    </span>
+                    <span class="okl-hero__spine okl-hero__spine--front" aria-hidden="true">
+                    </span>
+                    <div class="okl-hero__image-frame">
+                        <img src="[[=STATIC('landing/images', 'okl-hero-students.webp')]]"
+                             alt="Twee studenten werken buiten aan hun studie"
+                             class="okl-hero__image" width="693" height="688"
+                             data-motion-scale="0.16" data-motion-scale-mode="hero">
+                    </div>
+                    <div class="okl-glass-card okl-hero__card okl-hero__card--one">
+                        <p class="okl-glass-card__title mb-2">Lerarenteams en SIVON bepalen samen de koers.</p>
+                        <p class="okl-glass-card__meta mb-0">Aanbieders worden actief betrokken.</p>
+                    </div>
+                    <div class="okl-glass-card okl-hero__card okl-hero__card--two">
+                        <p class="okl-glass-card__title mb-2">Databron, datum en laatste wijziging zijn zichtbaar.</p>
+                        <p class="okl-glass-card__meta mb-0">De informatie is te controleren.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="okl-usp" id="waarom">
+    <div class="okl-usp__band" data-motion-group="usp">
+        <div class="container">
+            <div class="row g-10">
+                <div class="col-md-4 js-motion-item">
+                    <div class="okl-card okl-feature-card">
+                        <span class="okl-tile okl-tile--lg okl-tile--sherwood mb-0">
+                            <span class="okl-tile__icon okl-tile__icon--check" aria-hidden="true"></span>
+                        </span>
+                        <h3 class="okl-card__title py-3">Betrouwbaar en transparant overzicht</h3>
+                        <p class="okl-card__text mb-0">Objectieve basisinformatie en herleidbare databronnen zorgen voor een betrouwbaar overzicht van commercieel en open aanbod (zowel betaald als gratis leermateriaal). De catalogus is open toegankelijk en toont alle leermiddelen die relevant zijn voor lerarenteams.</p>
+                    </div>
+                </div>
+                <div class="col-md-4 js-motion-item">
+                    <div class="okl-card okl-feature-card">
+                        <span class="okl-tile okl-tile--lg okl-tile--tangerine mb-0">
+                            <span class="okl-tile__icon okl-tile__icon--search" aria-hidden="true"></span>
+                        </span>
+                        <h3 class="okl-card__title py-3">Keuze vanuit de eigen visie</h3>
+                        <p class="okl-card__text mb-0">De Open Keuzecatalogus ondersteunt lerarenteams bij hun keuze voor een passende leermiddelenmix. Ze zoeken en vergelijken op basis van hun eigen visie en criteria. De catalogus wijst geen algemene winnaar aan en is geen bestel-of leverplatform.</p>
+                    </div>
+                </div>
+                <div class="col-md-4 js-motion-item">
+                    <div class="okl-card okl-feature-card">
+                        <span class="okl-tile okl-tile--lg okl-tile--anakiwa mb-0">
+                            <span class="okl-tile__icon okl-tile__icon--users" aria-hidden="true"></span>
+                        </span>
+                        <h3 class="okl-card__title py-3">Samenwerken vanuit publieke regie</h3>
+                        <p class="okl-card__text mb-0">Samen creëren we een gelijke en onafhankelijke informatiepositie. Schoolteams sturen vanuit hun behoefte mee op de doorontwikkeling; aanbieders leveren informatie aan via vaste formats.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="okl-section">
+    <div class="container">
+        <div class="row g-10 align-items-start mb-28 okl-intro__top" data-motion="reveal">
+            <div class="col-lg-6">
+                <h2 class="display-1 okl-pretty mb-0">
+                    Direct naar wat voor jou <span class="text-action-strong">relevant is</span>
+                </h2>
+            </div>
+           <!-- <div class="col-lg-6">
+                <p class="mb-0">
+                    De lanceerpagina moet niet iedereen hetzelfde verhaal geven. Elke bezoeker krijgt een
+                    herkenbare route en een concrete vervolgstap.
+                </p>
+            </div>-->
+        </div>
+        <div class="okl-route-grid" data-motion-group="routes">
+                <a href="#hoe-werkt-het" class="okl-card okl-card--hairline okl-route-card okl-route-card--wisteria js-motion-item">
+                    <img src="[[=STATIC('landing/images', 'okl-route-decor-wisteria.svg')]]"
+                         alt="" class="okl-route-card__decor" aria-hidden="true" width="168" height="275">
+                    <div class="d-flex align-items-center gap-2 position-relative">
+                        <span class="okl-tile">1</span>
+                        <span class="okl-route-card__audience">Voor lerarenteams</span>
+                    </div>
+                    <h3 class="okl-route-card__title position-relative mb-0">Van visie naar shortlist</h3>
+                    <p class="okl-card__text position-relative mb-0">Ontdek hoe je methodes vindt en vergelijkt op inhoud, voorwaarden en wat je als team belangrijk vindt.</p>
+                    <ul class="list-unstyled d-flex flex-column gap-2 position-relative mb-0">
+                        <li class="okl-check okl-check--plain">
+                            <span class="okl-check__disc" aria-hidden="true"></span>
+                            <span class="okl-check__label">Al het aanbod in één overzicht</span>
+                        </li>
+                        <li class="okl-check okl-check--plain">
+                            <span class="okl-check__disc" aria-hidden="true"></span>
+                            <span class="okl-check__label">Databronnen en actualiteit zichtbaar</span>
+                        </li>
+                        <li class="okl-check okl-check--plain">
+                            <span class="okl-check__disc" aria-hidden="true"></span>
+                            <span class="okl-check__label">Alle aanbieders een gelijkwaardige plek</span>
+                        </li>
+                    </ul>
+                    <div class="position-relative align-self-start">
+                        <span class="okl-btn-text">Bekijk hoe het werkt</span>
+                    </div>
+                </a>
+                <a href="#deelnemen" class="okl-card okl-card--hairline okl-route-card okl-route-card--jonquil js-motion-item">
+                    <img src="[[=STATIC('landing/images', 'okl-route-decor-jonquil.svg')]]"
+                         alt="" class="okl-route-card__decor" aria-hidden="true" width="168" height="275">
+                    <div class="d-flex align-items-center gap-2 position-relative">
+                        <span class="okl-tile">2</span>
+                        <span class="okl-route-card__audience">Voor schoolbesturen</span>
+                    </div>
+                    <h3 class="okl-route-card__title position-relative mb-0">Inzicht en grip voor publieke regie</h3>
+                    <p class="okl-card__text position-relative mb-0">Lees hoe gezamenlijk inzicht voor ieder schoolbestuur zorgt voor grip op inhoud en kosten.</p>
+                    <ul class="list-unstyled d-flex flex-column gap-2 position-relative mb-0">
+                        <li class="okl-check okl-check--plain">
+                            <span class="okl-check__disc" aria-hidden="true"></span>
+                            <span class="okl-check__label">Wat publiek toegankelijk is</span>
+                        </li>
+                        <li class="okl-check okl-check--plain">
+                            <span class="okl-check__disc" aria-hidden="true"></span>
+                            <span class="okl-check__label">Wie waarover besluit</span>
+                        </li>
+                        <li class="okl-check okl-check--plain">
+                            <span class="okl-check__disc" aria-hidden="true"></span>
+                            <span class="okl-check__label">Planning en actualisatie</span>
+                        </li>
+                    </ul>
+                    <div class="position-relative align-self-start">
+                        <span class="okl-btn-text">Bekijk hoe je kunt deelnemen</span>
+                    </div>
+                </a>
+                <a href="#praktijkvoorbeeld" class="okl-card okl-card--hairline okl-route-card okl-route-card--anakiwa js-motion-item">
+                    <img src="[[=STATIC('landing/images', 'okl-route-decor-anakiwa.svg')]]"
+                         alt="" class="okl-route-card__decor" aria-hidden="true" width="168" height="275">
+                    <div class="d-flex align-items-center gap-2 position-relative">
+                        <span class="okl-tile">3</span>
+                        <span class="okl-route-card__audience">Voor aanbieders en makers</span>
+                    </div>
+                    <h3 class="okl-route-card__title position-relative mb-0">Aanbod zichtbaar op gelijke voorwaarden</h3>
+                    <p class="okl-card__text position-relative mb-0">Bekijk welke informatie nodig is, hoe je deze aanlevert en actueel houdt en hoe SIVON deze controleert.</p>
+                    <ul class="list-unstyled d-flex flex-column gap-2 position-relative mb-0">
+                        <li class="okl-check okl-check--plain">
+                            <span class="okl-check__disc" aria-hidden="true"></span>
+                            <span class="okl-check__label">Datapunten en bronnen</span>
+                        </li>
+                        <li class="okl-check okl-check--plain">
+                            <span class="okl-check__disc" aria-hidden="true"></span>
+                            <span class="okl-check__label">Validatie en gegevensstatus</span>
+                        </li>
+                        <li class="okl-check okl-check--plain">
+                            <span class="okl-check__disc" aria-hidden="true"></span>
+                            <span class="okl-check__label">Contact en aanleverproces</span>
+                        </li>
+                    </ul>
+                    <div class="position-relative align-self-start">
+                        <span class="okl-btn-text">Bekijk de uitgangspunten</span>
+                    </div>
+                </a>
+        </div>
+    </div>
+</section>
+
+<section class="okl-section okl-how okl-decor bg-lilac" id="hoe-werkt-het">
+    <img src="[[=STATIC('landing/images', 'okl-decor-how.svg')]]"
+         alt="" class="okl-how__decor" aria-hidden="true" width="465" height="761">
+    <div class="container position-relative">
+        <div class="okl-design-split">
+            <div class="col-lg-6" data-motion="reveal">
+                <p class="okl-eyebrow text-eyebrow-lilac">Voor lerarenteams</p>
+                <h2 class="display-1 okl-pretty text-ink mb-4">
+                    Van onderwijsvisie naar een <span class="text-accent-lilac">onderbouwde keuze</span>
+                </h2>
+                <p class="mb-4">De catalogus biedt het overzicht, de visie-keuzemodule ondersteunt het gesprek binnen het team en de afweging.
+                    Je houdt zelf de regie.</p>
+                <div class="accordion okl-accordion okl-accordion--card" id="accHoe">
+                    <div class="accordion-item">
+                        <h3 class="accordion-header">
+                            <button class="accordion-button" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#accHoe-0"
+                                    aria-expanded="true"
+                                    aria-controls="accHoe-0">Bepaal wat bij je onderwijs past
+                            </button>
+                        </h3>
+                        <div id="accHoe-0"
+                             class="accordion-collapse collapse show"
+                             data-bs-parent="#accHoe">
+                            <div class="accordion-body">Maak de eigen visie en randvoorwaarden concreet: vak, niveau, didactiek, toegankelijkheid, licenties en meer.</div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h3 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#accHoe-1"
+                                    aria-expanded="false"
+                                    aria-controls="accHoe-1">Vind en vergelijk relevante leermiddelen
+                            </button>
+                        </h3>
+                        <div id="accHoe-1"
+                             class="accordion-collapse collapse"
+                             data-bs-parent="#accHoe">
+                            <div class="accordion-body">Zoek en filter op objectieve informatie en krijg inzicht in de visie van de aanbieders van leermiddelen. Samen met lerarenteams en aanbieders zorgen we voor een compleet en actueel overzicht.</div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h3 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#accHoe-2"
+                                    aria-expanded="false"
+                                    aria-controls="accHoe-2">Onderbouw je eigen keuze
+                            </button>
+                        </h3>
+                        <div id="accHoe-2"
+                             class="accordion-collapse collapse"
+                             data-bs-parent="#accHoe">
+                            <div class="accordion-body">De catalogus geeft niet aan welk leermiddel het beste is. Het gaat om het vinden van de juiste mix voor wat bij jullie onderwijsvisie en leerlingen past.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="okl-cta-row d-flex flex-wrap align-items-center gap-4 mt-6">
+                    <a href="#contact" class="okl-btn okl-btn--strong">
+                        <span class="okl-btn__label">Ik wil meer weten</span>
+                    </a>
+                    <a href="mailto:openkeuzecatalogus@sivon.nl"
+                       class="okl-btn-text okl-btn-text--leading-envelope">
+                        openkeuzecatalogus@sivon.nl
+                    </a>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <img src="[[=STATIC('landing/images', 'okl-catalog-mockup.jpg')]]"
+                     alt="Voorbeeld van methode-omslagen zoals ze in de catalogus getoond worden"
+                     class="okl-how__mockup" width="565" height="516" loading="lazy">
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="okl-section okl-participate okl-decor bg-brand text-white" id="deelnemen">
+    <img src="[[=STATIC('landing/images', 'okl-decor-catalog-a.svg')]]"
+         alt="" class="okl-participate__decor okl-participate__decor--one" aria-hidden="true"
+         width="465" height="761">
+    <img src="[[=STATIC('landing/images', 'okl-decor-catalog-b.svg')]]"
+         alt="" class="okl-participate__decor okl-participate__decor--two" aria-hidden="true"
+         width="465" height="761">
+    <div class="container position-relative">
+        <div class="okl-design-split">
+            <div class="col-lg-6" data-motion="reveal" data-motion-from="left">
+                <p class="okl-eyebrow text-highlight">Voor schoolbesturen</p>
+                <h2 class="display-1 okl-pretty mb-4">
+                    Niet alleen gebruiken, maar <span class="text-highlight">samen richting geven</span>
+                </h2>
+                <p class="text-white mb-10">
+                    De basiscatalogus is publiek toegankelijk. Voor gebruik van de Visie-keuzemodule en andere aanvullende functies sluit het schoolbestuur een Dienstverleningsovereenkomst (DVO) met SIVON. Deelnemende besturen bouwen daarnaast actief mee aan de verdere ontwikkeling van de Open Keuzecatalogus Leermiddelen.
+                </p>
+                <div class="accordion okl-accordion okl-accordion--on-dark" id="accDeelnemen">
+                    <div class="accordion-item">
+                        <h3 class="accordion-header">
+                            <button class="accordion-button" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#accDeelnemen-0"
+                                    aria-expanded="true"
+                                    aria-controls="accDeelnemen-0">Gebruik de Visie-keuzemodule
+                            </button>
+                        </h3>
+                        <div id="accDeelnemen-0"
+                             class="accordion-collapse collapse show"
+                             data-bs-parent="#accDeelnemen">
+                            <div class="accordion-body">Lerarenteams maken hun onderwijsvisie concreet aan de hand van de
+                                <a href="#themes">twaalf thema&rsquo;s</a>.</div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h3 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#accDeelnemen-1"
+                                    aria-expanded="false"
+                                    aria-controls="accDeelnemen-1">Denk en beslis mee
+                            </button>
+                        </h3>
+                        <div id="accDeelnemen-1"
+                             class="accordion-collapse collapse"
+                             data-bs-parent="#accDeelnemen">
+                            <div class="accordion-body">Een adviesgroep van schoolbesturen levert inhoudelijke input; een besluitvormende groep neemt de besluiten.</div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h3 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#accDeelnemen-2"
+                                    aria-expanded="false"
+                                    aria-controls="accDeelnemen-2">Bouw collectief door
+                            </button>
+                        </h3>
+                        <div id="accDeelnemen-2"
+                             class="accordion-collapse collapse"
+                             data-bs-parent="#accDeelnemen">
+                            <div class="accordion-body">Deelnemende besturen bouwen actief mee aan de verdere ontwikkeling van de Open Keuzecatalogus Leermiddelen.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6" data-motion="reveal" data-motion-from="right">
+                <div class="okl-join-card bg-white rounded-4 p-4 p-lg-8 mb-4">
+                    <h3 class="display-2 text-heading-alt mb-4">Zo sluit je aan</h3>
+                    <div class="d-flex flex-column gap-3 mb-4" data-motion-group="join-steps">
+                        <div class="okl-step js-motion-item">
+                            <span class="okl-tile">1</span>
+                            <div>
+                                <p class="okl-step__title mb-2">Neem contact op met SIVON</p>
+                                <p class="okl-step__text mb-0">We bespreken de belangstelling, de mogelijkheden voor je scholen en de rol van het schoolbestuur.</p>
+                            </div>
+                        </div>
+                        <div class="okl-step js-motion-item">
+                            <span class="okl-tile">2</span>
+                            <div>
+                                <p class="okl-step__title mb-2">Ontvang informatie over de DVO</p>
+                                <p class="okl-step__text mb-0">De DVO legt deelname, gebruik, governance, ondersteuning en collectieve doorontwikkeling vast.</p>
+                            </div>
+                        </div>
+                        <div class="okl-step js-motion-item">
+                            <span class="okl-tile">3</span>
+                            <div>
+                                <p class="okl-step__title mb-2">Onderteken namens het bestuur</p>
+                                <p class="okl-step__text mb-0">Daarna kunnen de aanvullende functionaliteiten worden ingezet op alle scholen binnen het bestuur.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!--<p class="text-subtle border-top pt-3 mb-0">
+                        Goed om te weten: individuele docenten hoeven niet zelf een overeenkomst te sluiten.
+                        Deelname wordt geregeld op het niveau van het schoolbestuur.
+                    </p>-->
+                </div>
+                <div class="okl-cta-row okl-participate__cta d-flex flex-wrap align-items-center gap-4">
+                    <a href="#contact" class="okl-btn okl-btn--strong">
+                        <span class="okl-btn__label">Ik wil meer weten over deelname</span>
+                    </a>
+                    <a href="mailto:openkeuzecatalogus@sivon.nl"
+                       class="okl-btn-text okl-btn-text--on-dark okl-btn-text--leading-envelope">
+                        openkeuzecatalogus@sivon.nl
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="okl-section okl-example-section" id="praktijkvoorbeeld">
+    <div class="container">
+        <div class="okl-example-panel bg-sky rounded-4 p-4 p-lg-10" data-motion="reveal">
+            <div class="row g-5 g-xl-10">
+                <div class="col-lg-6">
+                    <p class="okl-eyebrow text-eyebrow-sky">Voor aanbieders</p>
+                    <h2 class="display-1 okl-pretty text-ink mb-4">
+                        Van abstract naar <span class="text-accent-sky">concreet</span>
+                    </h2>
+                    <p class="py-4 mb-0">
+                    De Open Keuzecatalogus Leermiddelen helpt lerarenteams om jouw leermiddelen te vinden op basis van hun visie.
+                    </p>
+                    <div class="accordion okl-accordion okl-accordion--card" id="accVoorbeeld">
+                        <div class="accordion-item">
+                            <h3 class="accordion-header">
+                                <button class="accordion-button" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#accVoorbeeld-0"
+                                        aria-expanded="true"
+                                        aria-controls="accVoorbeeld-0">Aanleveren volgens de Edu-V Catalogue API-standaard
+                                </button>
+                            </h3>
+                            <div id="accVoorbeeld-0"
+                                 class="accordion-collapse collapse show"
+                                 data-bs-parent="#accVoorbeeld">
+                                <div class="accordion-body">
+                                    Aanbieders leveren informatie over hun aanbod aan volgens de Edu-V Catalogue API-standaard. Deze gegevens worden gecontroleerd en verwerkt in de Open Keuzecatalogus Leermiddelen. Wanneer data niet kloppen of incompleet zijn, melden we dit bij de aanbieder. SIVON brengt zelf nooit wijzigingen in de data aan. In het dashboard zie je welke data op dit moment in de catalogus staan.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h3 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#accVoorbeeld-1"
+                                        aria-expanded="false"
+                                        aria-controls="accVoorbeeld-1">Keuze uit 3 routes
+                                </button>
+                            </h3>
+                            <div id="accVoorbeeld-1"
+                                 class="accordion-collapse collapse"
+                                 data-bs-parent="#accVoorbeeld">
+                                <div class="accordion-body">
+                                    Niet alle aanbieders kunnen data delen vanuit hun eigen API. Licentiekantoren en het Koppelpunt bieden daarom aanvullende mogelijkheden. We kijken graag met je mee welke route bij jou past.
+                                    <a href="mailto:openkeuzecatalogus@sivon.nl">Neem contact met ons op</a>.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h3 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#accVoorbeeld-2"
+                                        aria-expanded="false"
+                                        aria-controls="accVoorbeeld-2">Jullie visie op 12 thema’s
+                                </button>
+                            </h3>
+                            <div id="accVoorbeeld-2"
+                                 class="accordion-collapse collapse"
+                                 data-bs-parent="#accVoorbeeld">
+                                <div class="accordion-body">
+                                    Naast de basisgegevens over de leermiddelen delen aanbieders hun visie op <a href="#themes">de 12 thema’s</a>. SIVON heeft hiervoor al een Request for Change ingediend bij Edu-V. Omdat die nog niet is verwerkt, hebben we een tussenoplossing bedacht. Met de visietool formuleer je gemakkelijk op basis van zelfgekozen brondata je visie op de 12 thema’s. Voor de 31 aanbieders die hun visie dit voorjaar al hebben gedeeld via Stichting Education Warehouse, staat die brondata al klaar.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h3 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#accVoorbeeld-3"
+                                        aria-expanded="false"
+                                        aria-controls="accVoorbeeld-3">Welke data zitten er al in de catalogus?
+                                </button>
+                            </h3>
+                            <div id="accVoorbeeld-3"
+                                 class="accordion-collapse collapse"
+                                 data-bs-parent="#accVoorbeeld">
+                                <div class="accordion-body">
+                                    We hebben <a href="https://dashboard.edwh.nl/superset/dashboard/status_aanlevering/"
+                                       target="_blank" rel="noopener noreferrer">een open dashboard</a> gemaakt waarin je live in één oogopslag kunt zien welke aanbieders hun data al hebben aangeleverd, hoeveel aanbod er van hen te vinden is en via welke route ze die data hebben aangeleverd.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="okl-cta-row d-flex flex-wrap align-items-center gap-4 mt-6">
+                        <a href="#contact" class="okl-btn okl-btn--strong">
+                            <span class="okl-btn__label">Ik wil meer weten</span>
+                        </a>
+                        <a href="mailto:openkeuzecatalogus@sivon.nl"
+                           class="okl-btn-text okl-btn-text--leading-envelope">
+                            openkeuzecatalogus@sivon.nl
+                        </a>
+                    </div>
+                </div>
+                <div class="col-lg-6 d-lg-flex flex-lg-column">
+                    <div class="okl-decor okl-example-shot bg-sky-solid rounded-4 d-flex align-items-center justify-content-center p-3 p-sm-5 flex-lg-grow-1"
+                         data-motion="example-art">
+                        <span class="okl-spine okl-spine--example-one" aria-hidden="true"
+                              data-motion-parallax="-18">
+                        </span>
+                        <span class="okl-spine okl-spine--example-two" aria-hidden="true"
+                              data-motion-parallax="18">
+                        </span>
+                        <div class="okl-delivery-route position-relative js-okl-delivery-route">
+                            <div class="okl-delivery-route__progress" aria-hidden="true">
+                                <span class="is-active js-okl-route-progress"></span>
+                                <span class="js-okl-route-progress"></span>
+                                <span class="js-okl-route-progress"></span>
+                                <span class="js-okl-route-progress"></span>
+                            </div>
+
+                            <div class="okl-delivery-route__step" data-okl-route-step="0">
+                                <p class="okl-delivery-route__eyebrow">Vraag 1 van 3</p>
+                                <p class="okl-delivery-route__question">
+                                    Kunt u zelf de meest recente versie van de Edu-V Catalogue API implementeren en beheren?
+                                </p>
+                                <div class="okl-delivery-route__actions">
+                                    <button type="button" data-okl-route-answer="result-api">Ja</button>
+                                    <button type="button" data-okl-route-answer="1">Nee</button>
+                                </div>
+                            </div>
+
+                            <div class="okl-delivery-route__step" data-okl-route-step="1" hidden>
+                                <p class="okl-delivery-route__eyebrow">Vraag 2 van 3</p>
+                                <p class="okl-delivery-route__question">
+                                    Maakt u al gebruik van een licentiekantoor voor uw licenties?
+                                </p>
+                                <div class="okl-delivery-route__actions">
+                                    <button type="button" data-okl-route-answer="result-license">Ja</button>
+                                    <button type="button" data-okl-route-answer="2">Nee</button>
+                                </div>
+                            </div>
+
+                            <div class="okl-delivery-route__step" data-okl-route-step="2" hidden>
+                                <p class="okl-delivery-route__eyebrow">Vraag 3 van 3</p>
+                                <p class="okl-delivery-route__question">
+                                    Heeft u een beperkte set leermiddelen en kunt u via een bestand aanleveren?
+                                </p>
+                                <div class="okl-delivery-route__actions">
+                                    <button type="button" data-okl-route-answer="result-file">Ja</button>
+                                    <button type="button" data-okl-route-answer="result-contact">Nee</button>
+                                </div>
+                            </div>
+
+                            <div class="okl-delivery-route__result okl-delivery-route__result--api"
+                                 data-okl-route-result="result-api" aria-live="polite" hidden>
+                                <p class="okl-delivery-route__eyebrow">Voorkeursroute</p>
+                                <p class="okl-delivery-route__title">Edu-V Catalogue API</p>
+                                <ul>
+                                    <li>Standaard voorkeursroute</li>
+                                    <li>Gebruik de meest recente versie van de Catalogue API</li>
+                                    <li>Structurele, schaalbare koppeling</li>
+                                    <li>Catalogusinformatie direct beschikbaar via eigen endpoint</li>
+                                </ul>
+                            </div>
+
+                            <div class="okl-delivery-route__result okl-delivery-route__result--license"
+                                 data-okl-route-result="result-license" aria-live="polite" hidden>
+                                <p class="okl-delivery-route__eyebrow">Externe partij</p>
+                                <p class="okl-delivery-route__title">Via een licentiekantoor</p>
+                                <ul>
+                                    <li>Externe dienstverlening</li>
+                                    <li>Catalogus conform Edu-V Catalogue API</li>
+                                    <li>Geschikt als u niet zelf wilt of kunt implementeren</li>
+                                </ul>
+                            </div>
+
+                            <div class="okl-delivery-route__result okl-delivery-route__result--file"
+                                 data-okl-route-result="result-file" aria-live="polite" hidden>
+                                <p class="okl-delivery-route__eyebrow">Publieke infrastructuur</p>
+                                <p class="okl-delivery-route__title">Via het Koppelpunt Catalogusinformatie</p>
+                                <ul>
+                                    <li>Aanleveren via Excel, CSV of JSON volgens vastgesteld format</li>
+                                    <li>Op basis hiervan wordt een Catalogue API-endpoint gerealiseerd</li>
+                                    <li>Geschikt voor beperkte set leermiddelen, ook als blijvende route</li>
+                                    <li>Neem hiervoor contact op met Kennisnet</li>
+                                </ul>
+                            </div>
+
+                            <div class="okl-delivery-route__result okl-delivery-route__result--contact"
+                                 data-okl-route-result="result-contact" aria-live="polite" hidden>
+                                <p class="okl-delivery-route__eyebrow">Maatwerk</p>
+                                <p class="okl-delivery-route__title">Overleg over een passende route</p>
+                                <ul>
+                                    <li>Neem contact op met SIVON of Kennisnet</li>
+                                    <li>Voor situaties die niet goed in de standaardroutes passen</li>
+                                </ul>
+                                <a href="mailto:openkeuzecatalogus@sivon.nl">openkeuzecatalogus@sivon.nl</a>
+                            </div>
+
+                            <button class="okl-delivery-route__restart js-okl-route-restart" type="button" hidden>Opnieuw beginnen</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="okl-section" id="faq">
+    <div class="container">
+        <div class="row g-10 align-items-start">
+            <div class="col-lg-4" data-motion="reveal">
+                <h2 class="display-1 okl-pretty mb-3">Veelgestelde vragen</h2>
+                <p class="mb-4" style="line-height: 1.6">
+                    We helpen je hier graag op weg. Staat je vraag er niet bij? Bekijk alle vragen.
+                </p>
+                <a href="/faq" class="okl-btn okl-btn--strong">
+                    <span class="okl-btn__label">Bekijk alle veelgestelde vragen</span>
+                </a>
+            </div>
+            <div class="col-lg-8">
+                <!-- faq:preview:start — regenerate with `python3 tools/build_faq.py` -->
+                <div class="accordion okl-accordion" id="accFaq">
+                    <div class="accordion-item js-faq-item" data-faq-search="wat is de open keuzecatalogus leermiddelen? de open keuzecatalogus is een openbare en onafhankelijke catalogus die lerarenteams helpt bij het vinden, vergelijken en kiezen van leermiddelen. naast feitelijke productinformatie biedt de catalogus verdieping op 12 inhoudelijke thema’s, ervaringen van docenten en mogelijkheden om leermiddelen met elkaar te vergelijken. zo kunnen lerarenteams beter bepalen welke leermiddelen passen bij hun onderwijsvisie en behoeften. de catalogus wordt onder publieke regie van schoolbesturen en SIVON ontwikkeld en is sinds 1 oktober 2026 beschikbaar.">
+                        <h3 class="accordion-header">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#accFaq-0" aria-expanded="true"
+                                    aria-controls="accFaq-0">Wat is de Open Keuzecatalogus Leermiddelen?
+                            </button>
+                        </h3>
+                        <div id="accFaq-0" class="accordion-collapse collapse show" data-bs-parent="#accFaq">
+                            <div class="accordion-body d-flex flex-column gap-3">
+                                <p>De Open Keuzecatalogus is een openbare en onafhankelijke catalogus die lerarenteams helpt bij het vinden, vergelijken en kiezen van leermiddelen.</p>
+                                <p>Naast feitelijke productinformatie biedt de catalogus verdieping op 12 inhoudelijke thema’s, ervaringen van docenten en mogelijkheden om leermiddelen met elkaar te vergelijken. Zo kunnen lerarenteams beter bepalen welke leermiddelen passen bij hun onderwijsvisie en behoeften.</p>
+                                <p>De catalogus wordt onder publieke regie van schoolbesturen en SIVON ontwikkeld en is sinds 1 oktober 2026 beschikbaar.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item js-faq-item" data-faq-search="voor wie is de open keuzecatalogus bedoeld en wie kan de informatie zien? de open keuzecatalogus is openbaar en voor iedereen toegankelijk. de catalogus is in de eerste plaats bedoeld voor lerarenteams die leermiddelen willen vinden, vergelijken en kiezen. daarnaast is de informatie relevant voor schoolbesturen, aanbieders van leermiddelen en andere organisaties die betrokken zijn bij de leermiddelenketen. bij de informatie over een leermiddel is duidelijk zichtbaar wat feitelijke productinformatie is, welke informatie van de aanbieder komt en welke informatie afkomstig is van docenten.">
+                        <h3 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#accFaq-1" aria-expanded="false"
+                                    aria-controls="accFaq-1">Voor wie is de Open Keuzecatalogus bedoeld en wie kan de informatie zien?
+                            </button>
+                        </h3>
+                        <div id="accFaq-1" class="accordion-collapse collapse" data-bs-parent="#accFaq">
+                            <div class="accordion-body d-flex flex-column gap-3">
+                                <p>De Open Keuzecatalogus is openbaar en voor iedereen toegankelijk.</p>
+                                <p>De catalogus is in de eerste plaats bedoeld voor lerarenteams die leermiddelen willen vinden, vergelijken en kiezen. Daarnaast is de informatie relevant voor schoolbesturen, aanbieders van leermiddelen en andere organisaties die betrokken zijn bij de leermiddelenketen.</p>
+                                <p>Bij de informatie over een leermiddel is duidelijk zichtbaar wat feitelijke productinformatie is, welke informatie van de aanbieder komt en welke informatie afkomstig is van docenten.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item js-faq-item" data-faq-search="wat kun je wel en niet met de open keuzecatalogus? de open keuzecatalogus ondersteunt het onderwijskundige keuzeproces. lerarenteams kunnen er leermiddelen vinden, vergelijken en beoordelen aan de hand van hun eigen wensen en onderwijsvisie. de catalogus is geen bestel-, contract- of inkoopplatform. bestellen en contracteren verlopen via bestaande kanalen en de eigen inkoopprocessen van scholen en schoolbesturen.">
+                        <h3 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#accFaq-2" aria-expanded="false"
+                                    aria-controls="accFaq-2">Wat kun je wel en niet met de Open Keuzecatalogus?
+                            </button>
+                        </h3>
+                        <div id="accFaq-2" class="accordion-collapse collapse" data-bs-parent="#accFaq">
+                            <div class="accordion-body d-flex flex-column gap-3">
+                                <p>De Open Keuzecatalogus ondersteunt het onderwijskundige keuzeproces. Lerarenteams kunnen er leermiddelen vinden, vergelijken en beoordelen aan de hand van hun eigen wensen en onderwijsvisie.</p>
+                                <p>De catalogus is geen bestel-, contract- of inkoopplatform. Bestellen en contracteren verlopen via bestaande kanalen en de eigen inkoopprocessen van scholen en schoolbesturen.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item js-faq-item" data-faq-search="wat zijn de 12 thema’s en hoe sluiten die aan op het slo kwaliteitskader? de 12 thema’s helpen scholen om inhoudelijk naar leermiddelen te kijken. per thema kan een aanbieder toelichten welke visie en ontwerpkeuzes achter een leermiddel zitten, bijvoorbeeld op het gebied van leerdoelen, differentiatie, ai, onafhankelijkheid en duurzaamheid. de eerste vijf thema’s zijn rechtstreeks gebaseerd op het kwaliteitskader leermiddelen van slo. hierdoor gebruiken scholen, aanbieders en andere betrokken partijen zoveel mogelijk dezelfde taal bij het beoordelen en vergelijken van leermiddelen.">
+                        <h3 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#accFaq-3" aria-expanded="false"
+                                    aria-controls="accFaq-3">Wat zijn de 12 thema’s en hoe sluiten die aan op het SLO Kwaliteitskader?
+                            </button>
+                        </h3>
+                        <div id="accFaq-3" class="accordion-collapse collapse" data-bs-parent="#accFaq">
+                            <div class="accordion-body d-flex flex-column gap-3">
+                                <p>De 12 thema’s helpen scholen om inhoudelijk naar leermiddelen te kijken. Per thema kan een aanbieder toelichten welke visie en ontwerpkeuzes achter een leermiddel zitten, bijvoorbeeld op het gebied van leerdoelen, differentiatie, AI, onafhankelijkheid en duurzaamheid.</p>
+                                <p>De eerste vijf thema’s zijn rechtstreeks gebaseerd op het Kwaliteitskader Leermiddelen van SLO. Hierdoor gebruiken scholen, aanbieders en andere betrokken partijen zoveel mogelijk dezelfde taal bij het beoordelen en vergelijken van leermiddelen.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- faq:preview:end -->
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="themes" class="okl-section okl-themes is-initial can-scroll-right">
+    <div class="container">
+        <div class="mb-10" style="max-width: 38.75rem" data-motion="reveal">
+            <p class="okl-eyebrow text-action">Inhoudelijke verdieping</p>
+            <h2 class="display-1 okl-pretty text-ink mb-4">
+                <span class="text-heading-alt">Twaalf thema&rsquo;s</span> maken de visie op leermiddelen concreet
+            </h2>
+            <p class="mb-0">
+                Op basis van theorie, eerdere pilots en concrete kaders, zoals die van SLO en SIVON, zijn 12 relevante thema's geïdentificeerd die lerarenteams en aanbieders helpen om elkaar te vinden op basis van hun visie.
+            </p>
+        </div>
+    </div>
+    <div class="okl-theme-rail-wrap">
+        <div class="okl-rail" id="okl-theme-rail" tabindex="0" role="group"
+             aria-label="Onderwijsthema&rsquo;s" data-motion-group="themes">
+            <article class="okl-card okl-theme-card okl-theme-card--default js-motion-item">
+                <p class="okl-eyebrow mb-2">Thema 1</p>
+                <h3 class="okl-theme-card__title mb-3">Leerdoelen en inhoud</h3>
+                <p class="okl-card__text mb-0">Een goed leermiddel maakt voor lerarenteams én leerlingen helder wat er geleerd wordt, op basis van correcte, actuele en coherent opgebouwde inhoud.</p>
+            </article>
+            <article class="okl-card okl-theme-card okl-theme-card--tangerine js-motion-item">
+                <p class="okl-eyebrow mb-2">Thema 2</p>
+                <h3 class="okl-theme-card__title mb-3">Didactiek en leerprocessen</h3>
+                <p class="okl-card__text mb-0">Een goed leermiddel ondersteunt het leerproces actief — het helpt leerlingen niet alleen stof tot zich nemen, maar ook verwerken, onthouden en er bewust mee omgaan.</p>
+            </article>
+            <article class="okl-card okl-theme-card okl-theme-card--wisteria js-motion-item">
+                <p class="okl-eyebrow mb-2">Thema 3</p>
+                <h3 class="okl-theme-card__title mb-3">Toegankelijkheid</h3>
+                <p class="okl-card__text mb-0">Een goed leermiddel is bruikbaar voor alle leerlingen — ongeacht beperking, ondersteuningsbehoefte of de plek waar ze leren.</p>
+            </article>
+            <article class="okl-card okl-theme-card okl-theme-card--anakiwa js-motion-item">
+                <p class="okl-eyebrow mb-2">Thema 4</p>
+                <h3 class="okl-theme-card__title mb-3">Inclusiviteit</h3>
+                <p class="okl-card__text mb-0">Een goed leermiddel weerspiegelt de diversiteit van de samenleving — alle leerlingen kunnen zichzelf herkennen in het materiaal.</p>
+            </article>
+            <article class="okl-card okl-theme-card okl-theme-card--jonquil js-motion-item">
+                <p class="okl-eyebrow mb-2">Thema 5</p>
+                <h3 class="okl-theme-card__title mb-3">Lerarenmateriaal</h3>
+                <p class="okl-card__text mb-0">Een goed leermiddel ondersteunt de leraar als professional — het maakt gemaakte keuzes transparant en biedt concrete handvatten voor voorbereiding, uitvoering en evaluatie.</p>
+            </article>
+            <article class="okl-card okl-theme-card okl-theme-card--tangerine-strong js-motion-item">
+                <p class="okl-eyebrow mb-2">Thema 6</p>
+                <h3 class="okl-theme-card__title mb-3">Belevingswereld en representatie</h3>
+                <p class="okl-card__text mb-0">Een goed leermiddel sluit aan bij de ervaringen en leefwereld van leerlingen — en laat zien dat hun wereld ertoe doet.</p>
+            </article>
+            <article class="okl-card okl-theme-card okl-theme-card--anakiwa-strong js-motion-item">
+                <p class="okl-eyebrow mb-2">Thema 7</p>
+                <h3 class="okl-theme-card__title mb-3">Flexibiliteit en combineerbaarheid</h3>
+                <p class="okl-card__text mb-0">Een goed leermiddel past in het onderwijs zoals scholen dat willen inrichten — het dwingt geen vaste route af maar biedt ruimte voor eigen keuzes.</p>
+            </article>
+            <article class="okl-card okl-theme-card okl-theme-card--default js-motion-item">
+                <p class="okl-eyebrow mb-2">Thema 8</p>
+                <h3 class="okl-theme-card__title mb-3">Rol van technologie</h3>
+                <p class="okl-card__text mb-0">Een goed leermiddel neemt een bewuste positie in op de rol van technologie — inclusief AI — in het leerproces van leerlingen.</p>
+            </article>
+            <article class="okl-card okl-theme-card okl-theme-card--tangerine js-motion-item">
+                <p class="okl-eyebrow mb-2">Thema 9</p>
+                <h3 class="okl-theme-card__title mb-3">Veiligheid en onafhankelijkheid</h3>
+                <p class="okl-card__text mb-0">Een goede aanbieder waarborgt de veiligheid van leerlingdata en respecteert de keuzevrijheid van scholen — zonder hen afhankelijk te maken van één systeem of platform.</p>
+            </article>
+            <article class="okl-card okl-theme-card okl-theme-card--wisteria js-motion-item">
+                <p class="okl-eyebrow mb-2">Thema 10</p>
+                <h3 class="okl-theme-card__title mb-3">Responsiviteit en co-creatie</h3>
+                <p class="okl-card__text mb-0">Een goede aanbieder staat in een lerende relatie met de scholen die zijn materiaal gebruiken — en past het doorlopend aan op basis van ervaringen uit de praktijk.</p>
+            </article>
+            <article class="okl-card okl-theme-card okl-theme-card--anakiwa js-motion-item">
+                <p class="okl-eyebrow mb-2">Thema 11</p>
+                <h3 class="okl-theme-card__title mb-3">Transparantie en integriteit</h3>
+                <p class="okl-card__text mb-0">Een goede aanbieder is open over kosten, contracten, businessmodel en het ontwikkelproces — en handelt integer in zijn relatie met scholen.</p>
+            </article>
+            <article class="okl-card okl-theme-card okl-theme-card--jonquil js-motion-item">
+                <p class="okl-eyebrow mb-2">Thema 12</p>
+                <h3 class="okl-theme-card__title mb-3">Verantwoord en duurzaam</h3>
+                <p class="okl-card__text mb-0">Een goede aanbieder neemt ketenverantwoordelijkheid voor de milieu-impact van zijn product — van grondstofwinning tot afdanking.</p>
+            </article>
+        </div>
+    </div>
+    <div class="container">
+        <div class="okl-rail-controls d-flex align-items-center justify-content-between gap-4 mt-10">
+            <div class="okl-slider-dots" role="group" aria-label="Kies een carrouselpositie"></div>
+            <div class="d-flex gap-2 okl-rail-buttons">
+                <button type="button" class="okl-rail-btn okl-rail-btn--prev is-unavailable"
+                        aria-label="Vorige thema&rsquo;s" aria-hidden="true" disabled></button>
+                <button type="button" class="okl-rail-btn okl-rail-btn--next"
+                        aria-label="Volgende thema&rsquo;s"></button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="okl-section okl-decor bg-brand text-white" id="planning" data-motion="timeline">
+    <img src="[[=STATIC('landing/images', 'okl-decor-roadmap.svg')]]"
+         alt="" class="okl-roadmap__decor okl-roadmap__decor--one" aria-hidden="true"
+         width="626" height="1024">
+    <img src="[[=STATIC('landing/images', 'okl-decor-roadmap.svg')]]"
+         alt="" class="okl-roadmap__decor okl-roadmap__decor--two" aria-hidden="true"
+         width="626" height="1024">
+    <div class="container position-relative">
+        <div class="text-center mb-20 mx-auto" style="max-width: 38rem" data-motion="reveal">
+            <p class="okl-eyebrow okl-kicker text-eyebrow-mint">In ontwikkeling</p>
+            <h2 class="display-1 mb-4">Wat gebeurt wanneer?</h2>
+            <p class="text-white mb-4">
+                We ontwikkelen de Open Keuzecatalogus in afstemming met scholen en aanbieders. Hieronder zie je wat we hebben gedaan en wat er op de planning staat.
+            </p>
+            <a href="mailto:openkeuzecatalogus@sivon.nl?subject=Aanmelding%20updates%20en%20meedenken%20Open%20Keuzecatalogus&amp;body=Hallo%20SIVON%2C%0A%0AIk%20wil%20mij%20graag%20aanmelden%20voor%20updates%20en%2Fof%20meedenken%20over%20de%20Open%20Keuzecatalogus%20Leermiddelen.%0A%0ANaam%3A%0AOrganisatie%3A%0ARol%3A%0AE-mailadres%3A%0A%0AMijn%20interesse%3A%0A%5B%20%5D%20Updates%20ontvangen%0A%5B%20%5D%20Meedenken%20over%20de%20verdere%20ontwikkeling%0A%5B%20%5D%20Beide%0A%0AToelichting%3A%0A" class="okl-btn okl-btn--on-dark">
+                <span class="okl-btn__label">Meld je aan voor updates en meedenken</span>
+                <span class="okl-btn__disc" aria-hidden="true"></span>
+            </a>
+        </div>
+        <div class="okl-timeline">
+            <div class="okl-timeline__row okl-timeline__row--right js-motion-item">
+                <div class="okl-timeline__slot okl-timeline__slot--left">
+                </div>
+                <div class="okl-timeline__dot" aria-hidden="true"><span></span></div>
+                <div class="okl-timeline__slot okl-timeline__slot--right">
+                    <article class="okl-card okl-milestone-card">
+                        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                            <span class="okl-milestone-card__month">NOVEMBER 2026</span>
+                            <span class="badge bg-amber-tint text-ink">To-do</span>
+                        </div>
+                        <p class="okl-milestone-card__title mb-2">Start verkenning PO</p>
+                        <p class="okl-card__text mb-0">We verkennen met PO scholen en besturen uit hele Nederland hoe de catalogus en de bijbehorende ondersteuning er voor hen uit moet zien.</p>
+                    </article>
+                </div>
+            </div>
+            <div class="okl-timeline__row okl-timeline__row--left js-motion-item">
+                <div class="okl-timeline__slot okl-timeline__slot--left">
+                    <article class="okl-card okl-milestone-card">
+                        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                            <span class="okl-milestone-card__month">OKTOBER 2026</span>
+                            <span class="badge bg-amber-tint text-ink">To-do</span>
+                        </div>
+                        <p class="okl-milestone-card__title mb-2">Start verzameling visie op 12 thema's van aanbieders</p>
+                        <p class="okl-card__text mb-0">We helpen de aanbieders om hun visie te formuleren m.b.t. <a href="#themes">de 12 thema's</a>.</p>
+                    </article>
+                </div>
+                <div class="okl-timeline__dot" aria-hidden="true"><span></span></div>
+                <div class="okl-timeline__slot okl-timeline__slot--right">
+                </div>
+            </div>
+            <div class="okl-timeline__row okl-timeline__row--right js-motion-item">
+                <div class="okl-timeline__slot okl-timeline__slot--left">
+                </div>
+                <div class="okl-timeline__dot" aria-hidden="true"><span></span></div>
+                <div class="okl-timeline__slot okl-timeline__slot--right">
+                    <article class="okl-card okl-milestone-card">
+                        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                            <span class="okl-milestone-card__month">OKTOBER 2026</span>
+                            <span class="badge bg-sky-tint text-ink">In progress</span>
+                        </div>
+                        <p class="okl-milestone-card__title mb-2">Start pilot visie-keuzemodule</p>
+                        <p class="okl-card__text mb-0">We testen de functionaliteit van de visie-keuzemodule met verschillende VO scholen uit heel Nederland.</p>
+                    </article>
+                </div>
+            </div>
+            <div class="okl-timeline__row okl-timeline__row--left js-motion-item">
+                <div class="okl-timeline__slot okl-timeline__slot--left">
+                    <article class="okl-card okl-milestone-card">
+                        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                            <span class="okl-milestone-card__month">OKTOBER 2026</span>
+                            <span class="badge bg-emerald-tint text-ink">Done</span>
+                        </div>
+                        <p class="okl-milestone-card__title mb-2">Eerste versie Open Keuzecatalogus Leermiddelen live</p>
+                        <p class="okl-card__text mb-0">De eerste versie van de catalogus wordt gelanceerd om lerarenteams te informeren en samen met aanbieders door te bouwen aan een platform dat werkt voor iedereen.</p>
+                    </article>
+                </div>
+                <div class="okl-timeline__dot" aria-hidden="true"><span></span></div>
+                <div class="okl-timeline__slot okl-timeline__slot--right">
+                </div>
+            </div>
+            <div class="okl-timeline__row okl-timeline__row--right js-motion-item">
+                <div class="okl-timeline__slot okl-timeline__slot--left">
+                </div>
+                <div class="okl-timeline__dot" aria-hidden="true"><span></span></div>
+                <div class="okl-timeline__slot okl-timeline__slot--right">
+                    <article class="okl-card okl-milestone-card">
+                        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                            <span class="okl-milestone-card__month">SEPTEMBER 2026</span>
+                            <span class="badge bg-emerald-tint text-ink">Done</span>
+                        </div>
+                        <p class="okl-milestone-card__title mb-2">Dashboard met dataoverzicht live</p>
+                        <p class="okl-card__text mb-0">Om aanbieders snel inzicht te geven in hun zichtbaarheid in de Open Keuzecatalogus Leermiddelen lanceren we een dashboard.</p>
+                    </article>
+                </div>
+            </div>
+            <div class="okl-timeline__row okl-timeline__row--left js-motion-item">
+                <div class="okl-timeline__slot okl-timeline__slot--left">
+                    <article class="okl-card okl-milestone-card">
+                        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                            <span class="okl-milestone-card__month">SEPTEMBER 2026</span>
+                            <span class="badge bg-emerald-tint text-ink">Done</span>
+                        </div>
+                        <p class="okl-milestone-card__title mb-2">Landingspagina live</p>
+                        <p class="okl-card__text mb-0">Vanaf nu informeert SIVON alle betrokkenen via deze landingspagina.</p>
+                    </article>
+                </div>
+                <div class="okl-timeline__dot" aria-hidden="true"><span></span></div>
+                <div class="okl-timeline__slot okl-timeline__slot--right">
+                </div>
+            </div>
+            <div class="okl-timeline__row okl-timeline__row--right js-motion-item">
+                <div class="okl-timeline__slot okl-timeline__slot--left">
+                </div>
+                <div class="okl-timeline__dot" aria-hidden="true"><span></span></div>
+                <div class="okl-timeline__slot okl-timeline__slot--right">
+                    <article class="okl-card okl-milestone-card">
+                        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                            <span class="okl-milestone-card__month">AUGUSTUS 2026</span>
+                            <span class="badge bg-emerald-tint text-ink">Done</span>
+                        </div>
+                        <p class="okl-milestone-card__title mb-2">MVP is opgeleverd</p>
+                        <p class="okl-card__text mb-0">De leverancier Stichting Education Warehouse heeft in co-creatie met het SIVON team de MVP opgeleverd t.b.v. testen en vullen.</p>
+                    </article>
+                </div>
+            </div>
+            <div class="okl-timeline__row okl-timeline__row--left js-motion-item">
+                <div class="okl-timeline__slot okl-timeline__slot--left">
+                    <article class="okl-card okl-milestone-card">
+                        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                            <span class="okl-milestone-card__month">JULI 2026</span>
+                            <span class="badge bg-emerald-tint text-ink">Done</span>
+                        </div>
+                        <p class="okl-milestone-card__title mb-2">Updates naar alle stakeholders</p>
+                        <p class="okl-card__text mb-0">Via de mail zijn alle stakeholders geïnformeerd over de voortgang en de werkwijze van SIVON rondom de Open Keuzecatalogus Leermiddelen. Geen mail ontvangen?
+                            <a href="mailto:openkeuzecatalogus@sivon.nl?subject=Aanmelding%20updates%20en%20meedenken%20Open%20Keuzecatalogus&amp;body=Hallo%20SIVON%2C%0A%0AIk%20wil%20mij%20graag%20aanmelden%20voor%20updates%20en%2Fof%20meedenken%20over%20de%20Open%20Keuzecatalogus%20Leermiddelen.%0A%0ANaam%3A%0AOrganisatie%3A%0ARol%3A%0AE-mailadres%3A%0A%0AMijn%20interesse%3A%0A%5B%20%5D%20Updates%20ontvangen%0A%5B%20%5D%20Meedenken%20over%20de%20verdere%20ontwikkeling%0A%5B%20%5D%20Beide%0A%0AToelichting%3A%0A">Meld je aan!</a></p>
+                    </article>
+                </div>
+                <div class="okl-timeline__dot" aria-hidden="true"><span></span></div>
+                <div class="okl-timeline__slot okl-timeline__slot--right">
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="okl-discussion okl-section" id="okl-discussion" aria-labelledby="discussion-title"
+         data-motion="discussion-timeline">
+    <div class="container">
+        <div class="text-center mx-auto mb-3" style="max-width: 46rem" data-motion="reveal">
+            <h2 class="display-1 mb-4" id="discussion-title">
+                De tijdlijn van de discussie
+                <span class="d-block text-action-strong">in beeld</span>
+            </h2>
+            <label class="okl-view-switch">
+                <span>Compact</span>
+                <input type="checkbox" class="visually-hidden" role="switch"
+                       aria-controls="okl-discussion-viewport">
+                <span class="okl-view-switch__control" aria-hidden="true">
+                    <span class="okl-view-switch__thumb"></span>
+                </span>
+                <span>Volledig</span>
+            </label>
+        </div>
+    </div>
+    <!-- Shared preview for the compact rail. Lives outside the scrolling
+         viewport so it is not clipped, and is filled from the hovered marker's
+         data attributes. Decorative: the marker's own aria-label carries the
+         same information for assistive technology. -->
+    <div class="okl-discussion__preview js-okl-marker-preview" aria-hidden="true">
+        <strong></strong>
+        <span></span>
+    </div>
+    <!-- Opening a contribution shows it here first rather than sending the
+         visitor straight off-site. The body is filled from the sidecar the
+         first time the dialog is used; until then the card's own summary
+         stands in, so the dialog is never empty. -->
+    <dialog class="okl-source-dialog js-okl-source-dialog"
+            aria-labelledby="okl-source-dialog-title">
+        <div class="okl-source-dialog__card">
+            <p class="okl-source-dialog__kicker">
+                <span class="okl-discussion__event-icon" aria-hidden="true"></span>
+                <span data-field="type"></span>
+            </p>
+            <h3 id="okl-source-dialog-title" data-field="title"></h3>
+            <p class="okl-source-dialog__meta" data-field="meta"></p>
+            <p class="okl-source-dialog__body" data-field="body"></p>
+            <div class="okl-source-dialog__actions">
+                <a class="okl-btn okl-btn--strong" data-field="link"
+                   target="_blank" rel="noopener noreferrer"
+                   aria-label="Open bron (opent in nieuw tabblad)">
+                    <span class="okl-btn__label">Open bron</span>
+                </a>
+                <button type="button" class="okl-source-dialog__close js-okl-dialog-close">
+                    Sluiten
+                </button>
+            </div>
+        </div>
+    </dialog>
+    <div class="okl-discussion__viewport" id="okl-discussion-viewport" tabindex="0" role="region"
+        aria-label="Tijdlijn van bijdragen per jaar en periode">
+        [[include 'components/discussion_timeline.html']]
+    </div>
+</section>
+
+<section class="okl-section--tight bg-mint" id="contact">
+    <div class="container okl-cta-banner-wrap">
+        <div class="okl-cta-banner okl-decor" data-motion="reveal">
+            <img src="[[=STATIC('landing/images', 'okl-decor-banner.svg')]]"
+                 alt="" class="okl-cta-banner__decor okl-cta-banner__decor--one" aria-hidden="true"
+                 width="384" height="628">
+            <img src="[[=STATIC('landing/images', 'okl-decor-banner.svg')]]"
+                 alt="" class="okl-cta-banner__decor okl-cta-banner__decor--two" aria-hidden="true"
+                 width="384" height="628">
+            <div class="position-relative" style="max-width: 44rem">
+                <h2 class="display-1 okl-pretty mb-4">
+                    <span class="text-highlight">Een relevante keuze</span> begint met betrouwbare informatie.
+                </h2>
+                <p class="text-white mb-4" style="line-height: 1.6">
+                    Volg de ontwikkeling, bekijk wat al vaststaat en lees wanneer de volgende mijlpaal wordt
+                    bereikt.
+                </p>
+                <a href="#planning" class="okl-btn okl-btn--on-dark">
+                    <span class="okl-btn__label">Bekijk planning</span>
+                    <span class="okl-btn__disc" aria-hidden="true"></span>
+                </a>
+            </div>
+        </div>
+        <div class="okl-cta-banner__portrait" aria-hidden="true" data-motion="cta-portrait">
+            <img src="[[=STATIC('landing/images', 'okl-student-banner.webp')]]"
+                 alt="" loading="lazy" width="327" height="682">
+        </div>
+    </div>
+</section>
+
+[[include 'components/landing_footer.html']]
+</div>
+
+</main>
+
+<script data-collect-dnt="true" async defer src="https://inzichtin-delen.meteddie.nl/latest.js"></script>
+<noscript>
+    <img src="https://inzichtin-delen.meteddie.nl/noscript.gif?collect-dnt=true" alt=""
+         referrerpolicy="no-referrer-when-downgrade"/>
+</noscript>
+
+[[end]]

@@ -1,0 +1,65 @@
+<section class="okl-catalog-page" data-catalog-rendered="true">
+    <header class="okl-catalog-hero">
+        <div class="okl-page-container okl-catalog-hero__inner">
+            <div>
+                <h1>Methodes &amp; Producten</h1>
+                [[if entity_kind == 'product':]]
+                <edwh-editable id="product-overview-introduction">
+                    <p class="okl-catalog-introduction">Vergelijk producten op vorm, prijsindicatie en aanvullende digitale mogelijkheden.</p>
+                </edwh-editable>
+                [[else:]]
+                <edwh-editable id="method-overview-introduction">
+                    <p class="okl-catalog-introduction">Bekijk methodes op onderwerp, onderwijslaag en beschikbare ondersteuning.</p>
+                </edwh-editable>
+                [[pass]]
+            </div>
+            <a class="okl-button okl-button--primary" href="#catalog-filters">Zoeken en filteren</a>
+        </div>
+    </header>
+
+    <div class="okl-page-container okl-catalog-layout">
+        <aside id="catalog-filters"
+               class="okl-catalog-filters"
+               hx-get="[[=filters_url]]"
+               hx-trigger="load"
+               hx-swap="innerHTML">
+            <div class="okl-skeleton" role="status">
+                <p class="okl-skeleton__label">Filters laden</p>
+                <span class="okl-skeleton__line col-7" aria-hidden="true"></span>
+                <span class="okl-skeleton__line col-12" aria-hidden="true"></span>
+                <span class="okl-skeleton__line col-10" aria-hidden="true"></span>
+            </div>
+        </aside>
+
+        <div class="okl-catalog-results-column">
+            [[if entity_kind == 'product':]]
+            <edwh-editable id="product-overview-summary">
+                <p class="okl-catalog-summary">Vergelijk productvormen, prijsindicaties en aanvullende digitale ondersteuning.</p>
+            </edwh-editable>
+            [[else:]]
+            <edwh-editable id="method-overview-summary">
+                <p class="okl-catalog-summary">Verken methodes op onderwerp, onderwijslaag en beschikbare materialen.</p>
+            </edwh-editable>
+            [[pass]]
+            <section id="[[=results_id]]"
+                 class="okl-catalog-results"
+                 tabindex="-1"
+                 aria-label="[[=entity_label]] zoekresultaten"
+                 aria-live="polite"
+                 hx-get="[[=results_url]]"
+                 hx-include=".edwh-state"
+                 hx-trigger="ew:state_changed from:closest .edwh-messagebus"
+                 hx-swap="innerHTML">
+            [[if entity_kind == 'product':]]
+            [[include 'htmx_product_results.html']]
+            [[else:]]
+            [[include 'htmx_method_results.html']]
+            [[pass]]
+            </section>
+        </div>
+    </div>
+
+    [[comparison_kind = entity_kind]]
+    [[comparison_label = entity_count_label]]
+    [[include 'components/comparison_tray.html']]
+</section>

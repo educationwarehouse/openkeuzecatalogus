@@ -1,0 +1,43 @@
+<section class="vstack gap-2">
+    [[if items:]]
+        [[for item in items:]]
+        <article class="border rounded p-3 d-flex align-items-center gap-3">
+            <div class="flex-grow-1">
+                <div class="small text-secondary text-uppercase">
+                    [[=item.entity_label]]
+                    [[if not item.available:]]
+                    <span class="badge text-bg-secondary ms-1">Niet meer beschikbaar</span>
+                    [[pass]]
+                </div>
+                [[if item.available:]]
+                <a class="fw-semibold"
+                   href="[[=URL('product' if item.entity_kind == 'product' else 'methode', item.entity_gid)]]">
+                    [[=item.name]]
+                </a>
+                [[else:]]
+                <span class="fw-semibold">[[=item.name]]</span>
+                [[pass]]
+            </div>
+            <button class="btn btn-sm btn-outline-secondary"
+                    type="button"
+                    hx-post="[[=URL('htmx/favorieten', item.entity_kind, item.entity_gid)]]"
+                    hx-vals='{"active": false}'
+                    hx-target="closest article"
+                    hx-swap="delete">
+                Verwijderen
+            </button>
+        </article>
+        [[pass]]
+    [[elif pagination['current_page'] == 1:]]
+    <p class="text-secondary mb-0">Nog geen favorieten in deze lijst.</p>
+    [[pass]]
+
+    [[if pagination['has_next_page'] and pagination['next_page'] is not None:]]
+    <div class="text-center py-3"
+         hx-get="[[=URL('htmx/favorieten', entity_kind, vars={'page': pagination['next_page']})]]"
+         hx-trigger="revealed"
+         hx-swap="outerHTML">
+        <span class="text-secondary">Meer laden…</span>
+    </div>
+    [[pass]]
+</section>

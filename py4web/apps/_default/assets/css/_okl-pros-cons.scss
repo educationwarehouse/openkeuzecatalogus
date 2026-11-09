@@ -1,0 +1,26 @@
+.wizard-plusminus-shell {
+    width: 100%;
+    margin: 0 auto;
+}
+
+.wizard-plusminus-shell .container {
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.wizard-plusminus-shell .plus-minus-form {
+    max-width: 100%;
+    margin: 0 0 2rem;
+}
+
+.wizard-plusminus-shell .plus-minus-form:last-of-type {
+    margin-bottom: 0;
+}
+
+@media (max-width: 767.98px) {
+    .wizard-plusminus-shell .product-card,
+    .wizard-plusminus-shell .pros-cons-box {
+        padding: 12px;
+    }
+}

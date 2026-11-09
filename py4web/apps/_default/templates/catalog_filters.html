@@ -1,0 +1,44 @@
+<div class="okl-catalog-filter-panel">
+    <nav class="okl-catalog-tabs" aria-label="Type leermiddelen"
+         hx-target=".okl-catalog-page" hx-select=".okl-catalog-page" hx-swap="outerHTML show:none">
+        <a href="[[=URL('methodes')]]" [[if active_kind == 'methode':]]aria-current="page"[[pass]]>Methodes</a>
+        <a href="[[=URL('producten')]]" [[if active_kind == 'product':]]aria-current="page"[[pass]]>Producten</a>
+    </nav>
+
+    <button class="okl-mobile-filter-toggle js-catalog-mobile-toggle"
+            type="button"
+            aria-controls="catalog-filter-controls"
+            aria-expanded="true"
+            hidden>
+        <span class="js-catalog-filter-toggle-label">Filters tonen</span>
+        <span class="okl-mobile-filter-count js-catalog-filter-count">0</span>
+        <i class="okl-icon okl-icon--caret-down" aria-hidden="true"></i>
+    </button>
+
+    <form class="edwh-state okl-filter-form js-catalog-filter-controls" id="catalog-filter-controls" hx-boost="false"
+          data-option-url="[[=URL('htmx/filter-options')]]"
+          data-catalog-rendered="true">
+        <div class="okl-filter-sort">
+            <label for="catalog-sort">Sorteren op</label>
+            <select class="form-select" id="catalog-sort" name="sort">
+                [[for value, option in resolved_filters.sort_options.items():]]
+                <option value="[[=value]]" [[if value == selected_sort:]]selected[[pass]]>[[=option.label]]</option>
+                [[pass]]
+            </select>
+        </div>
+
+        <input id="catalog-page" type="hidden" name="page" value="1">
+        <input id="catalog-view" type="hidden" name="view" value="list">
+
+        <div class="okl-filter-fields">
+            [[for filter in resolved_filters.filters:]]
+            <div class="okl-filter-field">[[=filter.render()]]</div>
+            [[pass]]
+        </div>
+
+        <div class="okl-filter-actions">
+            <button class="okl-button okl-button--primary okl-filter-show-results" type="submit">Bekijk resultaten</button>
+            <button class="okl-filter-reset" type="reset">Wis alle filters</button>
+        </div>
+    </form>
+</div>

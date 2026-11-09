@@ -1,0 +1,15 @@
+database_name: openkeuzecatalogus vanaf OL1
+sqlalchemy_uri: postgresql+psycopg2://postgres:XXXXXXXXXX@192.168.100.2:5435/backend
+cache_timeout: null
+expose_in_sqllab: true
+allow_run_async: false
+allow_ctas: false
+allow_cvas: false
+allow_dml: false
+allow_file_upload: false
+extra:
+  allows_virtual_table_explore: true
+impersonate_user: false
+configuration_method: dynamic_form
+uuid: 42bebfdb-2cdb-430c-9d79-7aaf41fa705f
+version: 1.0.0

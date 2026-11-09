@@ -1,82 +1,63 @@
-<div class="vstack gap-4">
-    [[pagination = rows.pagination]]
-    [[current_page = pagination['current_page']]]
-    [[total_pages = pagination['total_pages']]]
-    [[prev_page = pagination['prev_page']]]
-    [[next_page = pagination['next_page']]]
+[[pagination = rows.pagination]]
+[[current_page = pagination['current_page']]]
+[[total_pages = pagination['total_pages']]]
+[[prev_page = pagination['prev_page']]]
+[[next_page = pagination['next_page']]]
 
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-        <div>
-            <h2 class="h4 mb-1">Methoderesultaten</h2>
-            <p class="text-secondary mb-0">Openbaar overzicht van beschikbare methodes.</p>
-        </div>
-        <div class="d-flex align-items-center flex-wrap gap-3">
-            <span class="small text-secondary">
-                [[=pagination['total_items']]] methodes in beeld[[if active_filter_count:]] na [[=active_filter_count]] filter(s)[[pass]]
-            </span>
-            [[include 'components/catalog_view_toggle.html']]
-        </div>
-    </div>
+<div class="okl-catalog-results__header">
+    <h2>Methodes <span>[[=pagination['total_items']]] resultaten[[if active_filter_count:]] na [[=active_filter_count]] filter(s)[[pass]]</span></h2>
+    [[include 'components/catalog_view_toggle.html']]
+</div>
 
-    <div class="row g-3 catalog-results-grid [[='catalog-results-grid--list' if view_mode == 'list' else 'catalog-results-grid--grid']]">
-        [[for row in rows:]]
-        <div class="col-12 col-md-6 catalog-result-item">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body p-4">
-                    <div class="mb-3">
-                        <h3 class="h5 mb-1">[[=row.name or 'Onbenoemde methode']]</h3>
-                        <p class="text-secondary mb-0">[[=row.description or 'Geen beschrijving beschikbaar.']]</p>
-                    </div>
-                    <div class="vstack gap-2 small text-secondary">
-                        <div>
-                            <strong class="text-body">Onderwijslaag:</strong>
-                            [[=', '.join(row.levels) if row.levels else 'Niet opgegeven']]
-                        </div>
-                        <div>
-                            <strong class="text-body">Vakgebied:</strong>
-                            [[=', '.join(row.subjects) if row.subjects else 'Niet opgegeven']]
-                        </div>
-                        <div>
-                            <strong class="text-body">Richtprijs:</strong>
-                            [[=row.guide_price if row.guide_price is not None else 'Op aanvraag']]
-                        </div>
-                        <div>
-                            <strong class="text-body">Preview:</strong>
-                            [[=row.preview_digital_environment or 'Niet opgegeven']]
-                        </div>
-                        <div>
-                            <strong class="text-body">Producten:</strong>
-                            [[=len(row.products)]]
-                        </div>
-                    </div>
-                    <pre class="bg-body-tertiary border rounded p-3 mt-3 mb-0 small overflow-auto">[[=row.as_json()]]</pre>
-                </div>
-                <div class="card-footer bg-transparent border-0 pt-0 pb-4 px-4">
-                    <a class="btn btn-outline-dark btn-sm" href="[[=URL('methode', row.gid)]]">Bekijk methode</a>
-                    <label class="form-check-label ms-3">
-                        <input
-                                class="form-check-input comparison-selection"
-                                type="checkbox"
-                                data-comparison-kind="methode"
-                                data-comparison-gid="[[=row.gid]]"
-                                data-comparison-name="[[=row.name or 'Onbenoemde methode']]"
-                        >
-                        Vergelijk
-                    </label>
-                </div>
+<div class="catalog-results-grid [[='catalog-results-grid--list' if view_mode == 'list' else 'catalog-results-grid--grid']]">
+    [[for row in rows:]]
+    <article class="okl-catalog-card catalog-result-item">
+        <a class="okl-catalog-card__image" href="[[=URL('methode', row.gid)]]" tabindex="-1" aria-hidden="true">
+            [[if row.image_url:]]
+            <img class="js-okl-cover-image" src="[[=row.image_url]]" alt="" loading="lazy">
+            <i class="okl-icon okl-icon--book-open okl-cover-fallback" aria-hidden="true" hidden></i>
+            [[else:]]
+            <i class="okl-icon okl-icon--book-open" aria-hidden="true"></i>
+            [[pass]]
+        </a>
+        <div class="okl-catalog-card__body">
+            <div class="okl-catalog-card__heading">
+                <h3><a href="[[=URL('methode', row.gid)]]">[[=row.name or 'Onbekende methode']]</a></h3>
+                <p>[[=row.supplier.name if row.supplier else 'Aanbieder onbekend']] | [[=', '.join(row.levels) if row.levels else 'Niveau niet opgegeven']] | [[=', '.join(row.subjects) if row.subjects else 'Vakgebied niet opgegeven']]</p>
             </div>
+            <details class="okl-card-details">
+                <summary>Methode-informatie</summary>
+                <p>[[=row.description or 'Geen beschrijving beschikbaar.']]</p>
+                <dl class="okl-data-list">
+                    <div><dt>Richtprijs</dt><dd>[[=display_catalog_value(row.guide_price, entity_kind='method', field_name='guide_price') if row.guide_price is not None else 'Op aanvraag']]</dd></div>
+                    <div><dt>Preview</dt><dd>[[=display_catalog_value(row.preview_digital_environment)]]</dd></div>
+                    <div><dt>Producten</dt><dd>[[=len(row.products)]]</dd></div>
+                </dl>
+            </details>
+            <a class="[[='okl-text-action' if view_mode == 'list' else 'okl-button okl-button--primary']] okl-catalog-card__view" href="[[=URL('methode', row.gid)]]">Bekijk methode <i class="okl-icon okl-icon--arrow-right" aria-hidden="true"></i></a>
         </div>
-        [[pass]]
-        [[if not rows:]]
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body p-4 text-secondary">
-                    Er zijn nog geen openbare methodes beschikbaar.
-                </div>
-            </div>
-        </div>
-        [[pass]]
-    </div>
+        <label class="okl-compare-choice">
+            <input class="form-check-input comparison-selection"
+                   type="checkbox"
+                   aria-label="Vergelijk [[=row.name or 'Onbenoemde methode']]"
+                   data-comparison-kind="method"
+                   data-comparison-gid="[[=row.gid]]"
+                   data-comparison-name="[[=row.name or 'Onbekende methode']]">
+            <span>Vergelijk</span>
+        </label>
+    </article>
+    [[pass]]
 
+    [[if not rows:]]
+    <div class="okl-catalog-empty">
+        <h3>Geen methodes gevonden</h3>
+        <p>Probeer een andere zoekterm of verwijder een filter om meer methodes te vinden.</p>
+        <button type="reset" form="catalog-filter-controls" class="okl-button okl-button--primary">Wis alle filters</button>
+    </div>
+    [[pass]]
+</div>
+
+<div class="okl-catalog-pagination">
+    <span>Methodes op pagina [[=current_page]] van [[=total_pages or 1]]</span>
     [[include 'components/pagination.html']]
 </div>

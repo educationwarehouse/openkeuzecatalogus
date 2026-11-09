@@ -1,0 +1,7 @@
+[pytest]
+timeout = "120"
+timeout_method = "thread"
+required_plugins = ["pytest-timeout"]
+markers = [
+    "accessibility: advisory axe-core accessibility scans",
+]

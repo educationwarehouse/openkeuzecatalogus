@@ -1,0 +1,9 @@
+[[if isinstance(value, str) and value.startswith(('https://', 'http://')):]]
+<a class="okl-text-action" href="[[=value]]" target="_blank" rel="noopener noreferrer">
+    [[=comparison_link_label(field['name'], field['label'])]]
+    <i class="okl-icon okl-icon--arrow-right" aria-hidden="true"></i>
+    <span class="visually-hidden">(opent in een nieuw tabblad)</span>
+</a>
+[[else:]]
+[[=display_catalog_value(value, entity_kind=catalog_entity_kind, field_name=field['name'], compact_links=True)]]
+[[pass]]

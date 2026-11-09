@@ -1,0 +1,33 @@
+.okl-skeleton {
+    display: grid;
+    gap: 0.75rem;
+    padding-block: 0.5rem;
+}
+
+.okl-skeleton__label {
+    margin: 0 0 0.25rem;
+    color: var(--okl-neutral-600);
+    font-size: 0.875rem;
+}
+
+.okl-skeleton__line {
+    display: block;
+    height: 1rem;
+    border-radius: var(--okl-radius-sm);
+    background: var(--okl-neutral-200);
+    transition-property: none;
+}
+
+@media (forced-colors: active) {
+    .okl-skeleton__line {
+        border: 1px solid CanvasText;
+        background: Canvas;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .okl-app .spinner-border,
+    .okl-app .spinner-grow {
+        animation: none;
+    }
+}

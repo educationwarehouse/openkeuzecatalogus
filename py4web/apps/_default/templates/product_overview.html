@@ -1,74 +1,8 @@
 [[extend 'layout.html']]
-
-<section class="mb-5">
-    <div class="row g-4">
-        <div class="col-lg-7">
-            <span class="badge rounded-pill text-bg-warning-subtle text-warning-emphasis border border-warning-subtle mb-3">
-                Leermiddelen
-            </span>
-            <h1 class="display-5 fw-bold mb-3">Productoverzicht</h1>
-            <edwh-editable id="product-overview-introduction">
-                <p class="lead text-secondary mb-0">Vergelijk producten op vorm, prijsindicatie en aanvullende digitale
-                                                    mogelijkheden.</p>
-            </edwh-editable>
-        </div>
-        <div class="col-lg-5">
-            <div class="card border-0 bg-body-tertiary shadow-sm">
-                <div class="card-body p-4">
-                    <p class="text-uppercase small fw-semibold text-secondary mb-2">Overzicht</p>
-                    <edwh-editable id="product-overview-summary">
-                        <p class="mb-0 text-secondary">
-                            Vergelijk productvormen, prijsindicaties en aanvullende digitale ondersteuning.
-                        </p>
-                    </edwh-editable>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<aside class="comparison-tray shadow-lg" data-comparison-kind="product" hidden>
-    <div class="comparison-header">
-        <span class="small text-uppercase fw-semibold">Selectie</span>
-        <strong><span class="comparison-count">0</span> producten</strong>
-    </div>
-    <ul class="comparison-items list-unstyled mb-3"></ul>
-    <a class="btn btn-dark w-100 disabled comparison-link" aria-disabled="true">
-        Vergelijk geselecteerde producten
-    </a>
-</aside>
-
-<section class="row g-4 align-items-start">
-    <div class="col-12 col-lg-5 col-xxl-4">
-        <div
-                class="rounded-4 border border-warning-subtle bg-warning-subtle p-3"
-                hx-get="[[=URL('htmx/products/filters')]]"
-                hx-trigger="load"
-                hx-swap="innerHTML"
-        >
-            <div class="placeholder-glow">
-                <span class="placeholder col-6 mb-3"></span>
-                <span class="placeholder col-12 mb-2"></span>
-                <span class="placeholder col-11 mb-2"></span>
-                <span class="placeholder col-9"></span>
-            </div>
-        </div>
-    </div>
-    <div class="col-12 col-lg-7 col-xxl-8">
-        <div
-                id="product-results"
-                class="rounded-4 border bg-body p-3 shadow-sm"
-                hx-get="[[=URL('htmx/products/results')]]"
-                hx-include=".edwh-state"
-                hx-trigger="ew:state_changed from:closest .edwh-messagebus"
-                hx-swap="innerHTML"
-        >
-            <div class="placeholder-glow">
-                <span class="placeholder col-4 mb-3"></span>
-                <span class="placeholder col-12 mb-2"></span>
-                <span class="placeholder col-12 mb-2"></span>
-                <span class="placeholder col-8"></span>
-            </div>
-        </div>
-    </div>
-</section>
+[[entity_kind = 'product']]
+[[entity_label = 'Producten']]
+[[entity_count_label = 'producten']]
+[[results_id = 'product-results']]
+[[filters_url = URL('htmx/products/filters') + ('?' + request.query_string if request.query_string else '')]]
+[[results_url = URL('htmx/products/results')]]
+[[include 'catalog_overview.html']]

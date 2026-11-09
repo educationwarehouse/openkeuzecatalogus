@@ -1,0 +1,297 @@
+// =============================================================================
+// OKL → Bootstrap variable overrides
+// =============================================================================
+// Maps _brand-tokens.scss values to Bootstrap components and utilities.
+// Import order matters: bootstrap/functions → _brand-tokens → THIS FILE →
+// bootstrap/variables. Bootstrap declares its own values with `!default`, so
+// these overrides must be defined first.
+// =============================================================================
+
+@import "brand-bootstrap-colors";
+
+// -----------------------------------------------------------------------------
+// Body & surfaces. Brand ink is #1D1D1B, never pure black.
+// -----------------------------------------------------------------------------
+$body-bg: #fff;
+$body-color: $okl-ink;
+$body-secondary-color: $okl-text-muted; // card body copy
+$body-tertiary-color: $okl-text-subtle; // helper copy
+$body-secondary-bg: $okl-neutral-100;
+$body-tertiary-bg: $okl-neutral-50;
+
+// -----------------------------------------------------------------------------
+// Typography
+// -----------------------------------------------------------------------------
+$font-family-sans-serif: $okl-font-core;
+$font-size-base: 1rem; // 16px
+$line-height-base: 1.25;
+$line-height-sm: 1.4;
+$line-height-lg: 1.6;
+
+$font-weight-normal: 400;
+$font-weight-semibold: 600;
+$font-weight-bold: 700;
+
+// Headings use a bold weight and compact line height.
+$headings-font-weight: 700;
+$headings-line-height: $okl-lh-display;
+$headings-color: $okl-text-heading;
+$headings-margin-bottom: 0;
+
+// Preserve the specified type scale.
+$h1-font-size: $okl-text-display; // 48
+$h2-font-size: $okl-text-title; // 40
+$h3-font-size: $okl-text-h3; // 32
+$h4-font-size: $okl-text-h4; // 24
+$h5-font-size: $okl-text-h5; // 20
+$h6-font-size: $okl-text-h6; // 18
+
+// Keep .display-* within the brand type scale.
+$display-font-sizes: (
+    1: $okl-text-display,
+    2: $okl-text-title,
+    3: $okl-text-h3,
+    4: $okl-text-h4,
+    5: $okl-text-h5,
+    6: $okl-text-h6,
+);
+$display-font-weight: 700;
+$display-line-height: $okl-lh-display;
+
+$small-font-size: $okl-text-small;
+$lead-font-size: $okl-text-h5;
+$lead-font-weight: 400;
+$paragraph-margin-bottom: 0;
+
+// Bootstrap RFS scales large headings on narrow viewports.
+$enable-rfs: true;
+
+// -----------------------------------------------------------------------------
+// Spacing
+// -----------------------------------------------------------------------------
+// Keys 0–5 retain Bootstrap semantics to avoid changing existing templates.
+// Keys 6 and above extend the scale in 4px increments.
+$spacers: (
+    0: 0,
+    1: 0.25rem,
+    2: 0.5rem,
+    3: 1rem,
+    4: 1.5rem,
+    5: 3rem,
+    6: 24px,
+    8: 32px,
+    10: 40px,
+    14: 56px,
+    16: 64px,
+    20: 80px,
+    24: 96px,
+    28: 112px,
+);
+
+// The 1512px reference viewport uses 116px gutters and a 1280px content width.
+$container-max-widths: (
+    sm: 540px,
+    md: 720px,
+    lg: 960px,
+    xl: 1140px,
+    xxl: $okl-page-measure,
+);
+
+// -----------------------------------------------------------------------------
+// Shape
+// -----------------------------------------------------------------------------
+$border-color: $okl-border-hairline;
+$border-radius: $okl-radius-sm; // 8  — chips, inputs, icon tiles
+$border-radius-sm: 0.375rem;
+$border-radius-lg: $okl-radius-lg; // 16 — cards, bands, banners
+$border-radius-xl: $okl-radius-xl; // 24 — large panels
+$border-radius-xxl: $okl-radius-xl;
+$border-radius-pill: 999px;
+
+// Use drop shadows where white cards need separation from a white surface.
+$box-shadow-sm: $okl-shadow-card;
+$box-shadow: $okl-shadow-card-raised;
+$box-shadow-lg: $okl-shadow-card-raised;
+$enable-shadows: false; // components stay flat; separation comes from a hairline
+$enable-gradients: false;
+
+// -----------------------------------------------------------------------------
+// Bootstrap component transitions use restrained colour and opacity changes.
+// -----------------------------------------------------------------------------
+$transition-base: all $okl-duration-base $okl-ease-standard;
+// Bootstrap's default is 0.35s `ease`. The accordion panels on this page open
+// twenty to fifty pixels, and over that distance `ease` spends its second half
+// crawling a pixel per frame — the movement stalls in view rather than
+// arriving. The brand curve over 200ms is done before that sets in.
+$transition-collapse: height $okl-duration-base $okl-ease-standard;
+
+// -----------------------------------------------------------------------------
+// Links
+// -----------------------------------------------------------------------------
+$link-color: $okl-text-heading-alt; // sherwood-green-800
+$link-hover-color: $okl-action-strong; // tangerine-500
+$link-decoration: underline;
+$link-shade-percentage: 0%;
+
+// -----------------------------------------------------------------------------
+// Buttons
+// -----------------------------------------------------------------------------
+$btn-font-family: $okl-font-button;
+$btn-font-weight: 600;
+$btn-border-radius: $okl-radius-button;
+$btn-border-radius-sm: $okl-radius-button;
+$btn-border-radius-lg: $okl-radius-button;
+$btn-padding-y: 0.5rem;
+$btn-padding-x: 1.25rem;
+$btn-padding-y-sm: 0.25rem;
+$btn-padding-x-sm: 0.75rem;
+$btn-font-size-sm: $okl-text-meta;
+$btn-padding-y-lg: 0.75rem;
+$btn-padding-x-lg: 1.5rem;
+$btn-font-size-lg: 1rem;
+$btn-focus-width: 0.25rem;
+$btn-focus-box-shadow: 0 0 0 $btn-focus-width rgba($okl-action, 0.35);
+$btn-transition:
+    color $okl-duration-base $okl-ease-standard,
+    background-color $okl-duration-base $okl-ease-standard,
+    border-color $okl-duration-base $okl-ease-standard,
+    box-shadow $okl-duration-base $okl-ease-standard;
+$btn-disabled-opacity: 1; // the design uses a solid neutral-500 capsule instead
+
+// -----------------------------------------------------------------------------
+// Forms
+// -----------------------------------------------------------------------------
+$input-padding-y: $okl-control-padding-y;
+$input-padding-x: $okl-control-padding-x;
+$input-bg: #fff;
+$input-border-color: $okl-border-strong;
+$input-border-radius: $okl-radius-xl;
+$input-border-radius-sm: $okl-radius-xl;
+$input-border-radius-lg: $okl-radius-xl;
+$input-color: $okl-neutral-700;
+$input-placeholder-color: $okl-text-subtle;
+$input-focus-border-color: $okl-action;
+$input-focus-box-shadow: 0 0 0 0.25rem rgba($okl-action, 0.25);
+$form-label-font-weight: 700;
+$form-label-color: $okl-text-heading-alt;
+$form-check-input-checked-bg-color: $okl-action;
+$form-check-input-border: 1px solid $okl-border-strong;
+$form-check-input-focus-box-shadow: $input-focus-box-shadow;
+$form-select-border-radius: $okl-radius-xl;
+$form-select-focus-box-shadow: $input-focus-box-shadow;
+
+// -----------------------------------------------------------------------------
+// Cards
+// -----------------------------------------------------------------------------
+$card-spacer-y: 1.5rem;
+$card-spacer-x: 1.5rem;
+$card-border-width: 0;
+$card-border-radius: $okl-radius-lg;
+$card-inner-border-radius: $okl-radius-lg;
+$card-cap-bg: transparent;
+$card-cap-padding-y: 1.5rem;
+$card-bg: #fff;
+$card-title-spacer-y: 1rem;
+
+// -----------------------------------------------------------------------------
+// Accordion
+// -----------------------------------------------------------------------------
+$accordion-padding-y: 1rem;
+$accordion-padding-x: 1rem;
+$accordion-bg: transparent;
+$accordion-border-width: 0;
+$accordion-border-radius: $okl-radius-sm;
+$accordion-inner-border-radius: $okl-radius-sm;
+$accordion-body-padding-y: 0.5rem;
+$accordion-body-padding-x: 1rem;
+$accordion-button-color: $okl-ink;
+$accordion-button-bg: transparent;
+$accordion-button-active-bg: transparent;
+$accordion-button-active-color: $okl-ink;
+$accordion-button-focus-box-shadow: none;
+$accordion-icon-color: $okl-action;
+$accordion-icon-active-color: $okl-action;
+$accordion-icon-width: 1.25rem;
+$accordion-transition: transform $okl-duration-base $okl-ease-standard;
+
+// -----------------------------------------------------------------------------
+// Badges
+// -----------------------------------------------------------------------------
+$badge-font-size: $okl-text-small;
+$badge-font-weight: 600;
+$badge-padding-y: 0.25rem;
+$badge-padding-x: 0.75rem;
+$badge-border-radius: 999px;
+$badge-color: $okl-ink;
+
+// -----------------------------------------------------------------------------
+// Navs, navbar, dropdown, pagination, alerts, tables, offcanvas, modal
+// -----------------------------------------------------------------------------
+$navbar-padding-y: 1rem;
+$navbar-dark-color: rgba(255, 255, 255, 0.85);
+$navbar-dark-hover-color: #fff;
+$navbar-dark-active-color: #fff;
+$navbar-dark-brand-color: #fff;
+$nav-link-font-weight: 700;
+$nav-link-color: $okl-text-heading-alt;
+$nav-link-hover-color: $okl-action-strong;
+$nav-pills-border-radius: 999px;
+$nav-tabs-border-radius: $okl-radius-sm;
+
+$dropdown-border-color: $okl-border-hairline;
+$dropdown-border-radius: $okl-radius-sm;
+$dropdown-link-active-bg: $okl-surface-mint;
+$dropdown-link-active-color: $okl-ink;
+$dropdown-link-hover-bg: $okl-surface-mint-subtle;
+$dropdown-box-shadow: $okl-shadow-card-raised;
+
+$pagination-border-radius: 999px;
+$pagination-color: $okl-text-heading-alt;
+$pagination-hover-color: $okl-action-strong;
+$pagination-hover-bg: $okl-surface-mint-subtle;
+$pagination-border-width: 0;
+$pagination-focus-box-shadow: $input-focus-box-shadow;
+
+$alert-border-radius: $okl-radius-lg;
+$alert-border-width: 0;
+$alert-padding-y: 1rem;
+$alert-padding-x: 1rem;
+
+$table-border-color: $okl-border-hairline;
+$table-striped-bg: $okl-neutral-50;
+$table-hover-bg: $okl-surface-mint-subtle;
+$table-cell-padding-y: 0.75rem;
+
+$modal-content-border-radius: $okl-radius-lg;
+$modal-content-border-width: 0;
+$modal-content-box-shadow-xs: $okl-shadow-card-raised;
+$modal-content-box-shadow-sm-up: $okl-shadow-card-raised;
+
+$offcanvas-border-width: 0;
+$offcanvas-box-shadow: $okl-shadow-card-raised;
+
+$toast-border-radius: $okl-radius-lg;
+$toast-border-width: 0;
+$toast-box-shadow: $okl-shadow-card-raised;
+
+$popover-border-radius: $okl-radius-sm;
+$popover-border-color: $okl-border-hairline;
+$tooltip-border-radius: $okl-radius-sm;
+$tooltip-bg: $sherwood-green-900;
+$tooltip-opacity: 1;
+
+$progress-border-radius: 999px;
+$progress-bg: $okl-neutral-200;
+
+$list-group-border-color: $okl-border-hairline;
+$list-group-border-radius: $okl-radius-sm;
+$list-group-active-bg: $okl-surface-mint;
+$list-group-active-color: $okl-ink;
+$list-group-active-border-color: $okl-surface-mint;
+
+$breadcrumb-divider-color: $okl-text-subtle;
+$breadcrumb-active-color: $okl-text-muted;
+$breadcrumb-font-size: $okl-text-small;
+
+$focus-ring-color: rgba($okl-action, 0.35);
+$focus-ring-width: 0.25rem;

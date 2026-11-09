@@ -1,0 +1,113 @@
+[[okl_navigation = locals().get('okl_navigation') or (navigation_context() if 'navigation_context' in locals() else {'section': '', 'label': 'Menu', 'current': 'location'})]]
+[[okl_navigation_auth = locals().get('auth')]]
+[[okl_navigation_user = okl_navigation_auth.get_user() if okl_navigation_auth else None]]
+[[okl_navigation_label = (okl_navigation_user.full_name if okl_navigation_user else '') or locals().get('user_label') or '']]
+[[okl_navigation_impersonating = okl_navigation_auth.is_impersonating() if okl_navigation_auth else False]]
+<div class="okl-navigation">
+    <nav class="okl-navigation__fallback" aria-label="Hoofdnavigatie">
+        <a href="/" [[if okl_navigation['section'] == 'home':]]aria-current="[[=okl_navigation['current']]]"[[pass]]>Home</a>
+        <a href="/producten" [[if okl_navigation['section'] == 'catalogue':]]aria-current="[[=okl_navigation['current']]]"[[pass]]>Catalogus</a>
+        <a href="/private/keuzecanvas" [[if okl_navigation['section'] == 'vision':]]aria-current="[[=okl_navigation['current']]]"[[pass]]>Visie-keuzemodule</a>
+        <details class="okl-navigation__dropdown">
+            <summary>Over het platform</summary>
+            <nav aria-label="Over het platform">
+                <a href="/#waarom">Over de Open Keuzecatalogus</a>
+                <a href="/faq" [[if okl_navigation['section'] == 'faq':]]aria-current="[[=okl_navigation['current']]]"[[pass]]>Veelgestelde vragen</a>
+                <a href="/#planning">Volg de ontwikkeling</a>
+                <a href="/#contact">Contact</a>
+            </nav>
+        </details>
+        [[if okl_navigation_user or okl_navigation_label:]]
+        [[if okl_navigation['section'] == 'catalogue':]]
+        <details class="okl-navigation__dropdown okl-navigation__favorites">
+            <summary><i class="okl-icon okl-icon--star" aria-hidden="true"></i>Favorieten</summary>
+            <nav aria-label="Mijn favorieten">
+                <div hx-get="[[=URL('htmx/favorieten/recent', use_appname=False)]]"
+                     hx-trigger="toggle[target.open] from:closest details, ew:favorites_changed from:body"
+                     hx-swap="innerHTML">
+                    <p class="okl-favorites-recent__empty">Favorieten laden...</p>
+                </div>
+            </nav>
+        </details>
+        [[pass]]
+        <details class="okl-navigation__dropdown">
+            <summary>Mijn account[[if okl_navigation_impersonating:]] (impersonatie)[[pass]]</summary>
+            <nav aria-label="Mijn account">
+                <a href="/auth/profile" [[if okl_navigation['section'] == 'account':]]aria-current="[[=okl_navigation['current']]]"[[pass]]>Mijn profiel</a>
+                [[if okl_navigation_auth and okl_navigation_auth.is_admin():]]
+                <a href="/admin" [[if okl_navigation['section'] == 'admin':]]aria-current="[[=okl_navigation['current']]]"[[pass]]>Beheer</a>
+                [[pass]]
+                [[if okl_navigation_impersonating:]]
+                <a href="[[=URL('admin', 'stop_impersonate', use_appname=False)]]">Impersonatie stoppen</a>
+                [[pass]]
+                <a href="/auth/logout">Uitloggen</a>
+            </nav>
+        </details>
+        [[else:]]
+        <a href="/auth/login" [[if okl_navigation['section'] == 'account':]]aria-current="[[=okl_navigation['current']]]"[[pass]]>Inloggen</a>
+        [[pass]]
+    </nav>
+    <div class="okl-navigation__backdrop" aria-hidden="true" hidden></div>
+    <div class="okl-navigation__drawer" id="okl-navigation-drawer" hidden inert>
+        <div class="okl-navigation__panel">
+            <div class="okl-navigation__top">
+                <div>
+                    <p class="okl-navigation__eyebrow">Open Keuzecatalogus Leermiddelen</p>
+                    <h2 id="okl-navigation-title">Menu</h2>
+                </div>
+            </div>
+            <nav class="okl-navigation__primary" aria-label="Hoofdnavigatie">
+                <a class="okl-navigation__destination" href="/" [[if okl_navigation['section'] == 'home':]]aria-current="[[=okl_navigation['current']]]"[[pass]]>
+                    <span><strong>Home</strong><small>Ontdek de Open Keuzecatalogus</small></span>
+                    <span class="okl-navigation__current">Je bent hier</span>
+                </a>
+                <a class="okl-navigation__destination" href="/producten" [[if okl_navigation['section'] == 'catalogue':]]aria-current="[[=okl_navigation['current']]]"[[pass]]>
+                    <span><strong>Catalogus</strong><small>Vind en vergelijk leermiddelen</small></span>
+                    <span class="okl-navigation__current">Je bent hier</span>
+                </a>
+                <a class="okl-navigation__destination" href="/private/keuzecanvas" [[if okl_navigation['section'] == 'vision':]]aria-current="[[=okl_navigation['current']]]"[[pass]]>
+                    <span><strong>Visie-keuzemodule</strong><small>Werk samen aan jullie keuzetraject</small></span>
+                    <span class="okl-navigation__current">Je bent hier</span>
+                </a>
+            </nav>
+            <nav class="okl-navigation__secondary" aria-label="Over het platform">
+                <a href="/#waarom">Over de Open Keuzecatalogus</a>
+                <a href="/faq" [[if okl_navigation['section'] == 'faq':]]aria-current="[[=okl_navigation['current']]]"[[pass]]>Veelgestelde vragen</a>
+                <a href="/#planning">Volg de ontwikkeling</a>
+                <a href="/#contact">Contact</a>
+            </nav>
+            <div class="okl-navigation__account">
+                [[if okl_navigation_user or okl_navigation_label:]]
+                <p class="okl-navigation__eyebrow">Ingelogd als</p>
+                <p class="okl-navigation__user">[[=okl_navigation_label or okl_navigation_user.email]]</p>
+                [[if okl_navigation_impersonating:]]
+                <p class="okl-navigation__impersonation">Je gebruikt momenteel het account van een andere gebruiker.</p>
+                [[pass]]
+                [[if okl_navigation['section'] == 'catalogue':]]
+                <section class="okl-navigation__favorites-panel" aria-labelledby="okl-navigation-favorites-title">
+                    <h3 id="okl-navigation-favorites-title" class="okl-navigation__eyebrow">Mijn favorieten</h3>
+                    <div hx-get="[[=URL('htmx/favorieten/recent', use_appname=False)]]"
+                         hx-trigger="intersect, ew:favorites_changed from:body"
+                         hx-swap="innerHTML">
+                        <p class="okl-favorites-recent__empty">Favorieten laden...</p>
+                    </div>
+                </section>
+                [[pass]]
+                <nav aria-label="Mijn account">
+                    <a href="/auth/profile" [[if okl_navigation['section'] == 'account':]]aria-current="[[=okl_navigation['current']]]"[[pass]]>Mijn profiel</a>
+                    [[if okl_navigation_auth and okl_navigation_auth.is_admin():]]
+                    <a href="/admin" [[if okl_navigation['section'] == 'admin':]]aria-current="[[=okl_navigation['current']]]"[[pass]]>Beheer</a>
+                    [[pass]]
+                    [[if okl_navigation_impersonating:]]
+                    <a href="[[=URL('admin', 'stop_impersonate', use_appname=False)]]">Impersonatie stoppen</a>
+                    [[pass]]
+                    <a href="/auth/logout">Uitloggen</a>
+                </nav>
+                [[else:]]
+                <a class="okl-navigation__login" href="/auth/login">Inloggen</a>
+                <p>Ga verder met jullie keuzetraject.</p>
+                [[pass]]
+            </div>
+        </div>
+    </div>
+</div>

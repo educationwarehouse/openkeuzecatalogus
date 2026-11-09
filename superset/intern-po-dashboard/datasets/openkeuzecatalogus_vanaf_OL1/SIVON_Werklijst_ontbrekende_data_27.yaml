@@ -1,0 +1,123 @@
+table_name: SIVON Werklijst ontbrekende data
+main_dttm_col: null
+currency_code_column: null
+description: null
+default_endpoint: null
+offset: 0
+cache_timeout: null
+catalog: backend
+schema: public
+sql: "SELECT\n   IF fix_url <> '#' THEN '<a href=\"'||fix_url||'\" target=\"_blank\"\
+  >Locatie zonder organisatie</a>' else 'Locatie zonder organisatie' END\n  , location_gid\n\
+  \  , location_name \n  , brin\n  , vestigingscode\n  , city\nFROM locations_without_organisation_mapping_report_v1\n\
+  UNION ALL\nSELECT\n     IF fix_url <> '#' THEN '<a href=\"'||fix_url||'\" target=\"\
+  _blank\">Locatie zonder brin vestiging</a>' ELSE 'Locatie zonder brin vestiging'\
+  \ END\n  , location_gid\n  , location_name \n  , brin\n  , vestigingscode\n  , city\n\
+  FROM locations_without_brin_vest_code_report_v1\nUNION ALL\nSELECT\n     IF fix_url\
+  \ <> '#' THEN '<a href=\"'||fix_url||'\" target=\"_blank\">School zonder homepage</a>'\
+  \ ELSE 'School zonder homepage' END\n  , school_gid \n  , school_name \n  , brin\
+  \ \n  , null as vestigingscode\n  , city \nFROM schools_without_homepage_url_report_v1\n\
+  UNION ALL\nSELECT\n     IF fix_url <> '#' THEN '<a href=\"'||fix_url||'\" target=\"\
+  _blank\">School zonder email domein</a>' ELSE 'School zonder email domein' END\n\
+  \  , school_gid \n  , school_name \n  , brin \n  , null as vestigingscode\n  , city\
+  \ \nFROM schools_without_email_domain_report_v1"
+params: null
+template_params: null
+filter_select_enabled: true
+fetch_values_predicate: null
+extra: null
+normalize_columns: false
+always_filter_main_dttm: false
+folders: null
+uuid: 62a2470a-648c-4817-9d6a-c7bbd079c167
+metrics:
+- metric_name: count
+  verbose_name: COUNT(*)
+  metric_type: count
+  expression: COUNT(*)
+  description: null
+  d3format: null
+  currency: null
+  extra: null
+  warning_text: null
+columns:
+- column_name: location_name
+  verbose_name: null
+  is_dttm: false
+  is_active: true
+  type: STRING
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: ''
+  description: null
+  python_date_format: null
+  datetime_format: null
+  extra: null
+- column_name: location_gid
+  verbose_name: null
+  is_dttm: false
+  is_active: true
+  type: STRING
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: ''
+  description: null
+  python_date_format: null
+  datetime_format: null
+  extra: null
+- column_name: case
+  verbose_name: null
+  is_dttm: false
+  is_active: true
+  type: STRING
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: ''
+  description: null
+  python_date_format: null
+  datetime_format: null
+  extra: null
+- column_name: brin
+  verbose_name: null
+  is_dttm: false
+  is_active: true
+  type: STRING
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: ''
+  description: null
+  python_date_format: null
+  datetime_format: null
+  extra: null
+- column_name: vestigingscode
+  verbose_name: null
+  is_dttm: false
+  is_active: true
+  type: STRING
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: ''
+  description: null
+  python_date_format: null
+  datetime_format: null
+  extra: null
+- column_name: city
+  verbose_name: null
+  is_dttm: false
+  is_active: true
+  type: STRING
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: ''
+  description: null
+  python_date_format: null
+  datetime_format: null
+  extra: null
+version: 1.0.0
+database_uuid: 42bebfdb-2cdb-430c-9d79-7aaf41fa705f

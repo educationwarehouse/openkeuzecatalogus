@@ -1,0 +1,264 @@
+.capsule-dropdown {
+    position: relative;
+}
+
+.capsule-dropdown .btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: var(--okl-control-height);
+    padding: var(--okl-control-padding-y) var(--okl-control-padding-x);
+    border: 1px solid var(--okl-neutral-200);
+    border-radius: var(--okl-radius-xl);
+    background: #fff;
+    color: var(--okl-dark-grey);
+    text-align: left;
+}
+
+.capsule-dropdown .btn[aria-expanded="true"] {
+    border-color: $warning;
+    border-bottom-color: transparent;
+    border-radius: 1.5rem 1.5rem 0 0;
+}
+
+.capsule-dropdown .btn:has(.selected-pill) {
+    padding: 6px 16px 6px 6px;
+}
+
+.capsule-dropdown .dropdown-toggle::after {
+    display: none;
+}
+
+.capsule-dropdown .selected-text {
+    display: flex;
+    flex: 1;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    min-height: 1.5rem;
+    margin-right: 0.75rem;
+    min-width: 0;
+    align-items: center;
+}
+
+.capsule-dropdown .selected-text.is-placeholder {
+    display: block;
+    color: $gray-600;
+}
+
+.capsule-dropdown .dropdown-icon {
+    width: 1rem;
+    height: 1rem;
+    flex: 0 0 1rem;
+    background-color: currentColor;
+    mask: url("/static/icons/caret-down.svg") center / contain no-repeat;
+}
+.capsule-dropdown .dropdown-icon,
+.capsule-dropdown .okl-icon--caret-down {
+    transition: transform var(--okl-motion-normal) var(--okl-motion-ease);
+}
+.capsule-dropdown .btn[aria-expanded="true"] :is(.dropdown-icon, .okl-icon--caret-down) {
+    transform: rotate(180deg);
+}
+
+.capsule-dropdown .selected-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+    max-width: 100%;
+    border: 1px solid var(--okl-tangerine-500);
+    border-radius: 9999px;
+    background: var(--okl-tangerine-50);
+    min-height: 34px;
+    padding: 4px 10px;
+}
+
+.capsule-dropdown .selected-pill-label {
+    color: var(--okl-action-text);
+    font-weight: 600;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.capsule-dropdown .selected-pill-remove {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    flex: 0 0 1.5rem;
+    border: 0;
+    border-radius: 9999px;
+    color: var(--okl-action-text);
+    font-size: 0;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.capsule-dropdown .selected-pill-remove::before {
+    content: "";
+    position: absolute;
+    inset: 0.1875rem;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+}
+
+.capsule-dropdown .selected-pill-remove::after {
+    content: "";
+    width: 0.75rem;
+    height: 0.75rem;
+    background: currentColor;
+    mask: url("/static/icons/x.svg") center / contain no-repeat;
+}
+
+.capsule-dropdown-menu {
+    display: none;
+    position: absolute;
+    inset: calc(100% - 1px) 0 auto 0;
+    z-index: 1000;
+    min-width: 100%;
+    padding: 0;
+    border: 1px solid $warning;
+    border-top: none;
+    border-radius: 0 0 1.5rem 1.5rem;
+    background: $body-bg;
+    box-shadow: $box-shadow;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.capsule-dropdown-menu.show {
+    display: block;
+}
+
+.capsule-search-container {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    border-bottom: 1px solid $border-color;
+    background: $body-bg;
+}
+
+.capsule-dropdown .capsule-search-input {
+    width: 100%;
+    padding: var(--okl-control-padding-y) var(--okl-control-padding-x);
+    border: none;
+    outline: none;
+    background: #fff;
+    box-shadow: none;
+}
+
+.search-results {
+    max-height: min(18rem, 45vh);
+    overflow-y: auto;
+}
+
+.capsule-dropdown .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: var(--okl-control-padding-y) var(--okl-control-padding-x);
+    cursor: pointer;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.capsule-dropdown .dropdown-item:hover,
+.capsule-dropdown .dropdown-item:focus-visible,
+.capsule-dropdown .dropdown-item:focus-within {
+    background: var(--okl-tangerine-50);
+}
+
+.capsule-dropdown .dropdown-item:focus-visible {
+    outline: 2px solid var(--okl-focus-color);
+    outline-offset: -3px;
+}
+
+.capsule-dropdown .dropdown-item.selected {
+    background: var(--okl-tangerine-50);
+}
+
+.capsule-dropdown .dropdown-item .form-check-input {
+    margin-top: 0;
+    flex-shrink: 0;
+}
+
+.capsule-dropdown .item-label {
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+}
+
+.capsule-dropdown-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--okl-control-padding-y) var(--okl-control-padding-x);
+    border-top: 1px solid $border-color;
+    background: $body-bg;
+}
+
+.capsule-dropdown .selected-count {
+    color: $gray-600;
+}
+
+.capsule-dropdown .close-dropdown-btn {
+    border: 1px solid $warning-text-emphasis;
+    border-radius: 9999px;
+    background: $warning;
+    color: $body-color;
+    padding: 0.35rem 0.9rem;
+    font-weight: 600;
+}
+
+.capsule-dropdown .capsule-search-input:focus-visible {
+    outline: 2px solid var(--okl-tangerine-500);
+    outline-offset: -2px;
+}
+.capsule-dropdown .dropdown-item[aria-disabled="true"] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.capsule-dropdown-menu {
+    transform-origin: top;
+}
+.capsule-dropdown > .btn:focus-visible {
+    outline: 3px solid var(--okl-focus-color);
+    outline-offset: 3px;
+}
+.okl-select__native {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    opacity: 0;
+    pointer-events: none;
+}
+.okl-select .capsule-dropdown-menu {
+    max-height: min(22rem, 45vh);
+    overflow-y: auto;
+}
+.okl-select .dropdown-item {
+    white-space: normal;
+}
+@media (prefers-reduced-motion: no-preference) {
+    .capsule-dropdown-menu.show {
+        animation: okl-dropdown-open var(--okl-motion-normal) var(--okl-motion-ease);
+    }
+}
+@keyframes okl-dropdown-open {
+    from {
+        opacity: 0;
+        scale: 1 0.96;
+    }
+    to {
+        opacity: 1;
+        scale: 1;
+    }
+}

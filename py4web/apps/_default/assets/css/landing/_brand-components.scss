@@ -1,0 +1,3474 @@
+// =============================================================================
+// OKL brand components
+// =============================================================================
+// Import after Bootstrap so its mixins are available and component overrides
+// follow Bootstrap's generated rules. Prefer Bootstrap variables and utilities
+// when they can express the required result.
+// =============================================================================
+
+$okl-page-gutter: $grid-gutter-width * 0.5;
+$okl-icon-arrow-right: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M221.66 133.66l-72 72a8 8 0 0 1-11.32-11.32L196.69 136H40a8 8 0 0 1 0-16h156.69l-58.35-58.34a8 8 0 0 1 11.32-11.32l72 72a8 8 0 0 1 0 11.32Z'/%3E%3C/svg%3E");
+$okl-icon-arrow-left: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M224 128a8 8 0 0 1-8 8H59.31l58.35 58.34a8 8 0 0 1-11.32 11.32l-72-72a8 8 0 0 1 0-11.32l72-72a8 8 0 0 1 11.32 11.32L59.31 120H216a8 8 0 0 1 8 8Z'/%3E%3C/svg%3E");
+$okl-icon-check-bold: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M232.49 80.49l-128 128a12 12 0 0 1-17 0l-56-56a12 12 0 1 1 17-17L96 183 215.51 63.51a12 12 0 0 1 17 17Z'/%3E%3C/svg%3E");
+$okl-icon-x: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M208.49 191.51a12 12 0 0 1-17 17L128 145l-63.51 63.49a12 12 0 0 1-17-17L111 128 47.51 64.49a12 12 0 0 1 17-17L128 111l63.51-63.5a12 12 0 0 1 17 17L145 128Z'/%3E%3C/svg%3E");
+$okl-icon-magnifying-glass: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M229.66 218.34l-50.07-50.06a88.11 88.11 0 1 0-11.31 11.31l50.06 50.07a8 8 0 0 0 11.32-11.32ZM40 112a72 72 0 1 1 72 72 72.08 72.08 0 0 1-72-72Z'/%3E%3C/svg%3E");
+$okl-icon-users-three: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M244.8 150.4a8 8 0 0 1-11.2-1.6A51.6 51.6 0 0 0 192 128a8 8 0 0 1 0-16 24 24 0 1 0-23.24-30 8 8 0 1 1-15.5-4A40 40 0 1 1 219 117.51a67.94 67.94 0 0 1 27.4 21.68 8 8 0 0 1-1.6 11.21ZM190.92 212a8 8 0 1 1-13.84 8 57 57 0 0 0-98.16 0 8 8 0 1 1-13.84-8 72.06 72.06 0 0 1 33.74-29.92 48 48 0 1 1 58.36 0A72.06 72.06 0 0 1 190.92 212ZM128 176a32 32 0 1 0-32-32 32 32 0 0 0 32 32ZM72 120a8 8 0 0 0-8-8 24 24 0 1 1 23.24-30 8 8 0 1 0 15.5-4A40 40 0 1 0 37 117.51a67.94 67.94 0 0 0-27.4 21.68 8 8 0 0 0 12.8 9.61A51.6 51.6 0 0 1 64 128a8 8 0 0 0 8-8Z'/%3E%3C/svg%3E");
+$okl-icon-envelope: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M224 48H32a8 8 0 0 0-8 8v136a16 16 0 0 0 16 16h176a16 16 0 0 0 16-16V56a8 8 0 0 0-8-8Zm-96 85.15L52.57 64h150.86ZM98.71 128L40 181.81V74.19Zm11.84 10.85L122.55 150a8 8 0 0 0 10.9 0l12-11.15 50 45.15H60.57ZM157.29 128L216 74.18v107.64Z'/%3E%3C/svg%3E");
+$okl-icon-globe: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2.25C10.0716 2.25 8.18657 2.82183 6.58319 3.89317C4.97981 4.96452 3.73013 6.48726 2.99217 8.26884C2.25422 10.0504 2.06114 12.0108 2.43734 13.9021C2.81355 15.7934 3.74215 17.5307 5.10571 18.8943C6.46927 20.2579 8.20655 21.1865 10.0979 21.5627C11.9892 21.9389 13.9496 21.7458 15.7312 21.0078C17.5127 20.2699 19.0355 19.0202 20.1068 17.4168C21.1782 15.8134 21.75 13.9284 21.75 12C21.747 9.41505 20.7188 6.93683 18.891 5.109C17.0632 3.28116 14.5849 2.25298 12 2.25ZM20.25 12C20.2507 12.7608 20.1456 13.5181 19.9378 14.25H16.3275C16.5575 12.7588 16.5575 11.2412 16.3275 9.75H19.9378C20.1456 10.4819 20.2507 11.2392 20.25 12ZM9.5625 15.75H14.4375C13.9572 17.3237 13.1235 18.7667 12 19.9688C10.8769 18.7664 10.0433 17.3235 9.5625 15.75ZM9.19687 14.25C8.93938 12.7611 8.93938 11.2389 9.19687 9.75H14.8106C15.0681 11.2389 15.0681 12.7611 14.8106 14.25H9.19687ZM3.75 12C3.74935 11.2392 3.85441 10.4819 4.06219 9.75H7.6725C7.4425 11.2412 7.4425 12.7588 7.6725 14.25H4.06219C3.85441 13.5181 3.74935 12.7608 3.75 12ZM14.4375 8.25H9.5625C10.0428 6.67632 10.8765 5.2333 12 4.03125C13.1231 5.23361 13.9567 6.67653 14.4375 8.25ZM19.3434 8.25H16.0041C15.5832 6.70585 14.8738 5.25532 13.9134 3.975C15.0738 4.25375 16.1601 4.7801 17.098 5.51799C18.0359 6.25588 18.8032 7.18784 19.3472 8.25H19.3434ZM10.0866 3.975C9.12619 5.25532 8.41683 6.70585 7.99594 8.25H4.65281C5.19682 7.18784 5.96406 6.25588 6.90196 5.51799C7.83985 4.7801 8.92621 4.25375 10.0866 3.975ZM4.65281 15.75H7.99594C8.41683 17.2941 9.12619 18.7447 10.0866 20.025C8.92621 19.7463 7.83985 19.2199 6.90196 18.482C5.96406 17.7441 5.19682 16.8122 4.65281 15.75ZM13.9134 20.025C14.8738 18.7447 15.5832 17.2941 16.0041 15.75H19.3472C18.8032 16.8122 18.0359 17.7441 17.098 18.482C16.1601 19.2199 15.0738 19.7463 13.9134 20.025Z'/%3E%3C/svg%3E");
+// Source-type icons for the discussion timeline (Phosphor, regular weight).
+$okl-icon-article: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M216,40H40A16,16,0,0,0,24,56V200a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40Zm0,160H40V56H216V200ZM184,96a8,8,0,0,1-8,8H80a8,8,0,0,1,0-16h96A8,8,0,0,1,184,96Zm0,32a8,8,0,0,1-8,8H80a8,8,0,0,1,0-16h96A8,8,0,0,1,184,128Zm0,32a8,8,0,0,1-8,8H80a8,8,0,0,1,0-16h96A8,8,0,0,1,184,160Z'/%3E%3C/svg%3E");
+$okl-icon-newspaper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M88,112a8,8,0,0,1,8-8h80a8,8,0,0,1,0,16H96A8,8,0,0,1,88,112Zm8,40h80a8,8,0,0,0,0-16H96a8,8,0,0,0,0,16ZM232,64V184a24,24,0,0,1-24,24H32A24,24,0,0,1,8,184.11V88a8,8,0,0,1,16,0v96a8,8,0,0,0,16,0V64A16,16,0,0,1,56,48H216A16,16,0,0,1,232,64Zm-16,0H56V184a23.84,23.84,0,0,1-1.37,8H208a8,8,0,0,0,8-8Z'/%3E%3C/svg%3E");
+$okl-icon-file-text: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Zm-32-80a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,136Zm0,32a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,168Z'/%3E%3C/svg%3E");
+$okl-icon-chat-dots: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M140,128a12,12,0,1,1-12-12A12,12,0,0,1,140,128ZM84,116a12,12,0,1,0,12,12A12,12,0,0,0,84,116Zm88,0a12,12,0,1,0,12,12A12,12,0,0,0,172,116Zm60,12A104,104,0,0,1,79.12,219.82L45.07,231.17a16,16,0,0,1-20.24-20.24l11.35-34.05A104,104,0,1,1,232,128Zm-16,0A88,88,0,1,0,51.81,172.06a8,8,0,0,1,.66,6.54L40,216,77.4,203.53a7.85,7.85,0,0,1,2.53-.42,8,8,0,0,1,4,1.08A88,88,0,0,0,216,128Z'/%3E%3C/svg%3E");
+$okl-icon-caret-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M213.66 101.66l-80 80a8 8 0 0 1-11.32 0l-80-80A8 8 0 0 1 48 88h160a8 8 0 0 1 5.66 13.66Z'/%3E%3C/svg%3E");
+
+// -----------------------------------------------------------------------------
+// Base
+// -----------------------------------------------------------------------------
+@include media-breakpoint-up(xxl) {
+    // Preserve the specified 1280px content width; Bootstrap's default padding
+    // would otherwise reduce the usable width to 1256px.
+    .container {
+        --bs-gutter-x: 0;
+    }
+}
+
+// Keep heading contrast consistent on dark surfaces.
+.bg-brand,
+.bg-brand-raised,
+.bg-brand-band {
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    .h1,
+    .h2,
+    .h3,
+    .h4,
+    .h5,
+    .h6 {
+        color: #fff;
+    }
+}
+
+// Sections use 112px vertical padding; the closing band uses 56px.
+.okl-section {
+    padding-top: $okl-section-padding-y-tight;
+    padding-bottom: $okl-section-padding-y-tight;
+
+    @include media-breakpoint-up(lg) {
+        padding-top: $okl-section-padding-y;
+        padding-bottom: $okl-section-padding-y;
+    }
+}
+
+.okl-section--tight {
+    padding-top: $okl-section-padding-y-tight;
+    padding-bottom: $okl-section-padding-y-tight;
+}
+
+// Section labels use the local accent colour.
+.okl-eyebrow {
+    font-size: $okl-text-h6;
+    font-weight: 700;
+    line-height: 1.333;
+    margin-bottom: 0.5rem;
+}
+
+// -----------------------------------------------------------------------------
+// Button capsule
+// -----------------------------------------------------------------------------
+// Extend .btn so Bootstrap retains focus, disabled-state and sizing behaviour.
+// Hover changes hue instead of applying Bootstrap's default shade adjustment.
+.okl-btn,
+.okl-button {
+    --okl-btn-bg: #{$okl-action};
+    --okl-btn-color: #{$okl-ink};
+    --okl-btn-ring: none;
+    --okl-btn-disc-bg: #fff;
+    --okl-btn-disc-color: #{$okl-text-action};
+    --okl-btn-hover-bg: #{$sherwood-green-900};
+    --okl-btn-hover-color: #fff;
+    --okl-btn-hover-disc-bg: #fff;
+    --okl-btn-hover-disc-color: #{$okl-text-action};
+    --okl-btn-disc-size: 2.5rem;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    min-height: 3rem;
+    padding: 4px;
+    border: 0;
+    border-radius: $okl-radius-button;
+    background-color: var(--okl-btn-bg);
+    box-shadow: var(--okl-btn-ring);
+    color: var(--okl-btn-color);
+    font-family: $okl-font-button;
+    font-weight: 600;
+    font-size: 1rem;
+    line-height: 1.25;
+    text-align: center;
+    text-decoration: none;
+    overflow: hidden;
+    transition:
+        background-color $okl-duration-base $okl-ease-standard,
+        color $okl-duration-base $okl-ease-standard;
+
+    &:hover,
+    &:focus-visible {
+        background-color: var(--okl-btn-hover-bg);
+        color: var(--okl-btn-hover-color);
+    }
+
+    &:hover .okl-btn__disc,
+    &:focus-visible .okl-btn__disc {
+        background-color: var(--okl-btn-hover-disc-bg);
+    }
+
+    &:hover .okl-btn__disc::before,
+    &:focus-visible .okl-btn__disc::before {
+        background-color: var(--okl-btn-hover-disc-color);
+    }
+
+    &:disabled,
+    &.disabled {
+        --okl-btn-bg: #{$okl-neutral-500};
+        --okl-btn-hover-bg: #{$okl-neutral-500};
+        --okl-btn-disc-bg: #{$sherwood-green-900};
+        --okl-btn-disc-color: #{$okl-neutral-300};
+        pointer-events: none;
+    }
+}
+
+.okl-btn__label {
+    padding: 0 1rem; // the lg size's text padding in the source file
+    white-space: nowrap;
+}
+
+.okl-btn__disc {
+    flex: 0 0 var(--okl-btn-disc-size);
+    width: var(--okl-btn-disc-size);
+    align-self: stretch;
+    border-radius: 999px;
+    background-color: var(--okl-btn-disc-bg);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color $okl-duration-base $okl-ease-standard;
+
+    &::before {
+        content: "";
+        width: 1.25rem;
+        height: 1.25rem;
+        background-color: var(--okl-btn-disc-color);
+        transition:
+            background-color $okl-duration-base $okl-ease-standard,
+            transform $okl-duration-base $okl-ease-expressive;
+        -webkit-mask: $okl-icon-arrow-right center / contain no-repeat;
+        mask: $okl-icon-arrow-right center / contain no-repeat;
+    }
+}
+
+.okl-btn:hover .okl-btn__disc::before,
+.okl-btn:focus-visible .okl-btn__disc::before {
+    transform: translateX(0.1875rem);
+}
+
+.okl-btn:hover .okl-btn__disc--left::before,
+.okl-btn:focus-visible .okl-btn__disc--left::before {
+    transform: translateX(-0.1875rem);
+}
+
+.okl-btn__disc--left::before {
+    -webkit-mask-image: $okl-icon-arrow-left;
+    mask-image: $okl-icon-arrow-left;
+}
+
+.okl-btn__disc--envelope::before {
+    -webkit-mask-image: $okl-icon-envelope;
+    mask-image: $okl-icon-envelope;
+}
+
+// White capsule for dark surfaces.
+.okl-btn--on-dark {
+    --okl-btn-bg: #fff;
+    --okl-btn-color: #{$okl-ink};
+    --okl-btn-disc-bg: #{$okl-action};
+    --okl-btn-disc-color: #{$okl-ink};
+    --okl-btn-hover-bg: #{$jonquil-300};
+    --okl-btn-hover-color: #{$okl-ink};
+    --okl-btn-hover-disc-bg: #{$tangerine-500};
+    --okl-btn-hover-disc-color: #{$okl-ink};
+}
+
+// Translucent variant for use over hero artwork.
+.okl-btn--glass {
+    backdrop-filter: $okl-blur-glass;
+}
+
+.okl-btn--hero {
+    --okl-btn-hover-bg: #{$tangerine-500};
+    --okl-btn-hover-color: #{$okl-ink};
+}
+
+// Outlined variant for dark surfaces.
+.okl-btn--outline-on-dark {
+    --okl-btn-bg: transparent;
+    --okl-btn-color: #fff;
+    --okl-btn-ring: #{$okl-hairline-on-dark};
+    --okl-btn-disc-bg: #{$okl-action};
+    --okl-btn-disc-color: #{$okl-ink};
+    --okl-btn-hover-bg: rgba(255, 255, 255, 0.08);
+    --okl-btn-hover-color: #fff;
+    --okl-btn-hover-disc-bg: #{$tangerine-500};
+    --okl-btn-hover-disc-color: #{$okl-ink};
+}
+
+.okl-btn--strong {
+    --okl-btn-bg: #{$tangerine-500};
+    --okl-btn-color: #{$okl-ink};
+}
+
+// Text-only variant with an arrow disc.
+.okl-btn-text {
+    display: inline-flex;
+    align-items: center;
+    // Matches the 40px hit area of the text-and-icon button in the design.
+    min-height: 2.5rem;
+    gap: 0.5rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: $okl-ink;
+    font-family: $okl-font-button;
+    font-weight: 600;
+    text-decoration: none;
+    transition: opacity $okl-duration-base $okl-ease-standard;
+
+    &:hover,
+    &:focus-visible {
+        color: $okl-ink;
+    }
+
+    &::after {
+        content: "";
+        width: 1.25rem;
+        height: 1.25rem;
+        flex: 0 0 1.25rem;
+        background-color: $tangerine-500;
+        transition: transform $okl-duration-base $okl-ease-expressive;
+        -webkit-mask: $okl-icon-arrow-right center / contain no-repeat;
+        mask: $okl-icon-arrow-right center / contain no-repeat;
+    }
+
+    &:hover::after,
+    &:focus-visible::after {
+        transform: translateX(0.1875rem);
+    }
+}
+
+.okl-btn-text--on-dark {
+    color: #fff;
+
+    &:hover,
+    &:focus-visible {
+        color: #fff;
+    }
+
+    &::after {
+        background-color: currentcolor;
+    }
+}
+
+.okl-btn-text--leading-envelope {
+    &::after {
+        content: none;
+    }
+
+    &::before {
+        content: "";
+        width: 1.5rem;
+        height: 1.5rem;
+        flex: 0 0 1.5rem;
+        background-color: currentcolor;
+        -webkit-mask: $okl-icon-envelope center / contain no-repeat;
+        mask: $okl-icon-envelope center / contain no-repeat;
+    }
+}
+
+// On a dark surface the envelope carries the accent rather than the label's
+// white; on a light one it stays with the ink via `currentcolor` above. Keyed on
+// the surface modifier so the icon follows the background, not the section.
+.okl-btn-text--on-dark.okl-btn-text--leading-envelope::before {
+    background-color: $jonquil-300;
+}
+
+// Shared row for a primary capsule alongside a mail link. Carries no colour of
+// its own: the button and link variants decide that per surface.
+.okl-cta-row {
+    .okl-btn,
+    .okl-btn-text {
+        font-family: $okl-font-core;
+    }
+
+    // These rows live in half-width columns, so below lg a long label runs wider
+    // than its capsule — and `.okl-btn`'s `overflow: hidden` would clip it away
+    // without a trace. Two lines beat a truncated call to action.
+    .okl-btn__label {
+        @include media-breakpoint-down(lg) {
+            white-space: normal;
+        }
+    }
+}
+
+// Header action with a status indicator.
+.okl-pill-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 3rem;
+    padding: 0 1rem;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    box-shadow: $okl-hairline-on-dark;
+    color: #fff;
+    font-weight: 700;
+    font-size: $okl-text-small;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color $okl-duration-base $okl-ease-standard;
+
+    &:hover,
+    &:focus-visible {
+        background: rgba(255, 255, 255, 0.08);
+        color: #fff;
+    }
+
+    &::before {
+        content: "";
+        width: 0.5rem;
+        height: 0.5rem;
+        flex: 0 0 0.5rem;
+        border-radius: 50%;
+        background: $tangerine-500;
+        animation: okl-live-dot-pulse 2.4s $okl-ease-standard infinite;
+    }
+
+    &:hover::before,
+    &:focus-visible::before {
+        animation-play-state: paused;
+    }
+}
+
+@keyframes okl-live-dot-pulse {
+    0%,
+    45%,
+    100% {
+        box-shadow: 0 0 0 0 rgba($tangerine-500, 0);
+    }
+
+    12% {
+        box-shadow: 0 0 0 0 rgba($tangerine-500, 0.42);
+    }
+
+    32% {
+        box-shadow: 0 0 0 0.45rem rgba($tangerine-500, 0);
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Icon and number tiles
+// -----------------------------------------------------------------------------
+.okl-tile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 2rem;
+    height: 2rem;
+    border-radius: $okl-radius-sm;
+    background: $jonquil-300;
+    color: $okl-ink;
+    font-weight: 700;
+    font-size: $okl-text-h6;
+    line-height: 1.333;
+}
+
+.okl-tile--lg {
+    width: 3.5rem;
+    height: 3.5rem;
+    background: $sherwood-green-100;
+}
+
+.okl-tile--sherwood {
+    background: $sherwood-green-100;
+}
+
+.okl-tile--tangerine {
+    background: $tangerine-100;
+}
+
+.okl-tile--anakiwa {
+    background: $anakiwa-100;
+}
+
+.okl-tile--success {
+    background: $okl-emerald-500;
+}
+
+.okl-tile--danger {
+    background: $okl-red-500;
+}
+
+.okl-tile__icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    background-color: $sherwood-green-900;
+    -webkit-mask: $okl-icon-check-bold center / contain no-repeat;
+    mask: $okl-icon-check-bold center / contain no-repeat;
+}
+
+.okl-tile__icon--search {
+    -webkit-mask-image: $okl-icon-magnifying-glass;
+    mask-image: $okl-icon-magnifying-glass;
+}
+
+.okl-tile__icon--users {
+    -webkit-mask-image: $okl-icon-users-three;
+    mask-image: $okl-icon-users-three;
+}
+
+.okl-tile__icon--check-white {
+    background-color: #fff;
+}
+
+.okl-tile__icon--x-white {
+    background-color: #fff;
+    -webkit-mask-image: $okl-icon-x;
+    mask-image: $okl-icon-x;
+}
+
+// -----------------------------------------------------------------------------
+// Check lines
+// -----------------------------------------------------------------------------
+// Check presentation varies by surface contrast.
+.okl-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+// Checks wrap into fixed-width columns so a short and a long label still line
+// up; below sm they stack full width rather than forming a ragged two-up grid.
+.okl-check-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+
+    > .okl-check {
+        flex: 1 1 100%;
+    }
+
+    @include media-breakpoint-up(sm) {
+        > .okl-check {
+            flex: 0 1 15rem;
+        }
+    }
+}
+
+// Dark-surface variant.
+.okl-check__disc {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 2rem;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 999px;
+    background: $sherwood-green-800;
+
+    &::before {
+        content: "";
+        width: 1rem;
+        height: 1rem;
+        background-color: $jonquil-300;
+        -webkit-mask: $okl-icon-check-bold center / contain no-repeat;
+        mask: $okl-icon-check-bold center / contain no-repeat;
+    }
+}
+
+.okl-check__label {
+    padding-top: 0.375rem;
+    font-size: $okl-text-small;
+    line-height: 1.286;
+    color: #fff;
+}
+
+// Light-surface variant.
+.okl-check--plain {
+    .okl-check__disc {
+        flex-basis: 1rem;
+        width: 1rem;
+        height: 1rem;
+        margin-top: 0.125rem;
+        border-radius: 0;
+        background: $sherwood-green-800;
+        -webkit-mask: $okl-icon-check-bold center / contain no-repeat;
+        mask: $okl-icon-check-bold center / contain no-repeat;
+
+        &::before {
+            content: none;
+        }
+    }
+
+    .okl-check__label {
+        padding-top: 0;
+        color: $okl-ink;
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Book-spine motif
+// -----------------------------------------------------------------------------
+.okl-faq-intro {
+    max-width: 44rem;
+}
+
+// Decorative logo-derived shapes are clipped by their container and omitted on
+// small screens to protect content space.
+.okl-decor {
+    position: relative;
+    overflow: hidden;
+}
+
+.okl-spine {
+    position: absolute;
+    display: none;
+    pointer-events: none;
+    color: currentcolor;
+
+    @include media-breakpoint-up(lg) {
+        display: block;
+    }
+
+    &::before {
+        display: block;
+        width: 100%;
+        aspect-ratio: 686 / 682;
+        background: currentcolor;
+        content: "";
+        -webkit-mask: url("/static/landing/images/okl-spine.svg") center / contain no-repeat;
+        mask: url("/static/landing/images/okl-spine.svg") center / contain no-repeat;
+    }
+
+    svg {
+        display: block;
+        width: 100%;
+        height: auto;
+        // The viewBox belongs to the referenced <symbol>, so the host SVG requires
+        // an explicit aspect ratio to avoid the browser's default 150px height.
+        aspect-ratio: 686 / 682;
+    }
+}
+
+// Anchored to the horizontal centre of the frame rather than to an edge, so the
+// pair keeps its diagonal top-right/bottom-left rhythm at any column width.
+.okl-spine--example-one,
+.okl-spine--example-two {
+    width: 29rem;
+    color: $anakiwa-300;
+    opacity: $okl-decor-opacity;
+}
+
+.okl-spine--example-one {
+    left: calc(50% + 1.5rem);
+    top: -41%;
+}
+
+.okl-spine--example-two {
+    left: calc(50% - 29.0625rem);
+    top: 57%;
+}
+
+// -----------------------------------------------------------------------------
+// Arch wash
+// -----------------------------------------------------------------------------
+// A section-wide backdrop that tapers downwards. The shape is a flat fill; the
+// vertical fade comes from a mask so a single symbol serves every surface.
+.okl-arch {
+    position: absolute;
+    display: none;
+    pointer-events: none;
+    color: currentcolor;
+
+    @include media-breakpoint-up(lg) {
+        display: block;
+    }
+
+    svg {
+        display: block;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1332 / 526;
+    }
+}
+
+.okl-arch--contrast {
+    left: 50%;
+    top: 0;
+    width: min(83.25rem, 100% - 11.25rem);
+    transform: translateX(-50%);
+    color: $sherwood-green-200;
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 88%);
+    mask-image: linear-gradient(to bottom, transparent, #000 88%);
+}
+
+// -----------------------------------------------------------------------------
+// Hero
+// -----------------------------------------------------------------------------
+.okl-hero {
+    background: $okl-surface-brand;
+    color: #fff;
+
+    @include media-breakpoint-up(lg) {
+        padding-top: 6.6875rem;
+        padding-bottom: 6.6875rem;
+    }
+}
+
+.okl-hero__grid {
+    @include media-breakpoint-up(xxl) {
+        --bs-gutter-y: 0;
+        display: grid;
+        grid-template-columns: 509px 691px;
+        gap: 42px;
+        margin: 0;
+
+        > * {
+            width: auto;
+            padding: 0;
+        }
+    }
+}
+
+.okl-hero .display-1 {
+    @include media-breakpoint-up(lg) {
+        font-size: 3.5rem;
+    }
+}
+
+.okl-hero__art {
+    position: relative;
+    aspect-ratio: 691 / 688;
+    margin-top: 2rem;
+
+    @include media-breakpoint-up(lg) {
+        margin-top: 0;
+    }
+}
+
+.okl-hero__spine {
+    position: absolute;
+    z-index: 1;
+
+    &::before {
+        display: block;
+        width: 100%;
+        aspect-ratio: 686 / 682;
+        background: currentcolor;
+        content: "";
+        -webkit-mask: url("/static/landing/images/okl-spine.svg") center / contain no-repeat;
+        mask: url("/static/landing/images/okl-spine.svg") center / contain no-repeat;
+    }
+}
+
+.okl-hero__spine--back {
+    left: 6.2%;
+    top: -5.5%;
+    width: 99.3%;
+    color: $light-wisteria-300;
+
+    // On narrow screens this layer previously extended beyond the artboard's
+    // right edge. Keep the complete purple outline visible rather than cropping
+    // the last lobe against the viewport.
+    @include media-breakpoint-down(lg) {
+        width: 93.8%;
+    }
+}
+
+.okl-hero__spine--front {
+    left: 0;
+    top: 5.8%;
+    width: 100%;
+    color: $tangerine-500;
+
+    @include media-breakpoint-down(lg) {
+        // Use the same centred scale as the photograph so the orange layer stays
+        // behind it while the purple rear layer remains visible around it.
+        left: 4%;
+        width: 92%;
+    }
+}
+
+.okl-hero__image-frame {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    overflow: hidden;
+    // The supplied photograph already contains the scalloped silhouette in its
+    // alpha channel. Reuse that alpha as a fixed mask on the frame so a scrolling
+    // zoom moves the photograph beneath the silhouette instead of enlarging the
+    // silhouette itself.
+    -webkit-mask: url("/static/landing/images/okl-hero-students.webp") center / 100% 100% no-repeat;
+    mask: url("/static/landing/images/okl-hero-students.webp") center / 100% 100% no-repeat;
+
+    @include media-breakpoint-down(lg) {
+        // Scale the complete composition evenly. A one-sided inset distorted the
+        // scalloped silhouette on mobile because the image itself supplies its mask.
+        inset: 4%;
+    }
+}
+
+.okl-hero__image {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.okl-glass-card {
+    border-radius: $okl-radius-sm;
+    background: #fff;
+    backdrop-filter: $okl-blur-glass;
+    padding: 1rem;
+}
+
+.okl-glass-card__title {
+    font-weight: 700;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: $sherwood-green-900;
+    text-wrap: pretty;
+}
+
+.okl-glass-card__meta {
+    font-size: $okl-text-meta;
+    line-height: 1.333;
+    color: $okl-text-on-brand-muted;
+}
+
+.okl-hero__card {
+    z-index: 3;
+    display: block;
+    position: absolute;
+    width: 46%;
+    padding: 0.75rem;
+
+    .okl-glass-card__title {
+        font-size: 0.8125rem;
+        line-height: 1.35;
+    }
+
+    .okl-glass-card__meta {
+        font-size: 0.6875rem;
+        line-height: 1.3;
+    }
+
+    @include media-breakpoint-up(md) {
+        width: 36.1%;
+        padding: 1rem;
+
+        .okl-glass-card__title {
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+
+        .okl-glass-card__meta {
+            font-size: $okl-text-meta;
+            line-height: 1.333;
+        }
+    }
+}
+
+.okl-hero__card--one {
+    left: 6.2%;
+    top: 0;
+
+    @include media-breakpoint-up(md) {
+        left: 6.2%;
+        top: 0;
+    }
+}
+
+.okl-hero__card--two {
+    left: 51%;
+    top: 76%;
+
+    @include media-breakpoint-up(md) {
+        left: 61.6%;
+        top: 81.3%;
+    }
+}
+
+// -----------------------------------------------------------------------------
+// USP band
+// -----------------------------------------------------------------------------
+// The gradient lets the rounded block straddle the hero and white page surface.
+.okl-usp {
+    position: relative;
+    isolation: isolate;
+    padding: 2rem 0;
+    background: linear-gradient(
+        to bottom,
+        $sherwood-green-900 0 2rem,
+        $okl-surface-brand-band 2rem calc(100% - 2rem),
+        #fff calc(100% - 2rem)
+    );
+
+    &::before {
+        content: "";
+        position: absolute;
+        z-index: 0;
+        inset: 0;
+        border-radius: $okl-radius-lg;
+        background: $okl-surface-brand-band;
+    }
+}
+
+.okl-usp__band {
+    position: relative;
+    z-index: 1;
+    background: transparent;
+    padding: $okl-card-gap 0;
+}
+
+// -----------------------------------------------------------------------------
+// Cards
+// -----------------------------------------------------------------------------
+.okl-card {
+    border-radius: $okl-radius-lg;
+    background: #fff;
+    padding: 1.5rem;
+    height: 100%;
+}
+
+.okl-card--hairline {
+    box-shadow: $okl-hairline;
+}
+
+.okl-card--raised {
+    box-shadow: $okl-shadow-card-raised;
+}
+
+.okl-card__title {
+    font-size: $okl-text-h4;
+    line-height: $okl-lh-display;
+    font-weight: 700;
+    color: $okl-ink;
+    text-wrap: pretty;
+}
+
+.okl-card__text {
+    font-size: 1rem;
+    line-height: 1.25;
+    color: $okl-text-muted;
+    text-wrap: pretty;
+}
+
+.okl-feature-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: flex-start;
+    gap: 0;
+
+    // A stacked layout should follow its content. The generous feature-card
+    // measure is useful only once the three cards share one desktop row; keeping
+    // it on a phone creates a large, unexplained white gap beneath short copy.
+    @include media-breakpoint-up(lg) {
+        min-height: 17.5rem;
+    }
+}
+
+// Route cards share grid rows to align corresponding content across cards.
+// Bootstrap .row is incompatible here because its flex layout and negative
+// margins override the shared grid.
+.okl-route-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: $okl-card-gap;
+
+    @include media-breakpoint-up(md) {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    @include media-breakpoint-up(lg) {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.okl-route-card {
+    isolation: isolate;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    color: inherit;
+    text-decoration: none;
+    transition: border-color $okl-duration-base $okl-ease-standard;
+
+    &::before {
+        content: "";
+        position: absolute;
+        z-index: 0;
+        inset: 0;
+        background: transparent;
+        clip-path: circle(0 at 88% 0);
+        transition: clip-path 350ms $okl-ease-standard;
+    }
+
+    > :not(.okl-route-card__decor) {
+        z-index: 1;
+    }
+
+    &:is(:hover, :focus-within, .is-scroll-active)::before {
+        clip-path: circle(150% at 88% 0);
+    }
+
+    &:is(:hover, :focus-within, .is-scroll-active) .okl-route-card__decor {
+        opacity: 0.7;
+        transform: translate(-0.5rem, 0.5rem) rotate(-18deg);
+    }
+
+    @include media-breakpoint-up(lg) {
+        // The grid stretches every card to the height of the fullest sibling.
+        // A floor keeps the intended desktop presence, but an unusually long
+        // title, summary or action may grow the shared row instead of forcing its
+        // final action out of alignment.
+        min-height: 22.875rem;
+    }
+}
+
+.okl-route-card--jonquil {
+    &::before {
+        background: $jonquil-100;
+    }
+
+    .okl-tile {
+        background: $jonquil-300;
+    }
+}
+
+.okl-route-card--anakiwa {
+    &::before,
+    .okl-tile {
+        background: $anakiwa-100;
+    }
+}
+
+.okl-route-card--wisteria {
+    &::before,
+    .okl-tile {
+        background: $light-wisteria-50;
+    }
+}
+
+.okl-route-card > :last-child {
+    margin-top: auto;
+}
+
+.okl-route-card__decor {
+    position: absolute;
+    z-index: 0;
+    left: 73%;
+    top: -12.5625rem;
+    width: 10.5rem;
+    height: 17.1875rem;
+    transform: rotate(-24.22deg);
+    transform-origin: center;
+    pointer-events: none;
+    transition:
+        opacity $okl-motion-duration-fast $okl-ease-standard,
+        transform $okl-motion-duration-fast $okl-ease-expressive;
+}
+
+// Reserve two lines in the route grid so the body copy, checks and link of all
+// three cards sit on the same baselines regardless of title length.
+.okl-route-grid .okl-route-card__title {
+    @include media-breakpoint-up(lg) {
+        min-height: 2.2em;
+    }
+}
+
+.okl-route-card__title {
+    font-size: $okl-text-h4;
+    line-height: $okl-lh-display;
+    font-weight: 700;
+    color: $sherwood-green-800;
+    text-wrap: pretty;
+}
+
+.okl-route-card__audience {
+    font-size: $okl-text-h6;
+    line-height: 1.333;
+    font-weight: 700;
+    color: $okl-ink;
+}
+
+// The middle column drops half a step so the trio reads as a staggered set
+// rather than a rigid row. Cards keep their natural height.
+.okl-contrast-grid {
+    @include media-breakpoint-up(lg) {
+        // Adds to the row gutter rather than replacing it, so the columns keep
+        // their normal top spacing and only the offset is layered on top.
+        > :nth-child(2) {
+            margin-top: calc(var(--bs-gutter-y, 0px) + 1.5rem);
+        }
+    }
+}
+
+.okl-contrast-card__not {
+    border-radius: $okl-radius-sm;
+    background: $okl-red-100;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 700;
+    font-size: $okl-text-h6;
+    line-height: 1.333;
+    color: $sherwood-green-800;
+    text-wrap: pretty;
+}
+
+.okl-theme-card {
+    min-height: 15rem;
+    width: 19.25rem;
+    flex: 0 0 19.25rem;
+    scroll-snap-align: start;
+}
+
+.okl-theme-card__title {
+    font-size: $okl-text-h4;
+    font-weight: 700;
+    line-height: $okl-lh-display;
+    color: $sherwood-green-800;
+}
+
+.okl-theme-card {
+    .okl-card__text {
+        color: $okl-neutral-600;
+    }
+}
+
+.okl-theme-card--default {
+    box-shadow: $okl-hairline;
+
+    .okl-eyebrow {
+        color: $okl-theme-text-orange-white;
+    }
+}
+
+.okl-theme-card--tangerine {
+    background: $tangerine-50;
+
+    .okl-eyebrow {
+        color: $okl-theme-text-orange-subtle;
+    }
+}
+
+.okl-theme-card--wisteria {
+    background: $light-wisteria-50;
+
+    .okl-eyebrow {
+        color: $light-wisteria-500;
+    }
+}
+
+.okl-theme-card--anakiwa {
+    background: $anakiwa-100;
+
+    .okl-eyebrow {
+        color: $okl-theme-text-blue;
+    }
+}
+
+.okl-theme-card--jonquil {
+    background: $jonquil-50;
+
+    .okl-eyebrow {
+        color: $okl-theme-text-green;
+    }
+}
+
+.okl-theme-card--tangerine-strong {
+    background: $tangerine-100;
+
+    .okl-eyebrow {
+        color: $okl-theme-text-orange-tint;
+    }
+}
+
+.okl-theme-card--anakiwa-strong {
+    background: $anakiwa-100;
+
+    .okl-eyebrow {
+        color: $okl-theme-text-blue;
+    }
+}
+
+.okl-milestone-card__month {
+    font-weight: 700;
+    color: $okl-timeline-text;
+}
+
+.okl-milestone-card {
+    width: 100%;
+
+    // The single column runs the card full width; the measure and the row floor
+    // only apply once the two columns share the width at lg.
+    @include media-breakpoint-up(lg) {
+        max-width: 23.1875rem;
+        min-height: 11.125rem;
+    }
+
+    .badge {
+        min-height: 1.625rem;
+        padding: 0.25rem 0.75rem;
+        line-height: 1.125rem;
+    }
+}
+
+.okl-milestone-card__title {
+    color: $okl-ink;
+    font-size: $okl-text-h5;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+// Editorial split sections use two 565px columns and a 150px centre gap.
+.okl-design-split {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: $okl-card-gap;
+
+    @include media-breakpoint-up(lg) {
+        grid-template-columns: repeat(2, minmax(0, 35.3125rem));
+        justify-content: space-between;
+        align-items: center;
+
+        > * {
+            width: auto;
+            padding: 0;
+        }
+    }
+}
+
+.okl-participate {
+    @include media-breakpoint-up(lg) {
+        min-height: 55.4375rem;
+    }
+}
+
+.okl-participate .okl-btn__label {
+    padding-inline: 0.75rem;
+}
+
+// Only the width behaviour is section-specific: this column is wide enough to
+// hold the capsule and the address on one line. Typography comes from
+// `.okl-cta-row`, colour from the button variants.
+.okl-participate__cta {
+    @include media-breakpoint-up(xxl) {
+        flex-wrap: nowrap !important;
+    }
+}
+
+.okl-participate__decor,
+.okl-how__decor,
+.okl-roadmap__decor,
+.okl-cta-banner__decor {
+    position: absolute;
+    max-width: none;
+    pointer-events: none;
+}
+
+.okl-participate__decor {
+    top: 4.25rem;
+    width: 29.0625rem;
+    height: 47.5625rem;
+}
+
+.okl-participate__decor--one {
+    left: calc(50% + 1.3125rem);
+}
+
+.okl-participate__decor--two {
+    left: calc(50% + 14.0625rem);
+    transform: rotate(180deg);
+}
+
+.okl-how__decor {
+    top: 2.1875rem;
+    left: calc(50% + 23.75rem);
+    width: 29.0625rem;
+    height: 47.5625rem;
+}
+
+.okl-how__mockup {
+    position: relative;
+    width: 100%;
+    max-width: 35.3125rem;
+    height: auto;
+    border-radius: $okl-radius-xl;
+    box-shadow: $okl-shadow-card-raised;
+}
+
+.okl-roadmap__decor {
+    width: 39.125rem;
+    height: 64rem;
+}
+
+.okl-roadmap__decor--one {
+    top: 31.4375rem;
+    left: calc(50% + 14.25rem);
+}
+
+.okl-roadmap__decor--two {
+    top: 43.75rem;
+    left: calc(50% + 30.1875rem);
+}
+
+.okl-join-card {
+    @include media-breakpoint-up(lg) {
+        min-height: 25rem;
+    }
+
+    // Supporting copy uses the designer-confirmed Text UI muted colour.
+    .okl-step__text {
+        color: $okl-text-muted;
+    }
+}
+
+.okl-how {
+    @include media-breakpoint-up(lg) {
+        min-height: 51.875rem;
+    }
+}
+
+// The panel carries its own inner padding, so the section keeps the standard
+// rhythm and does not bleed into the band above it.
+.okl-example-shot {
+    min-height: 22rem;
+}
+
+.okl-delivery-route {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 25rem;
+    min-height: 24rem;
+    padding: 1.5rem;
+    border: 1px solid rgba($sherwood-green-900, 0.12);
+    border-radius: $okl-radius-xl;
+    background: $okl-surface-mint-subtle;
+    box-shadow: $okl-shadow-card-raised;
+    color: $okl-text-heading;
+}
+
+.okl-delivery-route__progress {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.375rem;
+    margin-bottom: 1.75rem;
+
+    span {
+        height: 0.25rem;
+        border-radius: 999px;
+        background: $sherwood-green-200;
+        transition: background-color $okl-duration-base $okl-ease-standard;
+    }
+
+    .is-active {
+        background: $okl-action-strong;
+    }
+
+    .is-complete {
+        background: $sherwood-green-700;
+    }
+}
+
+.okl-delivery-route__step,
+.okl-delivery-route__result {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+}
+
+.okl-delivery-route__step[hidden],
+.okl-delivery-route__result[hidden],
+.okl-delivery-route__restart[hidden] {
+    display: none;
+}
+
+.okl-delivery-route__eyebrow {
+    margin: 0 0 0.625rem;
+    color: $sherwood-green-700;
+    font-size: $okl-text-small;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.okl-delivery-route__question,
+.okl-delivery-route__title {
+    margin: 0;
+    font-size: clamp(1.25rem, 2.2vw, 1.625rem);
+    font-weight: 700;
+    line-height: 1.2;
+    text-wrap: balance;
+}
+
+.okl-delivery-route__actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-top: auto;
+    padding-top: 1.5rem;
+
+    button {
+        min-height: 3rem;
+        border: 2px solid $sherwood-green-900;
+        border-radius: 999px;
+        background: #fff;
+        color: $sherwood-green-900;
+        font: inherit;
+        font-weight: 700;
+        transition:
+            background-color $okl-duration-base $okl-ease-standard,
+            color $okl-duration-base $okl-ease-standard,
+            transform $okl-duration-base $okl-ease-standard;
+
+        &:hover,
+        &:focus-visible {
+            background: $sherwood-green-900;
+            color: #fff;
+            transform: translateY(-0.125rem);
+        }
+    }
+}
+
+.okl-delivery-route__result {
+    padding-left: 1rem;
+    border-left: 0.25rem solid $sherwood-green-700;
+
+    ul {
+        display: grid;
+        gap: 0.5rem;
+        margin: 1.25rem 0 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    li {
+        position: relative;
+        padding-left: 1.5rem;
+    }
+
+    li::before {
+        position: absolute;
+        left: 0;
+        content: "\2713";
+        color: $sherwood-green-700;
+        font-weight: 700;
+    }
+
+    > p:not([class]) {
+        margin: 1.25rem 0 0;
+    }
+
+    > a {
+        align-self: flex-start;
+        margin-top: 1rem;
+        color: $tangerine-700;
+        font-weight: 700;
+        overflow-wrap: anywhere;
+    }
+}
+
+.okl-delivery-route__result--license {
+    border-left-color: $light-wisteria-500;
+
+    .okl-delivery-route__eyebrow {
+        color: $light-wisteria-700;
+    }
+}
+
+.okl-delivery-route__result--file {
+    border-left-color: $okl-action-strong;
+
+    .okl-delivery-route__eyebrow {
+        color: $tangerine-700;
+    }
+}
+
+.okl-delivery-route__result--contact {
+    border-left-color: $anakiwa-600;
+
+    .okl-delivery-route__eyebrow {
+        color: $anakiwa-800;
+    }
+}
+
+.okl-delivery-route__restart {
+    align-self: flex-start;
+    margin-top: 1.25rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: $sherwood-green-700;
+    font: inherit;
+    font-size: $okl-text-small;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+}
+
+@include media-breakpoint-down(sm) {
+    .okl-delivery-route {
+        min-height: 23rem;
+        padding: 1.25rem;
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Numbered rows
+// -----------------------------------------------------------------------------
+.okl-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.okl-step__title {
+    font-weight: 700;
+    font-size: $okl-text-h6;
+    line-height: 1.333;
+    color: $okl-ink;
+    // Centres the 24px title against the 32px number tile beside it.
+    margin-top: 0.375rem;
+    margin-bottom: 0.5rem;
+}
+
+.okl-step__text {
+    font-size: 1rem;
+    line-height: 1.25;
+    color: $okl-text-muted;
+    text-wrap: pretty;
+}
+
+.okl-how__step {
+    min-height: 6.75rem;
+    border: 1px solid $okl-border-hairline;
+    border-radius: $okl-radius-md;
+    background: #fff;
+    padding: 1rem;
+}
+
+.okl-how__step-tile {
+    background: $light-wisteria-600;
+    color: #fff;
+}
+
+// A numbered row reads as plain body copy until it is the one in focus; the
+// filled treatment then inverts the whole row including its number tile.
+// `.is-active` is driven by scroll position (see motion.ts) and is set
+// on the first row in the markup so the design holds without JavaScript.
+.okl-numbered-item {
+    border-radius: $okl-radius-md;
+    background: transparent;
+    padding: 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    transition:
+        background-color $okl-duration-base $okl-ease-standard,
+        color $okl-duration-base $okl-ease-standard;
+
+    .okl-tile {
+        background: $anakiwa-500;
+        color: #fff;
+        transition: inherit;
+    }
+
+    &.is-active {
+        background: $anakiwa-500;
+        color: #fff;
+
+        .okl-tile {
+            background: #fff;
+            color: $anakiwa-500;
+        }
+
+        .okl-step__title,
+        .okl-step__text {
+            color: #fff;
+        }
+
+        // The filled row inverts its copy, so an inline link has to follow. The
+        // inherited brand green only reaches ~3:1 against the fill.
+        .okl-step__text a {
+            color: #fff;
+        }
+    }
+}
+
+.okl-numbered-item--lilac {
+    .okl-tile {
+        background: $light-wisteria-500;
+    }
+
+    &.is-active {
+        background: $light-wisteria-300;
+
+        .okl-tile {
+            color: $light-wisteria-500;
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Accordion
+// -----------------------------------------------------------------------------
+// Retain Bootstrap collapse behaviour while restyling row geometry.
+.okl-accordion {
+    .accordion-item {
+        background: transparent;
+        border: 0;
+        border-radius: $okl-radius-sm;
+        box-shadow: $okl-hairline;
+        margin-bottom: 1rem;
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
+
+    .accordion-button {
+        border-radius: $okl-radius-sm;
+        background: transparent;
+        box-shadow: none;
+        font-weight: 700;
+        font-size: 1rem;
+        line-height: 1.25;
+        color: $okl-ink;
+
+        &:not(.collapsed) {
+            box-shadow: none;
+            color: $okl-ink;
+        }
+
+        &:focus {
+            box-shadow: none;
+        }
+
+        &:focus-visible {
+            outline: 2px solid $okl-action;
+            outline-offset: 2px;
+        }
+    }
+
+    .accordion-body {
+        padding-top: 0;
+        font-size: 1rem;
+        line-height: 1.25;
+        color: $okl-text-muted;
+        text-wrap: pretty;
+    }
+}
+
+// Dark-surface accordion variant.
+.okl-accordion--on-dark {
+    .accordion-item {
+        background: $sherwood-green-800;
+        box-shadow: none;
+    }
+
+    .accordion-button {
+        color: #fff;
+        line-height: 1.25;
+
+        &:not(.collapsed) {
+            color: #fff;
+        }
+
+        &::after {
+            background-image: escape-svg(
+                url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='#{$jonquil-300}'><path fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/></svg>")
+            );
+        }
+    }
+
+    .accordion-body {
+        color: #fff;
+
+        // The default link colour is sherwood-green-800, which is this panel's own
+        // background, so an inline link would be invisible without this.
+        a {
+            color: $jonquil-300;
+
+            &:hover,
+            &:focus-visible {
+                color: #fff;
+            }
+        }
+    }
+}
+
+// White-card variant for accordions sitting on a tinted section background
+// (e.g. bg-lilac, bg-sky) — the base `.okl-accordion` leaves items transparent
+// so the FAQ's plain white section reads correctly, but that same transparency
+// let a tinted section show straight through, instead of the solid white card
+// Figma shows there. The base hairline border only reads as intended on the
+// FAQ's white-on-white; on a tinted background it draws a visible outline
+// Figma's white cards don't have, so this variant drops it.
+.okl-accordion--card {
+    .accordion-item {
+        background: #fff;
+        box-shadow: none;
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Catalogue preview
+// -----------------------------------------------------------------------------
+.okl-mock {
+    position: relative;
+    border-radius: $okl-radius-xl;
+    background: #fff;
+    padding: 1.5rem;
+
+    @include media-breakpoint-up(lg) {
+        min-height: 32.25rem;
+        box-shadow: $okl-shadow-card-raised;
+    }
+}
+
+// The catalogue is a visual illustration of the eventual product, not a
+// partial search form. It accepts focus so a tap on touch screens can reveal
+// the same context cue as hover, while its contents never become controls.
+.okl-mock--preview {
+    cursor: default;
+    outline: 0;
+
+    > *:not(.okl-mock__preview-label) {
+        pointer-events: none;
+    }
+
+    &:focus-visible {
+        box-shadow:
+            0 0 0 $focus-ring-width $focus-ring-color,
+            $okl-shadow-card-raised;
+    }
+}
+
+.okl-mock__preview-label {
+    position: absolute;
+    z-index: 2;
+    top: 1rem;
+    right: 1rem;
+    border-radius: $border-radius-pill;
+    background: $sherwood-green-900;
+    padding: 0.375rem 0.75rem;
+    font-size: $okl-text-meta;
+    font-weight: 700;
+    line-height: 1;
+    color: #fff;
+    opacity: 0;
+    transform: translateY(-0.25rem);
+    transition:
+        opacity $okl-duration-fast $okl-ease-standard,
+        transform $okl-duration-fast $okl-ease-expressive;
+    pointer-events: none;
+}
+
+.okl-mock--preview:is(:hover, :focus, :active) .okl-mock__preview-label {
+    opacity: 1;
+    transform: none;
+}
+
+.okl-mock__title {
+    font-weight: 700;
+    font-size: $okl-text-h5;
+    line-height: 1.4;
+    color: $sherwood-green-800;
+    margin-bottom: 1.5rem;
+}
+
+.okl-search {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border-radius: $okl-radius-sm;
+    background: $okl-neutral-100;
+    min-height: 3.25rem;
+    padding: 1rem;
+    color: $okl-neutral-700;
+
+    &::before {
+        content: "";
+        flex: 0 0 1rem;
+        width: 1rem;
+        height: 1rem;
+        background-color: $okl-text-subtle;
+        -webkit-mask: $okl-icon-magnifying-glass center / contain no-repeat;
+        mask: $okl-icon-magnifying-glass center / contain no-repeat;
+    }
+}
+
+.okl-search--white {
+    background: #fff;
+}
+
+.okl-faq-search {
+    max-width: 28rem;
+}
+
+.okl-faq-search__input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+
+    &:focus {
+        outline: none;
+    }
+
+    &::placeholder {
+        color: $okl-text-subtle;
+    }
+}
+
+.okl-faq-search__empty {
+    color: $okl-text-muted;
+}
+
+.okl-faq-category {
+    scroll-margin-top: 6rem;
+}
+
+.okl-filter-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.125rem;
+    border: 1px solid $okl-border-hairline;
+    border-radius: $border-radius-pill;
+    background: #fff;
+    padding: 0.4375rem 0.75rem;
+    font-size: $okl-text-small;
+    font-weight: 600;
+    color: $okl-neutral-600;
+    white-space: nowrap;
+    transition:
+        background-color $okl-duration-fast $okl-ease-standard,
+        color $okl-duration-fast $okl-ease-standard;
+
+    &--selected {
+        background: $sherwood-green-900;
+        color: #fff;
+    }
+}
+
+.okl-method-card {
+    min-height: 5.875rem;
+    border-radius: $okl-radius-sm;
+    box-shadow: $okl-hairline;
+    padding: 1rem;
+
+    .fw-bold {
+        font-size: $okl-text-h6;
+        line-height: 1.333;
+    }
+
+    .okl-glass-card__meta {
+        font-size: 1rem;
+        line-height: 1.25;
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Theme rail
+// -----------------------------------------------------------------------------
+// The rail remains keyboard-, wheel- and touch-native. JavaScript only keeps
+// the controls in sync with the scroll positions that are actually reachable.
+.okl-theme-rail-wrap {
+    position: relative;
+    overflow: hidden;
+    padding-left: 0;
+
+    @include media-breakpoint-up(md) {
+        padding-left: max(#{$okl-page-gutter}, calc((100vw - #{$okl-page-measure}) / 2));
+    }
+
+    &::before,
+    &::after {
+        content: "";
+        position: absolute;
+        z-index: 2;
+        top: 0;
+        bottom: 0;
+        width: 3.5rem;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity $okl-duration-base $okl-ease-standard;
+    }
+
+    &::before {
+        left: 0;
+        background: linear-gradient(90deg, #fff, rgba(255, 255, 255, 0));
+
+        @include media-breakpoint-up(md) {
+            left: max(#{$okl-page-gutter}, calc((100vw - #{$okl-page-measure}) / 2));
+        }
+    }
+
+    &::after {
+        right: 0;
+        background: linear-gradient(270deg, #fff, rgba(255, 255, 255, 0));
+    }
+}
+
+.okl-themes.can-scroll-left .okl-theme-rail-wrap::before,
+.okl-themes.can-scroll-right .okl-theme-rail-wrap::after {
+    @include media-breakpoint-up(md) {
+        opacity: 1;
+    }
+}
+
+.okl-rail {
+    display: flex;
+    gap: 1rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding-bottom: 0;
+
+    @include media-breakpoint-down(md) {
+        scroll-padding-left: $okl-page-gutter;
+
+        .okl-theme-card:first-child {
+            margin-left: $okl-page-gutter;
+        }
+
+        .okl-theme-card:last-child {
+            margin-right: max(#{$okl-page-gutter}, calc(100% - 19.25rem - #{$okl-page-gutter}));
+        }
+    }
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+.okl-slider-dots {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+
+    .okl-slider-dot {
+        position: relative;
+        display: grid;
+        place-items: center;
+        width: 1.5rem;
+        height: 1.5rem;
+        border: 0;
+        background: transparent;
+        padding: 0;
+        cursor: pointer;
+
+        &::before {
+            content: "";
+            display: block;
+            width: 0.5rem;
+            height: 0.5rem;
+            border-radius: $border-radius-pill;
+            background: $okl-neutral-300;
+            transition:
+                width $okl-duration-base $okl-ease-standard,
+                background-color $okl-duration-base $okl-ease-standard;
+        }
+
+        &:focus-visible {
+            outline: 2px solid $sherwood-green-800;
+            outline-offset: 0;
+        }
+    }
+
+    .is-active {
+        &::before {
+            width: 1.25rem;
+            background: $okl-text-action;
+        }
+    }
+}
+
+.okl-rail-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border: 0;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: $okl-hairline-strong;
+    transition:
+        background-color $okl-duration-base $okl-ease-standard,
+        box-shadow $okl-duration-base $okl-ease-standard;
+
+    &::before {
+        content: "";
+        width: 1.25rem;
+        height: 1.25rem;
+        background-color: $okl-text-action;
+        transition:
+            background-color $okl-duration-base $okl-ease-standard,
+            transform $okl-duration-base $okl-ease-expressive;
+        -webkit-mask: $okl-icon-arrow-right center / contain no-repeat;
+        mask: $okl-icon-arrow-right center / contain no-repeat;
+    }
+
+    &:hover,
+    &:focus-visible {
+        background: $tangerine-500;
+        box-shadow: none;
+
+        &::before {
+            background-color: $okl-ink;
+            transform: translateX(0.1875rem);
+        }
+    }
+}
+
+.okl-rail-btn--prev::before {
+    -webkit-mask-image: $okl-icon-arrow-left;
+    mask-image: $okl-icon-arrow-left;
+}
+
+.okl-rail-btn--prev:hover::before,
+.okl-rail-btn--prev:focus-visible::before {
+    transform: translateX(-0.1875rem);
+}
+
+// Both rail buttons stay in place; an unreachable direction is dimmed rather
+// than removed so the control pair does not shift as you scroll the rail.
+.okl-rail-btn.is-unavailable {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+.okl-themes.is-initial .okl-rail-btn--next {
+    background: $tangerine-500;
+    box-shadow: none;
+
+    &::before {
+        background-color: $okl-ink;
+    }
+
+    &:hover,
+    &:focus-visible {
+        background: $tangerine-600;
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Roadmap timeline
+// -----------------------------------------------------------------------------
+// Use one column on small screens and alternating columns from lg upwards.
+// Rows stay in normal flow at every width, so the column heights follow the
+// copy instead of a hand-measured schedule. See `.okl-timeline__row` for how
+// the alternating stagger is produced without absolute positioning.
+.okl-timeline {
+    position: relative;
+}
+
+.okl-timeline::before {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    top: 0;
+    bottom: 0;
+    left: 9px;
+    width: 2px;
+    background: rgba($sherwood-green-100, 0.82);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 12%, #000 88%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 12%, #000 88%, transparent 100%);
+
+    @include media-breakpoint-up(lg) {
+        left: calc(50% - 1px);
+    }
+}
+
+.okl-timeline__row {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 20px 1fr;
+    column-gap: 1.5rem;
+    align-items: start;
+    margin-bottom: $okl-card-gap;
+    // Rows overlap at lg, so a trailing row's empty slot would otherwise sit on
+    // top of the previous card and swallow clicks along its lower edge.
+    pointer-events: none;
+
+    // Slots are placed explicitly rather than by source order, so one card per
+    // milestone can serve both this single column and the two columns at lg.
+    // Both slots share the cell here; the empty one collapses to nothing.
+    .okl-timeline__dot {
+        grid-area: 1 / 1;
+    }
+
+    .okl-timeline__slot {
+        grid-area: 1 / 2;
+    }
+
+    .okl-card {
+        pointer-events: auto;
+    }
+
+    &:last-child {
+        margin-bottom: 0;
+    }
+
+    @include media-breakpoint-up(lg) {
+        grid-template-columns: 1fr 20px 1fr;
+        // Leaves 40px between a card edge and the axis once the 20px dot is halved.
+        column-gap: 1.875rem;
+        margin-bottom: 0;
+
+        .okl-timeline__dot {
+            grid-area: 1 / 2;
+        }
+
+        .okl-timeline__slot--left {
+            grid-area: 1 / 1;
+        }
+
+        .okl-timeline__slot--right {
+            grid-area: 1 / 3;
+        }
+
+        // The interlocked look: because consecutive rows sit on opposite sides of
+        // the axis, each one may start before its predecessor ends. Pulling the row
+        // up by a fixed band keeps that rhythm while the rows themselves stay in
+        // flow, so longer copy pushes everything below it down instead of colliding.
+        //
+        // Cards two rows apart do share a column, and their clearance is
+        // `previous row height - 2 * $okl-timeline-overlap`. The slot's
+        // `min-height` therefore guarantees at least 4rem of air between them no
+        // matter how short the copy gets.
+        & + & {
+            margin-top: -$okl-timeline-overlap;
+        }
+    }
+}
+
+.okl-timeline__dot {
+    display: flex;
+    justify-content: center;
+    padding-top: 1.125rem;
+
+    span {
+        display: block;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: #fff;
+        outline: 4px solid $okl-surface-brand;
+    }
+}
+
+.okl-timeline__slot {
+    display: flex;
+
+    @include media-breakpoint-up(lg) {
+        // Floors the row height, which is what keeps cards two rows apart clear of
+        // each other once `.okl-timeline__row + .okl-timeline__row` pulls them up.
+        min-height: 11.125rem;
+    }
+}
+
+.okl-timeline__slot--left {
+    @include media-breakpoint-up(lg) {
+        justify-content: flex-end;
+    }
+}
+
+.okl-timeline__slot--right {
+    @include media-breakpoint-up(lg) {
+        justify-content: flex-start;
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Interactive discussion history timeline
+// -----------------------------------------------------------------------------
+// The compact and the full view are two renderings of one timeline, and the
+// switch between them must not move the axis. That only holds while both frame
+// their content identically, so the frame lives here once instead of being
+// restated per view — the previous copies had drifted 16px apart vertically.
+$okl-discussion-pad-block: 2rem;
+$okl-discussion-pad-block-lg: 4rem;
+$okl-discussion-pad-inline: clamp(1.5rem, 4vw, 2.5rem);
+// Reserved for the year labels above the axis. Wide enough for the full view's
+// 1rem label; the compact view's smaller label simply sits at the top of it.
+$okl-discussion-year-band: 1.125rem;
+
+// The compact rail gives every year the same slot and lets the marker stack grow
+// downwards, so height alone carries the volume and the rail reads as the shape
+// of the discussion instead of as a scatter of dots.
+//
+// A group may run halfway under its bounding dots: it is vertically below the
+// axis, while that overlap prevents an oversized white gap between year groups.
+// Links retain their 25px hit area through their own border and negative margin.
+$okl-discussion-marker-module: 1.5rem;
+$okl-discussion-marker-size: 1.1875rem;
+$okl-discussion-marker-gap: $okl-discussion-marker-module - $okl-discussion-marker-size;
+$okl-discussion-marker-columns: 2;
+$okl-discussion-year-gap: 0.75rem;
+$okl-discussion-dot: 1.25rem;
+
+.okl-discussion {
+    position: relative;
+    padding-bottom: 0;
+}
+
+.okl-view-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: $sherwood-green-900;
+    cursor: pointer;
+    user-select: none;
+}
+
+.okl-view-switch__control {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    width: 4rem;
+    height: 2rem;
+    padding: 0.25rem;
+    border-radius: $border-radius-pill;
+    background: $okl-neutral-300;
+    transition: background-color $okl-duration-base $okl-ease-standard;
+}
+
+.okl-view-switch__thumb {
+    display: block;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: $okl-shadow-card;
+    transition: transform $okl-duration-base $okl-ease-standard;
+}
+
+.okl-view-switch input:checked + .okl-view-switch__control {
+    background: $tangerine-500;
+
+    .okl-view-switch__thumb {
+        transform: translateX(2rem);
+    }
+}
+
+.okl-view-switch input:focus-visible + .okl-view-switch__control {
+    outline: $focus-ring-width solid $focus-ring-color;
+    outline-offset: 2px;
+}
+
+.okl-discussion__viewport {
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    // Panning the rail and scrolling the page are the only gestures here. Saying
+    // so lets the browser start them on the compositor instead of waiting to see
+    // whether something in the rail claims the touch first.
+    touch-action: pan-x pan-y;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+.okl-discussion__compact {
+    display: block;
+}
+
+.okl-discussion__full {
+    display: none;
+}
+
+// Relocated by script to sit before `.okl-discussion__viewport` (see
+// `buildDiscussionOverview` in motion.ts) rather than inside it: a
+// sticky element cannot stick to the page from inside an ancestor with
+// non-visible overflow, which the pannable viewport has to have. Hidden
+// here too because the move — and the overview it's rebuilt into — happens
+// once, at init, and must not flash unbuilt content first. Shown in both
+// views once built: compact and full pan the same viewport, so one overview
+// summarises either.
+.okl-discussion__full-axis-sticky {
+    display: none;
+}
+
+.okl-discussion__full-axis-sticky.is-ready {
+    display: block;
+}
+
+.okl-discussion.is-full {
+    .okl-discussion__compact {
+        display: none;
+    }
+
+    .okl-discussion__full {
+        display: block;
+    }
+}
+
+.okl-discussion__track {
+    box-sizing: border-box;
+    width: max-content;
+    min-width: 100%;
+    padding: $okl-discussion-pad-block $okl-discussion-pad-inline;
+
+    // The rail reads as its own horizontal band rather than a strip pressed
+    // against the heading. The minimum keeps that framing when a sparse dataset
+    // produces short marker stacks; a dense one simply grows past it.
+    @include media-breakpoint-up(lg) {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-height: 30rem;
+        padding-block: $okl-discussion-pad-block-lg;
+    }
+
+    // Compact has nothing between the shared overview above and its own
+    // blocks — no large heading like full's, which this top padding otherwise
+    // gives room to breathe above. Full keeps the fuller measure.
+    .okl-discussion:not(.is-full) & {
+        padding-top: 0.75rem;
+
+        @include media-breakpoint-up(lg) {
+            padding-top: 1rem;
+        }
+    }
+}
+
+// Exactly the shared overview's width, never more — compact is the "fits
+// without its own pan" view (see `.okl-discussion__full-axis-sticky`; full is
+// the one that genuinely needs a wider, separately-scrolling track). A year
+// used to keep a fixed pixel width regardless of the viewport, which could
+// (and on most viewports did) add up to less than 100%, leaving the blocks
+// track narrower than the bar above it rather than flush with it.
+.okl-discussion__compact-years {
+    display: flex;
+    gap: $okl-discussion-year-gap;
+    width: 100%;
+}
+
+// Every year an equal share of that width, whether it holds one contribution
+// or fifty — what lets the eye compare years down the rail, and what keeps
+// the track exactly as wide as the overview above it regardless of how many
+// years there are or how narrow the viewport is.
+.okl-discussion__compact-year {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+// Which year a stack falls under now reads from its position under the
+// shared overview above (see `.okl-discussion__full-axis-sticky`), not from
+// a repeated label at every stack — `tools/build_timeline.py` still emits
+// this element, it just no longer renders.
+.okl-discussion__compact-year-label {
+    display: none;
+}
+
+// The shared overview in `.okl-discussion__full-axis-sticky` now carries
+// progress for both views — this per-year segment duplicated that idea with
+// its own, differently-styled dot and line. `tools/build_timeline.py` still
+// emits the element (regenerating 300+ cards to drop it isn't worth it for
+// an element with no footprint); it just no longer renders.
+.okl-discussion__compact-axis {
+    display: none;
+}
+
+// Centred in its now-uniform-width year slot. Applied as a transform to keep
+// it out of the layout: the rail's own width must not grow with it.
+.okl-discussion__compact-columns {
+    position: relative;
+    left: 50%;
+    width: max-content;
+    transform: translateX(-50%);
+}
+
+.okl-discussion__compact-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+// Contributions fill the slot left to right and then wrap, so a busy year grows
+// downwards at half the rate a single file would — which is what keeps the whole
+// range on screen without shrinking the markers below their hit area.
+.okl-discussion__compact-markers {
+    display: grid;
+    grid-template-columns: repeat($okl-discussion-marker-columns, $okl-discussion-marker-module);
+    // Reuse the horizontal space left around each visible 19px block for rows,
+    // so the vertical and horizontal visual gaps are equal.
+    gap: $okl-discussion-marker-gap 0;
+}
+
+// A single contribution should be a single centred block, not the first half
+// of a permanent two-column grid.
+.okl-discussion__compact-markers:has(.okl-discussion__marker:only-child) {
+    grid-template-columns: $okl-discussion-marker-module;
+
+    .okl-discussion__marker {
+        justify-self: center;
+    }
+}
+
+// Each block is the contribution itself, not decoration: it links to the source
+// and previews what that source is. The negative margin trades the 6px gap for
+// hit area, so the tap target clears 24px while the block stays 19px.
+.okl-discussion__marker {
+    display: block;
+    box-sizing: content-box;
+    width: $okl-discussion-marker-size;
+    height: $okl-discussion-marker-size;
+    margin: -0.1875rem;
+    border-radius: 0.4375rem;
+    border: 0.1875rem solid transparent;
+    background: $tangerine-500;
+    background-clip: content-box;
+    transition:
+        background-color $okl-duration-fast $okl-ease-standard,
+        box-shadow $okl-duration-fast $okl-ease-standard;
+
+    // Same reasoning as the cards: a hover rule makes iOS spend the first touch
+    // activating it rather than starting the pan.
+    @media (hover: hover) {
+        &:hover {
+            background-color: $tangerine-600;
+            box-shadow: 0 0 0 0.125rem $sherwood-green-900;
+        }
+    }
+
+    &:focus-visible {
+        background-color: $tangerine-600;
+        box-shadow: 0 0 0 0.125rem $sherwood-green-900;
+    }
+}
+
+// A contribution opens here before it opens off-site, so the visitor sees what
+// they are about to leave for. Native dialog: focus handling, Escape and the
+// backdrop come with it.
+.okl-source-dialog {
+    width: min(34rem, calc(100vw - 2rem));
+    max-height: min(80vh, 42rem);
+    border: 0;
+    border-radius: $okl-radius-lg;
+    background: #fff;
+    padding: 0;
+    color: $sherwood-green-900;
+    box-shadow: $okl-shadow-card-raised;
+
+    &::backdrop {
+        background: rgba($sherwood-green-950, 0.62);
+    }
+
+    // The UA hides a closed dialog with display:none, so the flex layout has to
+    // wait for [open] or the dialog would never close.
+    &[open] {
+        display: flex;
+        flex-direction: column;
+    }
+}
+
+.okl-source-dialog__card {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-height: 0;
+    padding: 2rem;
+}
+
+.okl-source-dialog__kicker {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    color: $okl-action-strong;
+    font-size: $okl-text-small;
+    font-weight: 700;
+    line-height: 1.286;
+    text-transform: capitalize;
+}
+
+.okl-source-dialog h3 {
+    margin: 0;
+    font-size: $okl-text-h4;
+    font-weight: 700;
+    line-height: $okl-lh-display;
+    color: inherit;
+    text-wrap: pretty;
+}
+
+.okl-source-dialog__meta {
+    margin: 0;
+    font-size: $okl-text-small;
+    line-height: 1.286;
+    color: $okl-text-muted;
+}
+
+// The one part that may run long, so it takes the scroll rather than the
+// dialog: the actions must stay reachable without scrolling past the text.
+.okl-source-dialog__body {
+    overflow-y: auto;
+    // Reaching the end of the description must not start scrolling whatever is
+    // behind the dialog.
+    overscroll-behavior: contain;
+    flex: 1 1 auto;
+    min-height: 0;
+    margin: 0;
+    padding-top: 0.25rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: $okl-text-muted;
+    text-wrap: pretty;
+}
+
+.okl-source-dialog__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 0.25rem;
+}
+
+.okl-source-dialog__close {
+    border: 0;
+    background: none;
+    padding: 0.5rem 0;
+    font-family: $okl-font-button;
+    font-size: 1rem;
+    font-weight: 600;
+    color: $okl-text-muted;
+    text-decoration: underline;
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible {
+        color: $sherwood-green-900;
+    }
+}
+
+// Filled from the hovered marker and placed by script; absent without it, which
+// costs nothing — the link and its label still work.
+.okl-discussion__preview {
+    position: absolute;
+    z-index: 3;
+    top: 0;
+    left: 0;
+    width: 17rem;
+    max-width: calc(100% - 2rem);
+    border-radius: $okl-radius-sm;
+    background: $sherwood-green-900;
+    padding: 0.75rem 1rem;
+    color: #fff;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+        opacity $okl-duration-fast $okl-ease-standard,
+        visibility $okl-duration-fast $okl-ease-standard;
+
+    &.is-visible {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    strong {
+        display: block;
+        font-size: $okl-text-small;
+        font-weight: 700;
+        line-height: 1.286;
+    }
+
+    span {
+        display: block;
+        margin-top: 0.25rem;
+        font-size: $okl-text-meta;
+        line-height: 1.333;
+        color: $sherwood-green-300;
+    }
+}
+
+.okl-discussion__full {
+    box-sizing: border-box;
+    min-width: var(--discussion-full-min-width);
+    // Shares `.okl-discussion__track`'s frame; see the note at the top of this
+    // section for why the two views may not diverge here.
+    padding: $okl-discussion-pad-block $okl-discussion-pad-inline;
+
+    @include media-breakpoint-up(lg) {
+        padding-block: $okl-discussion-pad-block-lg;
+    }
+}
+
+// `grid-template-columns` is set inline per render (tools/build_timeline.py):
+// an explicit list of column widths with an extra empty spacer track at each
+// year boundary, so that boundary reads as wider than a quarter-to-quarter
+// gap within the same year — `repeat()` cannot express two gap sizes.
+.okl-discussion__event-groups {
+    display: grid;
+    align-items: start;
+    column-gap: 1.5rem;
+    width: var(--discussion-full-width);
+}
+
+// Pinned to the top of the viewport for as long as the section is on screen.
+// Inert except for the year buttons `buildDiscussionOverview` puts inside it
+// (re-enabled where they're defined below) — the rest is a summary of the
+// pannable content, not a control over it.
+.okl-discussion__full-axis-sticky {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #fff;
+    padding-top: $okl-discussion-pad-block;
+    pointer-events: none;
+
+    @include media-breakpoint-up(lg) {
+        padding-top: $okl-discussion-pad-block-lg;
+    }
+}
+
+// Holds the compressed overview `buildDiscussionOverview` builds in
+// motion.ts — a fixed width, no pan of its own.
+.okl-discussion__full-axis-scroller {
+    padding-inline: $okl-discussion-pad-inline;
+}
+
+// The large per-column heading — relocated by script (see
+// `buildDiscussionOverview` in motion.ts) to sit in the pannable flow
+// right above the cards it labels, so it scrolls past at their rate. Still
+// pixel-positioned to line up with `.okl-discussion__event-groups`' columns.
+.okl-discussion__full-years {
+    position: relative;
+    height: 2.5rem;
+    margin-bottom: 0.75rem;
+    color: $sherwood-green-900;
+    font-size: $okl-text-h4;
+    font-weight: 700;
+    line-height: 1.1;
+    width: var(--discussion-full-width);
+
+    span {
+        position: absolute;
+    }
+}
+
+// The compressed overview built by `buildDiscussionOverview`: every distinct
+// year gets an equal, percentage-based share of one screen width instead of
+// the pixel column its card group actually occupies, so the small labels sit
+// above `.okl-discussion__full-line` without a pan of their own.
+.okl-discussion__overview-years {
+    position: relative;
+    height: $okl-discussion-year-band;
+    margin-bottom: 0.75rem;
+    color: $sherwood-green-900;
+    font-size: $okl-text-meta;
+    font-weight: 700;
+    line-height: 1.1;
+    width: 100%;
+
+    span {
+        position: absolute;
+        top: 0;
+        white-space: nowrap;
+        transform: translateX(-50%);
+    }
+
+    span:first-child {
+        transform: none;
+    }
+
+    span:last-child {
+        transform: translateX(-100%);
+    }
+
+    // Twenty-one 4-character labels spread evenly across a phone-width screen
+    // overlap into an unreadable smear — the dots below stay small enough to
+    // coexist at that count, but text needs real room. Thinned to every 4th
+    // year (always including the very first and last, since 21 = 4×5+1) rather
+    // than hidden altogether: the range's start and end stay legible without
+    // a pan of the overview's own.
+    @include media-breakpoint-down(md) {
+        span:not(:nth-child(4n + 1)) {
+            display: none;
+        }
+    }
+}
+
+// Mirrors the compact rail: a light base line the full (now fixed, screen-
+// width) track, a tangerine overlay that grows smoothly with
+// `--discussion-progress-fraction` — a proportion of how far the reader has
+// panned the cards, not a pixel offset into them (see `updateYearProgress`
+// in motion.ts, and `buildDiscussionOverview` for why this bar is a
+// different width than the pannable content it summarises).
+.okl-discussion__full-line {
+    position: relative;
+    height: 1.5rem;
+    margin-bottom: 0.75rem;
+    width: 100%;
+
+    &::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 0.1875rem;
+        border-radius: $okl-radius-button;
+        background: $okl-neutral-200;
+    }
+
+    &::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: calc(var(--discussion-progress-fraction, 0) * 100%);
+        height: 0.1875rem;
+        border-radius: $okl-radius-button;
+        background: $tangerine-500;
+        transition: width $okl-duration-base $okl-ease-standard;
+    }
+
+    // A real button (see `buildDiscussionOverview` in motion.ts), reset
+    // to the plain ring drawn in ::before/::after below — `all: unset` first so
+    // none of the browser's own button chrome (border, padding, font, background)
+    // has to be fought property by property.
+    button {
+        all: unset;
+        position: absolute;
+        top: 0;
+        cursor: pointer;
+        // `all: unset` resets this too (it's an inherited property), which would
+        // otherwise inherit the `none` the sticky ancestor sets to keep the rest
+        // of that bar inert — undoing the ancestor override at equal specificity
+        // if that rule happens to sit earlier in the file. Setting it again here,
+        // in the same rule as the reset, doesn't depend on source order.
+        pointer-events: auto;
+    }
+
+    button:focus-visible::before {
+        outline: $focus-ring-width solid $focus-ring-color;
+        outline-offset: 2px;
+    }
+
+    // A fixed-size ring at every state — only its fill transitions, from
+    // hollow to solid, as the reader reaches it. A size change here (scaling
+    // the circle down when inactive) used to leave the line poking out past
+    // the shrunk ring at both ends, because the line reaches exactly to the
+    // container edge while a *scaled* end dot shrinks in around its own
+    // centre rather than staying flush with it.
+    button::before {
+        content: "";
+        position: absolute;
+        // Centres the $okl-discussion-dot (20px) circle on the 3px line/border
+        // it sits on: (3px - 20px) / 2.
+        top: -0.53125rem;
+        display: block;
+        width: $okl-discussion-dot;
+        height: $okl-discussion-dot;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: inset 0 0 0 0.125rem $okl-neutral-300;
+        transform: translateX(-50%);
+        transition:
+            background-color $okl-duration-base $okl-ease-standard,
+            box-shadow $okl-duration-base $okl-ease-standard;
+    }
+
+    button:first-child::before {
+        transform: none;
+    }
+
+    button:last-child::before {
+        transform: translateX(-100%);
+    }
+
+    @media (hover: hover) {
+        button:hover::before {
+            box-shadow: inset 0 0 0 0.125rem $tangerine-500;
+        }
+    }
+
+    // The wipe: an identically sized and positioned solid disc, revealed left
+    // to right by `--okl-dot-fill` (0-100%, set per dot in `updateYearProgress`
+    // from exactly where the line's own leading edge currently crosses that
+    // dot's own span). At 0% it is fully clipped away, showing only the ring
+    // above; at 100% it fully covers the ring, reading as solid — the line
+    // visually flows into and through the ring instead of the ring flatly
+    // swapping colour the instant a threshold is crossed.
+    button::after {
+        content: "";
+        position: absolute;
+        top: -0.53125rem;
+        display: block;
+        width: $okl-discussion-dot;
+        height: $okl-discussion-dot;
+        border-radius: 50%;
+        background: $tangerine-500;
+        clip-path: inset(0 calc(100% - var(--okl-dot-fill, 0%)) 0 0);
+        transform: translateX(-50%);
+        pointer-events: none;
+    }
+
+    button:first-child::after {
+        transform: none;
+    }
+
+    button:last-child::after {
+        transform: translateX(-100%);
+    }
+
+    // Same thinning as the labels above, same reason: 21 fixed-size (20px)
+    // rings spaced across a phone-width screen overlap each other well before
+    // they overlap any text. The fill itself is a separate, continuous overlay
+    // on the line — it keeps reading smoothly even with most of the discrete
+    // "pop" moments hidden.
+    @include media-breakpoint-down(md) {
+        button:not(:nth-child(4n + 1)) {
+            display: none;
+        }
+    }
+}
+
+.okl-discussion__event-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+@mixin okl-discussion-card-active {
+    background: $okl-surface-mint-subtle;
+    box-shadow: $okl-shadow-card-raised;
+
+    .okl-discussion__event-link {
+        text-decoration: underline;
+    }
+
+    .okl-discussion__event-cue::after {
+        transform: translateX(0.1875rem);
+    }
+}
+
+.okl-discussion__event-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 13.0625rem;
+    border: 1px solid $okl-border-hairline;
+    border-radius: $okl-radius-sm;
+    background: #fff;
+    padding: 1.5rem;
+    color: $sherwood-green-900;
+    cursor: pointer;
+    transition:
+        background-color $okl-duration-base $okl-ease-standard,
+        border-color $okl-duration-base $okl-ease-standard,
+        box-shadow $okl-duration-base $okl-ease-standard;
+
+    // Hover styling is fenced off from touch on purpose. Safari on iOS treats the
+    // first touch of an element that has hover styles as "activate the hover"
+    // rather than as the start of a gesture, which leaves the card stuck in this
+    // state and swallows the swipe the rail was supposed to get. Keyboard focus
+    // gets the same treatment through :focus-visible, which a tap does not match.
+    @media (hover: hover) {
+        &:hover {
+            @include okl-discussion-card-active;
+        }
+    }
+
+    &:has(.okl-discussion__event-link:focus-visible) {
+        @include okl-discussion-card-active;
+    }
+
+    h3 {
+        margin-bottom: 0.5rem;
+        color: inherit;
+        font-family: $okl-font-core;
+        font-size: 1rem;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    > p {
+        margin-bottom: 1rem;
+        font-size: $okl-text-small;
+        line-height: 1.286;
+    }
+}
+
+.okl-discussion__event-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    margin-top: auto;
+    // Leaves room for `.okl-discussion__event-cue`, which sits absolutely
+    // positioned alongside it — see the note there for why.
+    padding-right: 5.5rem;
+
+    p {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 0.375rem;
+        // Lets `strong` actually shrink and ellipsize below its own content
+        // width instead of forcing the row to grow or wrap — a flex item's
+        // default min-width is its content size, not 0.
+        flex: 1 1 auto;
+        min-width: 0;
+        margin: 0;
+        font-size: $okl-text-small;
+        line-height: 1.286;
+        color: $okl-text-subtle;
+
+        // The source name varies wildly in length; clipped to one line so the
+        // footer's height — and the "Lees meer" it shares a row with — never
+        // depends on it. The date next to it is fixed-format and short, so it
+        // never needs the same treatment.
+        strong {
+            overflow: hidden;
+            min-width: 0;
+            font-weight: 700;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        span {
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+
+        span::before {
+            content: "\2022";
+            margin-right: 0.375rem;
+        }
+    }
+}
+
+// A label for the kind of source, not a control — deliberately a plain inline
+// glyph rather than a filled chip, so it does not read as the only pressable
+// thing on the card.
+.okl-discussion__event-badge {
+    display: grid;
+    order: -1;
+    flex: 0 0 1rem;
+    width: 1rem;
+    height: 1rem;
+    place-items: center;
+    color: $tangerine-500;
+}
+
+// The whole card opens the contribution. The title carries the link so there is
+// a real, focusable control with a sensible name, and its stretched pseudo
+// element hands the rest of the card the same hit area.
+// A card is something you press, so a drag starting on it belongs to the rail.
+// Without this a drag picks the link up — the browser's own link dragging on a
+// pointer, a text selection on a finger — and the rail never sees the gesture.
+// Sass does not prefix, and Safari still needs the prefixed forms here: without
+// them a drag beginning on a card starts a text selection on iOS instead of
+// panning the rail, and a press raises the callout menu.
+.okl-discussion__event-card,
+.okl-discussion__marker {
+    -webkit-user-drag: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+// The title is the real, focusable control with a sensible accessible name. It
+// is deliberately not stretched across the card: an anchor covering the whole
+// surface hands every drag that starts there to the link instead of to the
+// rail, and the rail is a thing you pan. Script makes the card clickable, which
+// a drag can be told to ignore in a way a link cannot.
+.okl-discussion__event-link {
+    color: inherit;
+    text-decoration: none;
+    -webkit-user-drag: none;
+    -webkit-touch-callout: none;
+}
+
+// Positioned onto the same line as the footer's source/date, matching
+// Figma's Timeline Card v2 (icon+source+date left, "Lees meer" right, one
+// row) — without touching the card's markup, which stays in its generated
+// order for `initialiseSourceDialog` to read from.
+.okl-discussion__event-cue {
+    position: absolute;
+    right: 1.5rem;
+    bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin: 0;
+    font-size: $okl-text-small;
+    font-weight: 700;
+    line-height: 1.286;
+    color: $okl-ink;
+
+    &::after {
+        content: "";
+        width: 1rem;
+        height: 1rem;
+        background-color: $tangerine-500;
+        transition: transform $okl-duration-base $okl-ease-expressive;
+        -webkit-mask: $okl-icon-arrow-right center / contain no-repeat;
+        mask: $okl-icon-arrow-right center / contain no-repeat;
+    }
+}
+
+// The glyph tells you what kind of source you are about to open. Driven by the
+// `data-type` on the link so the card markup stays identical for every entry.
+.okl-discussion__event-icon {
+    display: block;
+    width: 1rem;
+    height: 1rem;
+    background-color: currentcolor;
+    -webkit-mask: $okl-icon-article center / contain no-repeat;
+    mask: $okl-icon-article center / contain no-repeat;
+}
+
+[data-type="pers"] .okl-discussion__event-icon {
+    -webkit-mask-image: $okl-icon-newspaper;
+    mask-image: $okl-icon-newspaper;
+}
+
+[data-type="rapport"] .okl-discussion__event-icon {
+    -webkit-mask-image: $okl-icon-file-text;
+    mask-image: $okl-icon-file-text;
+}
+
+[data-type="social media"] .okl-discussion__event-icon {
+    -webkit-mask-image: $okl-icon-chat-dots;
+    mask-image: $okl-icon-chat-dots;
+}
+
+// Periods hold more entries than a column can show at once. The overflow sits
+// in a native disclosure so it opens without JavaScript and stays keyboard
+// operable; the summary is styled as the tail card of the column.
+.okl-discussion__event-rest,
+.okl-discussion__event-rest-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.okl-discussion__event-card--more {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-height: 0;
+    box-shadow: $okl-hairline;
+    background: transparent;
+    padding: 1rem 1.5rem;
+    font-size: $okl-text-small;
+    font-weight: 700;
+    line-height: 1.286;
+    color: $sherwood-green-800;
+    cursor: pointer;
+    list-style: none;
+    transition: background-color $okl-duration-fast $okl-ease-standard;
+
+    &::-webkit-details-marker {
+        display: none;
+    }
+
+    // Chevron mirrors the accordion elsewhere on the page.
+    &::after {
+        content: "";
+        flex: 0 0 1.25rem;
+        width: 1.25rem;
+        height: 1.25rem;
+        background-color: currentcolor;
+        transition: transform $okl-duration-base $okl-ease-standard;
+        -webkit-mask: $okl-icon-caret-down center / contain no-repeat;
+        mask: $okl-icon-caret-down center / contain no-repeat;
+    }
+
+    @media (hover: hover) {
+        &:hover {
+            background: $okl-surface-mint-subtle;
+        }
+    }
+
+    &:focus-visible {
+        background: $okl-surface-mint-subtle;
+    }
+}
+
+.okl-discussion__event-rest[open] > .okl-discussion__event-card--more::after {
+    transform: rotate(180deg);
+}
+
+// -----------------------------------------------------------------------------
+// Legacy photo stack
+// -----------------------------------------------------------------------------
+.okl-photo-stack {
+    position: relative;
+    display: flex;
+    justify-content: center;
+}
+
+.okl-photo-stack__back,
+.okl-photo-stack__mid {
+    display: none;
+    position: absolute;
+    border-radius: $okl-radius-lg;
+
+    @include media-breakpoint-up(lg) {
+        display: block;
+    }
+}
+
+.okl-photo-stack__back {
+    left: 0;
+    right: 0;
+    top: 15%;
+    bottom: 15%;
+    background: $light-wisteria-100;
+}
+
+.okl-photo-stack__mid {
+    left: 4.7%;
+    right: 4.7%;
+    top: 8.4%;
+    bottom: 8.4%;
+    background: $light-wisteria-300;
+}
+
+.okl-photo-stack__image-frame {
+    position: relative;
+    width: 100%;
+    max-width: 31.75rem;
+    border-radius: $okl-radius-lg;
+    aspect-ratio: 508 / 620;
+    background: $light-wisteria-200;
+    overflow: hidden;
+}
+
+.okl-photo-stack__img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+}
+
+// -----------------------------------------------------------------------------
+// Closing CTA banner
+// -----------------------------------------------------------------------------
+.okl-cta-banner-wrap {
+    position: relative;
+}
+
+.okl-cta-banner {
+    position: relative;
+    border-radius: $okl-radius-lg;
+    background: $okl-surface-brand;
+    padding: 2.5rem;
+    overflow: hidden;
+    color: #fff;
+
+    h2 {
+        color: #fff;
+    }
+
+    @include media-breakpoint-down(lg) {
+        padding-bottom: 14rem;
+    }
+
+    @include media-breakpoint-down(sm) {
+        .okl-btn {
+            max-width: 100%;
+        }
+
+        .okl-btn__label {
+            min-width: 0;
+            white-space: normal;
+        }
+    }
+
+    @include media-breakpoint-up(lg) {
+        min-height: 22.5rem;
+    }
+}
+
+.okl-cta-banner__decor {
+    width: 24rem;
+    height: 39.25rem;
+}
+
+.okl-cta-banner__decor--one {
+    top: 0.375rem;
+    left: 67.421875%;
+}
+
+.okl-cta-banner__decor--two {
+    top: 4.5rem;
+    left: 75.625%;
+}
+
+.okl-cta-banner__portrait {
+    position: absolute;
+    z-index: 2;
+    right: 0.75rem;
+    bottom: 0;
+    display: block;
+    width: 10.75rem;
+    height: 13.5rem;
+    overflow: hidden;
+    pointer-events: none;
+
+    img {
+        display: block;
+        width: 100%;
+        height: auto;
+        max-width: none;
+    }
+
+    @include media-breakpoint-up(lg) {
+        top: -3.1875rem;
+        right: 4.6875rem;
+        bottom: auto;
+        width: 20.4375rem;
+        height: 25.6875rem;
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Header
+// -----------------------------------------------------------------------------
+.okl-header {
+    background: $okl-surface-brand;
+}
+
+.okl-header__logo {
+    display: block;
+    width: 189px;
+    max-width: 100%;
+    height: auto;
+}
+
+.okl-header__link {
+    color: #fff;
+    font-weight: 700;
+    font-size: $okl-text-small;
+    text-decoration: none;
+
+    &:hover,
+    &:focus-visible {
+        color: #fff;
+        text-decoration: underline;
+    }
+}
+
+// "Een initiatief van SIVON" next to the logo in the landing-page header.
+.okl-header__byline {
+    @include okl-brand-byline;
+}
+
+.okl-section .row,
+.okl-usp .row {
+    --bs-gutter-x: #{$grid-gutter-width};
+}
+.okl-rail-controls {
+    flex-wrap: wrap;
+}
+
+// -----------------------------------------------------------------------------
+// Landing-page motion
+// -----------------------------------------------------------------------------
+// All content is visible by default. JavaScript only adds the pending state to
+// elements that will animate, so a failed or blocked script never hides copy.
+.okl-landing.is-motion-ready {
+    [data-motion="reveal"],
+    [data-motion="photo-stack"],
+    [data-motion-group],
+    [data-motion="hero-art"],
+    .okl-discussion,
+    .okl-timeline__row {
+        transition:
+            opacity $okl-motion-duration-base $okl-ease-expressive,
+            transform $okl-motion-duration-base $okl-ease-expressive;
+    }
+
+    [data-motion="reveal"].is-motion-pending:not(.is-motion-visible),
+    [data-motion="photo-stack"].is-motion-pending:not(.is-motion-visible),
+    [data-motion-group].is-motion-pending:not(.is-motion-visible) {
+        opacity: 0;
+        transform: translateY($okl-motion-distance);
+        will-change: opacity, transform;
+    }
+
+    [data-motion="reveal"][data-motion-from="left"].is-motion-pending:not(.is-motion-visible) {
+        transform: translateX(-$okl-motion-distance);
+    }
+
+    [data-motion="reveal"][data-motion-from="right"].is-motion-pending:not(.is-motion-visible) {
+        transform: translateX($okl-motion-distance);
+    }
+
+    [data-motion-group] > .js-motion-item {
+        transition:
+            opacity $okl-motion-duration-base $okl-ease-expressive,
+            transform $okl-motion-duration-base $okl-ease-expressive;
+        transition-delay: calc(var(--motion-index, 0) * #{$okl-motion-stagger});
+    }
+
+    [data-motion-group].is-motion-pending:not(.is-motion-visible) > .js-motion-item {
+        opacity: 0;
+        transform: translateY($okl-motion-distance);
+        will-change: opacity, transform;
+    }
+
+    // The hero reveals immediately on load rather than on scroll (see
+    // `shouldAnimateImmediately` in motion.ts), so its "pending" state is
+    // what every visitor's first paint can land on, not a rare mid-scroll frame.
+    // Dropping the title to opacity 0 there read as several seconds of dark,
+    // near-illegible text before the (correctly fast) transition finished — the
+    // slide-up motion stays, but the copy itself never disappears.
+    [data-motion-group="hero-copy"].is-motion-pending:not(.is-motion-visible) > .js-motion-item {
+        opacity: 1;
+    }
+
+    [data-motion="hero-art"] {
+        .okl-hero__image,
+        .okl-hero__spine,
+        .okl-hero__card {
+            transition:
+                opacity $okl-motion-duration-slow $okl-ease-expressive,
+                transform $okl-motion-duration-slow $okl-ease-expressive;
+        }
+
+        .okl-hero__card--one {
+            transition-delay: 280ms;
+        }
+
+        .okl-hero__card--two {
+            transition-delay: 420ms;
+        }
+    }
+
+    [data-motion="hero-art"].is-motion-pending:not(.is-motion-visible) {
+        .okl-hero__image {
+            opacity: 0;
+            transform: scale(1.02);
+        }
+
+        .okl-hero__spine--back {
+            opacity: 0;
+            transform: translate(-0.75rem, 0.75rem);
+        }
+
+        .okl-hero__spine--front {
+            opacity: 0;
+            transform: translate(0.75rem, 0.75rem);
+        }
+
+        .okl-hero__card {
+            opacity: 0;
+            transform: translateY(1rem);
+        }
+    }
+
+    // Same readability fix as the hero copy above, for the photo and its spine
+    // outlines: same "pending" state doubles as most visitors' first paint, so
+    // the art fades in via transform only, never through a fully transparent —
+    // and on a dark surface, effectively blank — frame.
+    [data-motion="hero-art"].is-motion-pending:not(.is-motion-visible) {
+        .okl-hero__image,
+        .okl-hero__spine--back,
+        .okl-hero__spine--front,
+        .okl-hero__card {
+            opacity: 1;
+        }
+    }
+
+    [data-motion-parallax] {
+        translate: 0 var(--motion-parallax-y, 0);
+    }
+
+    [data-motion-scale] {
+        scale: var(--motion-parallax-scale, 1);
+    }
+
+    .okl-timeline__row.is-motion-pending:not(.is-motion-visible) {
+        opacity: 0;
+        transform: translateY(1.125rem);
+        will-change: opacity, transform;
+    }
+
+    .okl-discussion.is-motion-pending:not(.is-motion-visible) {
+        opacity: 0;
+        transform: translateY($okl-motion-distance);
+        will-change: opacity, transform;
+    }
+
+    // The initial reveal belongs to the complete timeline. Individual columns
+    // only transition after a reader pans into previously unseen content.
+    .okl-discussion.is-scroll-reveal-ready .js-motion-item {
+        transition:
+            opacity $okl-motion-duration-fast $okl-ease-expressive,
+            transform $okl-motion-duration-fast $okl-ease-expressive;
+        transition-delay: var(--motion-delay, 0ms);
+    }
+
+    .okl-discussion.is-scroll-reveal-ready .js-motion-item:not(.is-motion-visible) {
+        opacity: 0;
+        transform: translateY(0.75rem) scale(0.96);
+    }
+
+    // Same gate as the item reveal above: a year already active on first paint
+    // must not pop, only ones reached by a later pan.
+    .okl-discussion.is-scroll-reveal-ready {
+        .okl-discussion__compact-axis,
+        .okl-discussion__compact-axis::before,
+        .okl-discussion__compact-axis::after,
+        .okl-discussion__full-line::after,
+        .okl-discussion__full-line button::before {
+            transition:
+                border-color $okl-duration-base $okl-ease-standard,
+                left $okl-duration-base $okl-ease-standard,
+                box-shadow $okl-duration-base $okl-ease-standard,
+                transform $okl-duration-base $okl-ease-expressive;
+        }
+    }
+
+    .okl-discussion.is-switching {
+        .okl-discussion__compact,
+        .okl-discussion__full {
+            animation: okl-timeline-mode-in $okl-motion-duration-fast $okl-ease-expressive both;
+        }
+    }
+
+    [data-motion="cta-portrait"] {
+        transition:
+            opacity $okl-motion-duration-slow $okl-ease-expressive 160ms,
+            transform $okl-motion-duration-slow $okl-ease-expressive 160ms;
+    }
+
+    .okl-cta-banner.is-motion-pending:not(.is-motion-visible) + [data-motion="cta-portrait"] {
+        opacity: 0;
+        transform: translateY(1.5rem);
+    }
+}
+
+.okl-example-panel {
+    position: relative;
+}
+
+@include media-breakpoint-up(lg) {
+    .okl-timeline__row--left.is-motion-pending:not(.is-motion-visible) {
+        transform: translateX(-$okl-motion-distance);
+    }
+
+    .okl-timeline__row--right.is-motion-pending:not(.is-motion-visible) {
+        transform: translateX($okl-motion-distance);
+    }
+}
+
+.okl-landing.is-page-hidden .okl-pill-action::before {
+    animation-play-state: paused;
+}
+
+@keyframes okl-timeline-mode-in {
+    from {
+        opacity: 0.35;
+        transform: translateY(0.5rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto !important;
+    }
+
+    .okl-pill-action::before {
+        animation: none;
+        box-shadow: none;
+    }
+
+    .okl-landing *,
+    .okl-landing *::before,
+    .okl-landing *::after {
+        scroll-behavior: auto !important;
+        transition-delay: 0ms !important;
+        transition-duration: 0.01ms !important;
+        animation-delay: 0ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+    }
+
+    .okl-landing [data-motion-parallax] {
+        translate: none !important;
+    }
+
+    .okl-landing [data-motion-scale] {
+        scale: none !important;
+    }
+
+    .okl-route-card::before,
+    .okl-route-card__decor,
+    .okl-view-switch__control,
+    .okl-view-switch__thumb {
+        transition-duration: 0.01ms;
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Additional utilities
+// -----------------------------------------------------------------------------
+.okl-balance {
+    text-wrap: balance;
+}
+
+.okl-pretty {
+    text-wrap: pretty;
+}
+
+// Restrict uppercase styling to explicit utility usage.
+.okl-kicker {
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}

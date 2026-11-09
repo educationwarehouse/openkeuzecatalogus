@@ -1,0 +1,107 @@
+.catalog-results-grid--list {
+    gap: 0;
+    border-top: 1px solid var(--okl-neutral-200);
+
+    .okl-catalog-card {
+        grid-template-columns: 56px minmax(0, 1fr) auto;
+        gap: 4px 16px;
+        min-height: 0;
+        padding: 16px 0;
+        border: 0;
+        border-bottom: 1px solid var(--okl-neutral-200);
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+        align-items: start;
+
+        &:hover,
+        &:focus-within {
+            background: var(--okl-anakiwa-50);
+        }
+        .okl-catalog-card__body {
+            display: contents;
+        }
+        .okl-catalog-card__heading {
+            grid-column: 2;
+            grid-row: 1;
+        }
+        .okl-catalog-card__heading h3 {
+            font-size: 1rem;
+        }
+        .okl-catalog-card__isbn {
+            margin-top: 2px;
+        }
+        .okl-catalog-card__image {
+            width: 48px;
+            height: 64px;
+            grid-column: 1;
+            grid-row: 1 / span 2;
+        }
+        .okl-card-details {
+            grid-column: 2;
+            grid-row: 2;
+        }
+        .okl-card-details > summary {
+            min-height: 32px;
+            padding-block: 6px;
+        }
+        .okl-catalog-card__view {
+            grid-column: 3;
+            grid-row: 1;
+            justify-self: end;
+            min-height: 32px;
+            padding: 4px 0;
+            font-size: 0.875rem;
+        }
+        .okl-compare-choice {
+            grid-column: 3;
+            grid-row: 2;
+            min-height: 32px;
+            align-self: start;
+        }
+        .okl-package-badge {
+            grid-column: 2;
+            grid-row: 3;
+            justify-self: start;
+        }
+    }
+}
+
+@media (max-width: 767.98px) {
+    .catalog-results-grid--list .okl-catalog-card {
+        grid-template-columns: 40px minmax(0, 1fr);
+        column-gap: 12px;
+        padding-block: 16px;
+
+        .okl-catalog-card__image {
+            width: 40px;
+            height: 52px;
+        }
+        .okl-catalog-card__heading h3 {
+            font-size: 0.9375rem;
+        }
+        .okl-catalog-card__heading p {
+            font-size: 0.75rem;
+        }
+        .okl-card-details {
+            grid-column: 2;
+            grid-row: 3;
+        }
+        .okl-catalog-card__view {
+            grid-column: 2;
+            grid-row: 2;
+            justify-self: start;
+            font-size: 0.75rem;
+        }
+        .okl-compare-choice {
+            grid-column: 2;
+            grid-row: 2;
+            justify-self: end;
+            font-size: 0.75rem;
+            gap: 4px;
+        }
+        .okl-package-badge {
+            grid-row: 4;
+        }
+    }
+}

@@ -1,0 +1,15 @@
+database_name: Odoo sprint report
+sqlalchemy_uri: sqlite:////app/superset_home/odoo_sprint_report.db
+cache_timeout: null
+expose_in_sqllab: true
+allow_run_async: false
+allow_ctas: false
+allow_cvas: false
+allow_dml: false
+allow_file_upload: false
+extra:
+  allows_virtual_table_explore: true
+impersonate_user: false
+configuration_method: sqlalchemy_form
+uuid: b4afc684-2024-4117-b307-11ff686448e1
+version: 1.0.0

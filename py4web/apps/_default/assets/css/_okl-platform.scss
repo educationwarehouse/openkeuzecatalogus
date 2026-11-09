@@ -1,0 +1,114 @@
+.okl-app {
+    color: var(--okl-ink);
+    font-family: #{$okl-font-core};
+}
+
+.okl-app h1,
+.okl-app h2,
+.okl-app h3,
+.okl-app h4,
+.okl-app h5,
+.okl-app h6 {
+    font-family: #{$okl-font-core};
+    font-weight: 700;
+}
+
+.okl-app button,
+.okl-app input,
+.okl-app select,
+.okl-app textarea {
+    font-family: inherit;
+}
+
+.okl-app .text-danger {
+    color: var(--okl-error-text) !important;
+}
+.grid-footer .grid-info {
+    font-size: 0.9rem;
+    color: var(--okl-neutral-600);
+}
+
+.okl-surface {
+    border: 1px solid var(--okl-neutral-200);
+    border-radius: var(--okl-radius-lg);
+    background: #fff;
+    box-shadow: var(--okl-shadow-sm);
+}
+
+body.edwh-messagebus:not(:has(.okl-landing)) {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: clip;
+    font-family: #{$okl-font-core};
+}
+
+body.edwh-messagebus:not(:has(.okl-landing)) > main {
+    flex: 1 0 auto;
+}
+
+body.edwh-messagebus:not(:has(.okl-landing)) > header {
+    width: 100%;
+    max-width: none;
+    padding-inline: var(--okl-page-gutter);
+    background: var(--okl-sherwood-900);
+}
+
+body.edwh-messagebus:not(:has(.okl-landing)) > header .navbar {
+    width: min(100%, var(--okl-page-measure));
+    min-height: 78px;
+    margin: 0 auto !important;
+    padding-block: 16px !important;
+    border: 0 !important;
+}
+
+body.edwh-messagebus:not(:has(.okl-landing)) > header .navbar > .navbar-nav {
+    order: 3;
+    flex-basis: 100%;
+    flex-wrap: wrap;
+    gap: 8px 24px !important;
+    margin: 16px 0 0 !important;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+body.edwh-messagebus:not(:has(.okl-landing)) > header .nav-link {
+    color: rgba(255, 255, 255, 0.94);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+body.edwh-messagebus:not(:has(.okl-landing)) > header .nav-link:hover {
+    color: var(--okl-tangerine-500);
+}
+
+.okl-header-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.okl-header-logo,
+.okl-header-logo img {
+    display: block;
+    width: 189px;
+    height: 46px;
+}
+
+@media (max-width: 767.98px) {
+    body.edwh-messagebus:not(:has(.okl-landing)) > header {
+        padding-inline: 16px;
+    }
+
+    .okl-header-brand {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .okl-header-logo,
+    .okl-header-logo img {
+        width: 148px;
+        height: auto;
+    }
+}

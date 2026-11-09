@@ -1,0 +1,785 @@
+dashboard_title: SIVON Dashboard
+description: null
+css: ''
+slug: SivonPO
+certified_by: ''
+certification_details: ''
+published: true
+uuid: 9e010260-1c23-4aac-88e0-9e0b6ad05400
+position:
+  CHART-04cEmaABTqTrzaX8tNIrf:
+    children: []
+    id: CHART-04cEmaABTqTrzaX8tNIrf
+    meta:
+      chartId: 562
+      height: 65
+      sliceName: Sivon import run details 1
+      uuid: 78c6237b-4ba3-4cd3-aea1-0082deb7e3cf
+      width: 12
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-89wODOPMnl-zyGVnTiFJR
+    type: CHART
+  CHART-1WmPfwZ3NMZN0Nck3QDPb:
+    children: []
+    id: CHART-1WmPfwZ3NMZN0Nck3QDPb
+    meta:
+      chartId: 549
+      height: 50
+      sliceName: Sivon feedback meting
+      uuid: 97e91ada-52c0-4c67-a255-a088048e08fb
+      width: 2
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-rgG7rZpLquIXwhXrzSZTy
+    type: CHART
+  CHART-1vjCd-ZYpS3uqFCXJJaDi:
+    children: []
+    id: CHART-1vjCd-ZYpS3uqFCXJJaDi
+    meta:
+      chartId: 561
+      height: 50
+      sliceName: Sivon Laatste import per aanbieder
+      uuid: fb1c4ef7-3ef4-403d-9641-856e8f25e454
+      width: 12
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-uce6-WqcAI5T1RSbZg-ge
+    type: CHART
+  CHART-3tDADgr5zebvZdq3_fsjq:
+    children: []
+    id: CHART-3tDADgr5zebvZdq3_fsjq
+    meta:
+      chartId: 554
+      height: 26
+      sliceName: Sivon KPI Datakwaliteit en integriteit
+      uuid: 16ebbb0f-4bf0-4522-b798-786620c9f06a
+      width: 4
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-BTz1EsNSmHQfgisqMXP7s
+    - COLUMN-32vUNr1eAz330evYOL91v
+    type: CHART
+  CHART-8grJYitBjbjfpJzETIwBe:
+    children: []
+    id: CHART-8grJYitBjbjfpJzETIwBe
+    meta:
+      chartId: 551
+      height: 50
+      sliceName: Sivon KPI P95 response time
+      uuid: 2bca8783-2596-4d91-ac40-f3d73b6abc44
+      width: 2
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-rgG7rZpLquIXwhXrzSZTy
+    type: CHART
+  CHART-AHjzfTKQVdafsBimqGoJ4:
+    children: []
+    id: CHART-AHjzfTKQVdafsBimqGoJ4
+    meta:
+      chartId: 560
+      height: 108
+      sliceName: Sivon Zoektermen basis
+      uuid: 5bd95051-cc21-4d56-a982-e6e528e8004f
+      width: 12
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-8FezfT1EAhuWe48LghSAF
+    type: CHART
+  CHART-MHjGiaAxoUHlmqLDHE6y2:
+    children: []
+    id: CHART-MHjGiaAxoUHlmqLDHE6y2
+    meta:
+      chartId: 618
+      height: 50
+      sliceName: SIVON Fouten per import run
+      uuid: 474fd023-c4a5-4cd5-afd6-ae3f5602c47b
+      width: 12
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-iXl0V_-0p6guY43TkAy9g
+    type: CHART
+  CHART-NgOse3OmsSSO3H-YIWnIv:
+    children: []
+    id: CHART-NgOse3OmsSSO3H-YIWnIv
+    meta:
+      chartId: 550
+      height: 50
+      sliceName: Sivon KPI Uptime percentage
+      uuid: f7081d9c-1bf8-42e8-bc3e-3204dbc60618
+      width: 2
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-rgG7rZpLquIXwhXrzSZTy
+    type: CHART
+  CHART-UUNP1B8Z22plWZKf48AUt:
+    children: []
+    id: CHART-UUNP1B8Z22plWZKf48AUt
+    meta:
+      chartId: 564
+      height: 50
+      sliceName: SIVON Product wijzigingen per import run
+      uuid: 6d4d67d4-b8a7-4734-82e1-16bf680b8dc4
+      width: 12
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-ODERLTCieouJQ7hsoaB2w
+    type: CHART
+  CHART-explore-563-1:
+    children: []
+    id: CHART-explore-563-1
+    meta:
+      chartId: 563
+      height: 50
+      sliceName: Sivon Alle importer runs
+      uuid: 469b97e1-9b10-43b8-9378-d4483f2166c3
+      width: 12
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-XNOLqmz16ZFSrB9z3Z-OA
+    type: CHART
+  CHART-he0KYRYIvUv2OE8UKmEZq:
+    children: []
+    id: CHART-he0KYRYIvUv2OE8UKmEZq
+    meta:
+      chartId: 548
+      height: 50
+      sliceName: Sivon KPI Sessies
+      uuid: 7803b672-5740-4af3-9d45-1965b4115084
+      width: 2
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-rgG7rZpLquIXwhXrzSZTy
+    type: CHART
+  CHART-m5c2Ho0JpBzI2K07qsWCE:
+    children: []
+    id: CHART-m5c2Ho0JpBzI2K07qsWCE
+    meta:
+      chartId: 552
+      height: 50
+      sliceName: Sivon KPI P99 response time
+      uuid: b5c9cf5f-3e0d-431b-b479-279856579456
+      width: 2
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-rgG7rZpLquIXwhXrzSZTy
+    type: CHART
+  CHART-xPG03RHGiiUdogfwdW8kf:
+    children: []
+    id: CHART-xPG03RHGiiUdogfwdW8kf
+    meta:
+      chartId: 558
+      height: 73
+      sliceName: Sivon US Voortgang over sprints
+      uuid: fc6a7529-faa6-4280-b48f-d002fa6a3821
+      width: 6
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-9IKcQuTJONGsSnnOR4r12
+    type: CHART
+  CHART-xxqqGtJ1H1LyivGH0_zEV:
+    children: []
+    id: CHART-xxqqGtJ1H1LyivGH0_zEV
+    meta:
+      chartId: 553
+      height: 26
+      sliceName: SIVON KPI Support en stabiliteit
+      uuid: 924e1c0b-33b1-442c-af96-73109f7ddf76
+      width: 3
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-BTz1EsNSmHQfgisqMXP7s
+    - COLUMN-kpno7yra5HnfrHKFM-yFE
+    type: CHART
+  CHART-ySybTthGmW2pYsJV8GVL2:
+    children: []
+    id: CHART-ySybTthGmW2pYsJV8GVL2
+    meta:
+      chartId: 559
+      height: 73
+      sliceName: SIVON Werklijst ontbrekende data
+      uuid: 71e4bc8b-3522-439b-be21-43318de9d9c3
+      width: 6
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-9IKcQuTJONGsSnnOR4r12
+    type: CHART
+  COLUMN-32vUNr1eAz330evYOL91v:
+    children:
+    - CHART-3tDADgr5zebvZdq3_fsjq
+    id: COLUMN-32vUNr1eAz330evYOL91v
+    meta:
+      background: BACKGROUND_TRANSPARENT
+      width: 6
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-BTz1EsNSmHQfgisqMXP7s
+    type: COLUMN
+  COLUMN-By2WR2OWm0b1Q7wU4j0vP:
+    children:
+    - HEADER-mLBjmW5mE-qPCTmpxuHS2
+    id: COLUMN-By2WR2OWm0b1Q7wU4j0vP
+    meta:
+      background: BACKGROUND_TRANSPARENT
+      width: 6
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-CBQgVR7hm6v66dH7bgS0f
+    type: COLUMN
+  COLUMN-O18zEpATcEiMIP0xvLIg4:
+    children:
+    - HEADER-fmcuyYHvRKKobBfVT-TMw
+    id: COLUMN-O18zEpATcEiMIP0xvLIg4
+    meta:
+      background: BACKGROUND_TRANSPARENT
+      width: 6
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-CBQgVR7hm6v66dH7bgS0f
+    type: COLUMN
+  COLUMN-PHm0f-ZRipCm4QteyZNck:
+    children:
+    - HEADER--QvRRhZEecOZXOKjxnlTi
+    id: COLUMN-PHm0f-ZRipCm4QteyZNck
+    meta:
+      background: BACKGROUND_TRANSPARENT
+      width: 4
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-nIr0r2yjR20NggbjRLJqD
+    type: COLUMN
+  COLUMN-SJ_hTkGk5_KR1xQQ4Gxa3:
+    children:
+    - HEADER-B5Z58Vqds0_Esy6s8dj78
+    id: COLUMN-SJ_hTkGk5_KR1xQQ4Gxa3
+    meta:
+      background: BACKGROUND_TRANSPARENT
+      width: 6
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-nIr0r2yjR20NggbjRLJqD
+    type: COLUMN
+  COLUMN-kpno7yra5HnfrHKFM-yFE:
+    children:
+    - CHART-xxqqGtJ1H1LyivGH0_zEV
+    id: COLUMN-kpno7yra5HnfrHKFM-yFE
+    meta:
+      background: BACKGROUND_TRANSPARENT
+      width: 6
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-BTz1EsNSmHQfgisqMXP7s
+    type: COLUMN
+  DASHBOARD_VERSION_KEY: v2
+  GRID_ID:
+    children:
+    - ROW-nIr0r2yjR20NggbjRLJqD
+    - ROW-rgG7rZpLquIXwhXrzSZTy
+    - ROW-CBQgVR7hm6v66dH7bgS0f
+    - ROW-BTz1EsNSmHQfgisqMXP7s
+    - HEADER-I7EqSV0gwm2A_pL1lvMUh
+    - ROW-9IKcQuTJONGsSnnOR4r12
+    - ROW-8FezfT1EAhuWe48LghSAF
+    - ROW-uce6-WqcAI5T1RSbZg-ge
+    - ROW-XNOLqmz16ZFSrB9z3Z-OA
+    - ROW-89wODOPMnl-zyGVnTiFJR
+    - ROW-ODERLTCieouJQ7hsoaB2w
+    - ROW-iXl0V_-0p6guY43TkAy9g
+    id: GRID_ID
+    parents:
+    - ROOT_ID
+    type: GRID
+  HEADER--QvRRhZEecOZXOKjxnlTi:
+    children: []
+    id: HEADER--QvRRhZEecOZXOKjxnlTi
+    meta:
+      background: BACKGROUND_TRANSPARENT
+      headerSize: MEDIUM_HEADER
+      text: Gebruik en feedback
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-nIr0r2yjR20NggbjRLJqD
+    - COLUMN-PHm0f-ZRipCm4QteyZNck
+    type: HEADER
+  HEADER-B5Z58Vqds0_Esy6s8dj78:
+    children: []
+    id: HEADER-B5Z58Vqds0_Esy6s8dj78
+    meta:
+      background: BACKGROUND_TRANSPARENT
+      headerSize: MEDIUM_HEADER
+      text: Beschikbaarheid en prestaties
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-nIr0r2yjR20NggbjRLJqD
+    - COLUMN-SJ_hTkGk5_KR1xQQ4Gxa3
+    type: HEADER
+  HEADER-I7EqSV0gwm2A_pL1lvMUh:
+    children: []
+    id: HEADER-I7EqSV0gwm2A_pL1lvMUh
+    meta:
+      background: BACKGROUND_TRANSPARENT
+      headerSize: MEDIUM_HEADER
+      text: 'Zesde categorie: te bevestigen door SIVON'
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    type: HEADER
+  HEADER-fmcuyYHvRKKobBfVT-TMw:
+    children: []
+    id: HEADER-fmcuyYHvRKKobBfVT-TMw
+    meta:
+      background: BACKGROUND_TRANSPARENT
+      headerSize: MEDIUM_HEADER
+      text: Support en stabiliteit
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-CBQgVR7hm6v66dH7bgS0f
+    - COLUMN-O18zEpATcEiMIP0xvLIg4
+    type: HEADER
+  HEADER-mLBjmW5mE-qPCTmpxuHS2:
+    children: []
+    id: HEADER-mLBjmW5mE-qPCTmpxuHS2
+    meta:
+      background: BACKGROUND_TRANSPARENT
+      headerSize: MEDIUM_HEADER
+      text: Datakwaliteit en integriteit
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-CBQgVR7hm6v66dH7bgS0f
+    - COLUMN-By2WR2OWm0b1Q7wU4j0vP
+    type: HEADER
+  HEADER_ID:
+    id: HEADER_ID
+    meta:
+      text: SIVON Dashboard
+    type: HEADER
+  ROOT_ID:
+    children:
+    - GRID_ID
+    id: ROOT_ID
+    type: ROOT
+  ROW-89wODOPMnl-zyGVnTiFJR:
+    children:
+    - CHART-04cEmaABTqTrzaX8tNIrf
+    id: ROW-89wODOPMnl-zyGVnTiFJR
+    meta:
+      background: BACKGROUND_TRANSPARENT
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    type: ROW
+  ROW-8FezfT1EAhuWe48LghSAF:
+    children:
+    - CHART-AHjzfTKQVdafsBimqGoJ4
+    id: ROW-8FezfT1EAhuWe48LghSAF
+    meta:
+      background: BACKGROUND_TRANSPARENT
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    type: ROW
+  ROW-9IKcQuTJONGsSnnOR4r12:
+    children:
+    - CHART-xPG03RHGiiUdogfwdW8kf
+    - CHART-ySybTthGmW2pYsJV8GVL2
+    id: ROW-9IKcQuTJONGsSnnOR4r12
+    meta:
+      background: BACKGROUND_TRANSPARENT
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    type: ROW
+  ROW-BTz1EsNSmHQfgisqMXP7s:
+    children:
+    - COLUMN-kpno7yra5HnfrHKFM-yFE
+    - COLUMN-32vUNr1eAz330evYOL91v
+    id: ROW-BTz1EsNSmHQfgisqMXP7s
+    meta:
+      background: BACKGROUND_TRANSPARENT
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    type: ROW
+  ROW-CBQgVR7hm6v66dH7bgS0f:
+    children:
+    - COLUMN-O18zEpATcEiMIP0xvLIg4
+    - COLUMN-By2WR2OWm0b1Q7wU4j0vP
+    id: ROW-CBQgVR7hm6v66dH7bgS0f
+    meta:
+      background: BACKGROUND_TRANSPARENT
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    type: ROW
+  ROW-ODERLTCieouJQ7hsoaB2w:
+    children:
+    - CHART-UUNP1B8Z22plWZKf48AUt
+    id: ROW-ODERLTCieouJQ7hsoaB2w
+    meta:
+      background: BACKGROUND_TRANSPARENT
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    type: ROW
+  ROW-XNOLqmz16ZFSrB9z3Z-OA:
+    children:
+    - CHART-explore-563-1
+    id: ROW-XNOLqmz16ZFSrB9z3Z-OA
+    meta:
+      background: BACKGROUND_TRANSPARENT
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    type: ROW
+  ROW-iXl0V_-0p6guY43TkAy9g:
+    children:
+    - CHART-MHjGiaAxoUHlmqLDHE6y2
+    id: ROW-iXl0V_-0p6guY43TkAy9g
+    meta:
+      background: BACKGROUND_TRANSPARENT
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    type: ROW
+  ROW-nIr0r2yjR20NggbjRLJqD:
+    children:
+    - COLUMN-PHm0f-ZRipCm4QteyZNck
+    - COLUMN-SJ_hTkGk5_KR1xQQ4Gxa3
+    id: ROW-nIr0r2yjR20NggbjRLJqD
+    meta:
+      background: BACKGROUND_TRANSPARENT
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    type: ROW
+  ROW-rgG7rZpLquIXwhXrzSZTy:
+    children:
+    - CHART-1WmPfwZ3NMZN0Nck3QDPb
+    - CHART-he0KYRYIvUv2OE8UKmEZq
+    - CHART-NgOse3OmsSSO3H-YIWnIv
+    - CHART-8grJYitBjbjfpJzETIwBe
+    - CHART-m5c2Ho0JpBzI2K07qsWCE
+    id: ROW-rgG7rZpLquIXwhXrzSZTy
+    meta:
+      background: BACKGROUND_TRANSPARENT
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    type: ROW
+  ROW-uce6-WqcAI5T1RSbZg-ge:
+    children:
+    - CHART-1vjCd-ZYpS3uqFCXJJaDi
+    id: ROW-uce6-WqcAI5T1RSbZg-ge
+    meta:
+      background: BACKGROUND_TRANSPARENT
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    type: ROW
+metadata:
+  chart_configuration:
+    '553':
+      id: 553
+      crossFilters:
+        scope: global
+        chartsInScope:
+        - 548
+        - 549
+        - 550
+        - 551
+        - 552
+        - 554
+        - 558
+        - 559
+        - 560
+        - 561
+        - 562
+        - 563
+        - 564
+        - 618
+    '554':
+      id: 554
+      crossFilters:
+        scope: global
+        chartsInScope:
+        - 548
+        - 549
+        - 550
+        - 551
+        - 552
+        - 553
+        - 558
+        - 559
+        - 560
+        - 561
+        - 562
+        - 563
+        - 564
+        - 618
+    '558':
+      id: 558
+      crossFilters:
+        scope: global
+        chartsInScope:
+        - 548
+        - 549
+        - 550
+        - 551
+        - 552
+        - 553
+        - 554
+        - 559
+        - 560
+        - 561
+        - 562
+        - 563
+        - 564
+        - 618
+    '559':
+      id: 559
+      crossFilters:
+        scope: global
+        chartsInScope:
+        - 548
+        - 549
+        - 550
+        - 551
+        - 552
+        - 553
+        - 554
+        - 558
+        - 560
+        - 561
+        - 562
+        - 563
+        - 564
+        - 618
+    '560':
+      id: 560
+      crossFilters:
+        scope: global
+        chartsInScope:
+        - 548
+        - 549
+        - 550
+        - 551
+        - 552
+        - 553
+        - 554
+        - 558
+        - 559
+        - 561
+        - 562
+        - 563
+        - 564
+        - 618
+    '561':
+      id: 561
+      crossFilters:
+        scope: global
+        chartsInScope:
+        - 548
+        - 549
+        - 550
+        - 551
+        - 552
+        - 553
+        - 554
+        - 558
+        - 559
+        - 560
+        - 562
+        - 563
+        - 564
+        - 618
+    '562':
+      id: 562
+      crossFilters:
+        scope: global
+        chartsInScope:
+        - 548
+        - 549
+        - 550
+        - 551
+        - 552
+        - 553
+        - 554
+        - 558
+        - 559
+        - 560
+        - 561
+        - 563
+        - 564
+        - 618
+    '563':
+      id: 563
+      crossFilters:
+        scope: global
+        chartsInScope:
+        - 548
+        - 549
+        - 550
+        - 551
+        - 552
+        - 553
+        - 554
+        - 558
+        - 559
+        - 560
+        - 561
+        - 562
+        - 564
+        - 618
+    '564':
+      id: 564
+      crossFilters:
+        scope: global
+        chartsInScope:
+        - 548
+        - 549
+        - 550
+        - 551
+        - 552
+        - 553
+        - 554
+        - 558
+        - 559
+        - 560
+        - 561
+        - 562
+        - 563
+        - 618
+    '618':
+      id: 618
+      crossFilters:
+        scope: global
+        chartsInScope:
+        - 548
+        - 549
+        - 550
+        - 551
+        - 552
+        - 553
+        - 554
+        - 558
+        - 559
+        - 560
+        - 561
+        - 562
+        - 563
+        - 564
+  global_chart_configuration:
+    scope:
+      rootPath:
+      - ROOT_ID
+      excluded: []
+    chartsInScope:
+    - 548
+    - 549
+    - 550
+    - 551
+    - 552
+    - 553
+    - 554
+    - 558
+    - 559
+    - 560
+    - 561
+    - 562
+    - 563
+    - 564
+    - 618
+  color_scheme: ''
+  refresh_frequency: 0
+  expanded_slices: {}
+  label_colors: {}
+  timed_refresh_immune_slices: []
+  cross_filters_enabled: true
+  default_filters: '{}'
+  native_filter_configuration:
+  - id: NATIVE_FILTER-CtT52uuqgLTspag9Xs-GX
+    adhoc_filters:
+    - clause: WHERE
+      datasourceWarning: false
+      expressionType: SIMPLE
+      filterOptionName: filter_0w869h2ihgt_xltigy0viqe
+      isExtra: false
+      isNew: false
+      operator: IS TRUE
+      operatorId: IS_TRUE
+      sqlExpression: null
+      subject: is_last_run
+    time_range: No filter
+    controlValues:
+      enableEmptyFilter: false
+      defaultToFirstItem: false
+      creatable: false
+      multiSelect: true
+      searchAllOptions: true
+      inverseSelection: false
+    name: Aanbieder
+    filterType: filter_select
+    targets:
+    - column:
+        name: supplier_name
+      datasetUuid: 9a8edd70-5df5-44ef-b860-a60e1d3c3800
+    defaultDataMask:
+      extraFormData: {}
+      filterState: {}
+      ownState: {}
+    cascadeParentIds: []
+    scope:
+      rootPath:
+      - ROOT_ID
+      excluded:
+      - 549
+      - 554
+      - 551
+      - 560
+      - 550
+      - 548
+      - 552
+      - 558
+      - 553
+      - 559
+    type: NATIVE_FILTER
+    description: ''
+    chartsInScope:
+    - 561
+    - 562
+    - 563
+    - 564
+    - 618
+    tabsInScope: []
+  show_chart_timestamps: false
+  shared_label_colors: []
+  map_label_colors: {}
+  color_scheme_domain: []
+  chart_customization_config: []
+theme_uuid: null
+version: 1.0.0

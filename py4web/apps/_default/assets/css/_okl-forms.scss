@@ -1,0 +1,76 @@
+.okl-app .form-control,
+.okl-app .form-select,
+.okl-app input[type="search"] {
+    min-height: var(--okl-control-height);
+}
+
+.okl-app textarea.form-control,
+.okl-app select[multiple] {
+    border-radius: var(--okl-radius-lg);
+}
+
+.wizard-form-header {
+    display: grid;
+    gap: 24px;
+    padding-bottom: 40px;
+}
+
+.wizard-form-header h1 {
+    margin: 0;
+    font-size: clamp(2rem, 4vw, 3rem);
+    line-height: 1.1;
+    color: var(--wizard-dark);
+}
+
+.wizard-form-header p {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #111;
+}
+
+.wizard-process-shell--stepped .wizard-form-header p {
+    color: #fff;
+}
+
+.wizard-form-card {
+    max-width: 620px;
+    padding: 40px;
+    display: grid;
+    gap: 24px;
+}
+
+.wizard-form-title {
+    margin: 0;
+    font-size: 1.5rem;
+    line-height: 1.3;
+    color: var(--wizard-dark);
+}
+
+.wizard-form-body,
+.wizard-form-body form {
+    display: grid;
+    gap: 24px;
+}
+
+.wizard-form-body .form-group,
+.wizard-form-body .mb-3 {
+    margin-bottom: 0 !important;
+}
+
+.wizard-form-body label {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--wizard-mid);
+    margin-bottom: 8px;
+}
+
+.wizard-form-body textarea {
+    min-height: 120px;
+}
+
+@media (max-width: 767.98px) {
+    .wizard-form-card {
+        padding: 24px;
+    }
+}

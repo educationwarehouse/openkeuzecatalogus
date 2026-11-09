@@ -1,0 +1,175 @@
+// Loaded after ContentTools, which uses the platform SVG set instead of an icon font.
+.ct-widget .ct-tool,
+.ct-widget .ct-control--icon,
+.ct-widget .ct-ignition__button,
+.ct-widget .ct-dialog__close,
+.ct-widget .ct-anchored-dialog__button,
+.ct-widget .ct-anchored-dialog__target-button,
+.ct-widget .ct-image-dialog__view:empty,
+.ct-widget .ct-video-dialog__preview:empty,
+.ct-widget.ct-flash {
+    font-family: var(--okl-font-family);
+}
+
+.ct-widget .ct-dialog__close::before,
+.ct-widget .ct-dialog__busy::before,
+.ct-widget .ct-control--rotate-ccw::before,
+.ct-widget .ct-control--rotate-cw::before,
+.ct-widget .ct-control--crop::before,
+.ct-widget .ct-control--remove::before,
+.ct-widget .ct-control--styles::before,
+.ct-widget .ct-control--attributes::before,
+.ct-widget .ct-control--code::before,
+.ct-widget .ct-image-dialog__view:empty::before,
+.ct-widget .ct-video-dialog__preview:empty::before,
+.ct-widget .ct-anchored-dialog__button::before,
+.ct-widget .ct-anchored-dialog__target-button::before,
+.ct-widget .ct-ignition__button--busy::before,
+.ct-widget .ct-ignition__button--confirm::before,
+.ct-widget .ct-ignition__button--cancel::before,
+.ct-widget .ct-ignition__button--edit::before,
+.ct-widget .ct-inspector__tags::before,
+.ct-widget .ct-tool--bold::before,
+.ct-widget .ct-tool--preformatted::before,
+.ct-widget .ct-tool--italic::before,
+.ct-widget .ct-tool--link::before,
+.ct-widget .ct-tool--align-left::before,
+.ct-widget .ct-tool--align-center::before,
+.ct-widget .ct-tool--align-right::before,
+.ct-widget .ct-tool--unordered-list::before,
+.ct-widget .ct-tool--ordered-list::before,
+.ct-widget .ct-tool--table::before,
+.ct-widget .ct-tool--indent::before,
+.ct-widget .ct-tool--unindent::before,
+.ct-widget .ct-tool--line-break::before,
+.ct-widget .ct-tool--image::before,
+.ct-widget .ct-tool--video::before,
+.ct-widget .ct-tool--undo::before,
+.ct-widget .ct-tool--redo::before,
+.ct-widget .ct-tool--remove::before,
+.ct-widget.ct-flash--ok::before,
+.ct-widget.ct-flash--no::before {
+    content: "";
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    vertical-align: -0.125em;
+    background-color: currentColor;
+    mask: var(--okl-icon-image) center / contain no-repeat;
+    font-family: var(--okl-font-family);
+}
+
+.ct-widget .ct-dialog__close {
+    --okl-icon-image: url("/static/icons/x.svg");
+}
+.ct-widget .ct-dialog__busy {
+    --okl-icon-image: url("/static/icons/circle-notch.svg");
+}
+.ct-widget .ct-control--rotate-ccw {
+    --okl-icon-image: url("/static/icons/arrow-counter-clockwise.svg");
+}
+.ct-widget .ct-control--rotate-cw {
+    --okl-icon-image: url("/static/icons/arrow-clockwise.svg");
+}
+.ct-widget .ct-control--crop {
+    --okl-icon-image: url("/static/icons/crop.svg");
+}
+.ct-widget .ct-control--remove {
+    --okl-icon-image: url("/static/icons/trash.svg");
+}
+.ct-widget .ct-control--styles {
+    --okl-icon-image: url("/static/icons/paint-brush.svg");
+}
+.ct-widget .ct-control--attributes {
+    --okl-icon-image: url("/static/icons/gear.svg");
+}
+.ct-widget .ct-control--code {
+    --okl-icon-image: url("/static/icons/code.svg");
+}
+.ct-widget .ct-image-dialog__view:empty {
+    --okl-icon-image: url("/static/icons/image.svg");
+}
+.ct-widget .ct-video-dialog__preview:empty {
+    --okl-icon-image: url("/static/icons/video.svg");
+}
+.ct-widget .ct-anchored-dialog__button {
+    --okl-icon-image: url("/static/icons/check.svg");
+}
+.ct-widget .ct-anchored-dialog__target-button {
+    --okl-icon-image: url("/static/icons/arrow-square-out.svg");
+}
+.ct-widget .ct-ignition__button--busy {
+    --okl-icon-image: url("/static/icons/circle-notch.svg");
+}
+.ct-widget .ct-ignition__button--confirm {
+    --okl-icon-image: url("/static/icons/check.svg");
+}
+.ct-widget .ct-ignition__button--cancel {
+    --okl-icon-image: url("/static/icons/x.svg");
+}
+.ct-widget .ct-ignition__button--edit {
+    --okl-icon-image: url("/static/icons/pencil-simple.svg");
+}
+.ct-widget .ct-inspector__tags {
+    --okl-icon-image: url("/static/icons/code.svg");
+}
+.ct-widget .ct-tool--bold {
+    --okl-icon-image: url("/static/icons/text-b.svg");
+}
+.ct-widget .ct-tool--preformatted {
+    --okl-icon-image: url("/static/icons/code.svg");
+}
+.ct-widget .ct-tool--italic {
+    --okl-icon-image: url("/static/icons/text-italic.svg");
+}
+.ct-widget .ct-tool--link {
+    --okl-icon-image: url("/static/icons/link.svg");
+}
+.ct-widget .ct-tool--align-left {
+    --okl-icon-image: url("/static/icons/text-align-left.svg");
+}
+.ct-widget .ct-tool--align-center {
+    --okl-icon-image: url("/static/icons/text-align-center.svg");
+}
+.ct-widget .ct-tool--align-right {
+    --okl-icon-image: url("/static/icons/text-align-right.svg");
+}
+.ct-widget .ct-tool--unordered-list {
+    --okl-icon-image: url("/static/icons/list-bullets.svg");
+}
+.ct-widget .ct-tool--ordered-list {
+    --okl-icon-image: url("/static/icons/list-numbers.svg");
+}
+.ct-widget .ct-tool--table {
+    --okl-icon-image: url("/static/icons/table.svg");
+}
+.ct-widget .ct-tool--indent {
+    --okl-icon-image: url("/static/icons/text-indent.svg");
+}
+.ct-widget .ct-tool--unindent {
+    --okl-icon-image: url("/static/icons/text-outdent.svg");
+}
+.ct-widget .ct-tool--line-break {
+    --okl-icon-image: url("/static/icons/arrow-elbow-down-left.svg");
+}
+.ct-widget .ct-tool--image {
+    --okl-icon-image: url("/static/icons/image.svg");
+}
+.ct-widget .ct-tool--video {
+    --okl-icon-image: url("/static/icons/video.svg");
+}
+.ct-widget .ct-tool--undo {
+    --okl-icon-image: url("/static/icons/arrow-counter-clockwise.svg");
+}
+.ct-widget .ct-tool--redo {
+    --okl-icon-image: url("/static/icons/arrow-clockwise.svg");
+}
+.ct-widget .ct-tool--remove {
+    --okl-icon-image: url("/static/icons/trash.svg");
+}
+.ct-widget.ct-flash--ok {
+    --okl-icon-image: url("/static/icons/check.svg");
+}
+.ct-widget.ct-flash--no {
+    --okl-icon-image: url("/static/icons/x.svg");
+}
