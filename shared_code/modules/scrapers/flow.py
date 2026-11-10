@@ -2,6 +2,7 @@
 
 import dataclasses as dc
 import datetime as dt
+import hashlib
 import math
 import re
 import typing as t
@@ -10,26 +11,42 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 from endow import Domain
-from typedal import TypeDAL, TypedTable
+from typedal import TypedTable
 
-from shared_code.data_model import Method, MethodEd, Predicate, Product, ProductEd, Supplier, Tagged, Vision
+from shared_code.data_model import (
+    AnyDict,
+    Method,
+    MethodEd,
+    Predicate,
+    Product,
+    ProductEd,
+    Supplier,
+    Tagged,
+    Vision,
+)
 from shared_code.data_model.constants import INTERNAL_FIELD_NAMES
-from shared_code.infra.database import DatabaseContext
+from shared_code.data_model.validators import validate_fields
+from shared_code.infra.database import DatabaseContext, rebuild_model
 from shared_code.migrations.migration_support import no_triggers
-from shared_code.modules.scrapers.errors import ImportErrorCode, normalize_import_error_codes
+from shared_code.migrations.migration_support.olid import replace_method_olid_v1
+from shared_code.modules.scrapers.errors import ImportErrorCode, ImportWarningCode, normalize_import_error_codes
 from shared_code.modules.scrapers.types import (
     ChangeResult,
     ChangeStatus,
     ImportAuxStats,
+    ImportEntityOutcome,
     ImportMethod,
     ImportPriority,
     ImportProduct,
     ImportRunCountStat,
     ImportRunErrorStat,
+    ImportRunWarningStat,
     ImportStats,
     ImportSupplier,
     ImportTypeStats,
     ImportVision,
+    JsonObject,
+    SupplierTypeStats,
     to_err_prio,
 )
 from shared_code.services import ImageStorage
@@ -75,6 +92,22 @@ def normalize_levels(levels: t.Any) -> list[str]:
     return normalized
 
 
+def keep_non_po_levels(data: ImportMethod | ImportProduct) -> bool:
+    """Skip PO-only rows and remove PO metadata from retained imports."""
+    levels = normalize_levels(data.get("levels")) if "levels" in data else []
+    if levels == ["PO"]:
+        return False
+
+    if "levels" in data:
+        data["levels"] = [level for level in levels if level != "PO"]
+    if "level_x_year" in data:
+        product_data = t.cast(ImportProduct, data)
+        product_data["level_x_year"] = [
+            value for value in product_data["level_x_year"] if normalize_level_name(value.split(" ", 1)[0]) != "PO"
+        ]
+    return True
+
+
 def _payload_fields(model_table: type[TypedTable], compare_exclude_columns: set[str]) -> list[str]:
     """Return business field names that can be compared/inserted for a model table."""
     field_names = (field.name for field in model_table)
@@ -83,19 +116,31 @@ def _payload_fields(model_table: type[TypedTable], compare_exclude_columns: set[
     ]
 
 
-def _validate_business_fields(table: type[TypedTable], payload: dict[str, t.Any]) -> dict[str, str]:
-    """Validate non-meta payload fields for a typed table and return validation errors."""
+def _validate_business_fields(table: type[TypedTable], payload: AnyDict) -> dict[str, str]:
+    """Validate business fields and the structure of relationship identifiers."""
     table_field_names = {field.name for field in table}
     business_payload = {
-        key: value for key, value in payload.items() if key in table_field_names and key not in INTERNAL_FIELD_NAMES
+        key: value
+        for key, value in payload.items()
+        if key in table_field_names and key not in INTERNAL_FIELD_NAMES and not key.endswith("_gid")
     }
-    validation_errors, _ = table._validate_fields(business_payload)  # type: ignore
+    validation_errors, _ = validate_fields(table, business_payload)
 
-    return {
+    errors = {
         str(field_name): str(error)
         for field_name, error in validation_errors.items()
-        if str(field_name) not in INTERNAL_FIELD_NAMES
+        if str(field_name) not in INTERNAL_FIELD_NAMES and not str(field_name).endswith("_gid")
     }
+    for field in table:
+        if field.name in INTERNAL_FIELD_NAMES or not field.name.endswith("_gid"):
+            continue
+        value = payload.get(field.name)
+        if value is None and not field.notnull:
+            continue
+        _, error = field.validate(value)
+        if error:
+            errors[field.name] = str(error)
+    return errors
 
 
 def _preload_gid_by_olid(model_table: type[TypedTable], olids: set[str]) -> dict[str, str]:
@@ -104,8 +149,65 @@ def _preload_gid_by_olid(model_table: type[TypedTable], olids: set[str]) -> dict
         return {}
     assert model_table.olid, "can't use `preload_gid_by_olid` on a table without olid"
 
-    rows = model_table.where(model_table.olid.belongs(list(olids))).select(model_table.olid, model_table.gid)
-    return {str(row.olid): str(row.gid) for row in rows if row.olid and row.gid}
+    rows = model_table.where(model_table.olid.belongs(olids)).select(model_table.olid, model_table.gid)
+    return {row.olid: row.gid for row in rows if row.olid and row.gid}
+
+
+def _legacy_method_targets(olids: set[str]) -> dict[str, set[str]]:
+    """Group incoming method OLIDs by their pre-collision-resistant identifier.
+
+    Method keys are `publisher:family`, so they never equal their slug and current OLIDs always use the
+    new hash. An existing OLID with the old hash is therefore legacy, unless both hashes coincide, which
+    the caller skips because the legacy OLID is then also incoming.
+
+    Remove this upgrade path once `backfill_collision_resistant_olids_20261005_001` is deployed everywhere
+    and every supplier has completed an import afterwards: any legacy OLID still left belongs to a method
+    family that suppliers no longer send. Then replace `_preload_method_gids` with `_preload_gid_by_olid`
+    and drop the replacement loop in `import_methods_and_products`. Delete
+    `shared_code/tests/test_scraper_legacy_method_olids.py` with it.
+    """
+    targets: dict[str, set[str]] = {}
+
+    for new in olids:
+        if not new.startswith("olid://unregistered/method/"):
+            continue
+
+        identifier, separator, _ = new.rpartition("#")
+        if not separator:
+            continue
+
+        old = identifier + "#" + hashlib.shake_256(identifier.encode()).hexdigest(2)
+        targets.setdefault(old, set()).add(new)
+
+    return targets
+
+
+def _preload_method_gids(methods: list[ImportMethod], olids: set[str]) -> tuple[dict[str, str], dict[str, str]]:
+    """Resolve current and legacy OLIDs, rejecting ambiguous incoming identifiers."""
+    targets = _legacy_method_targets(olids)
+    gid_by_olid = _preload_gid_by_olid(Method, olids | targets.keys())
+    supplied_gids = {row.get("olid"): row["gid"] for row in methods if row.get("gid")}
+    replacements: dict[str, str] = {}
+
+    for old, incoming in targets.items():
+        if old not in gid_by_olid or old in incoming:
+            continue
+
+        if len(incoming) != 1:
+            raise ValueError(f"Ambiguous incoming identifiers for legacy method {old!r}")
+
+        new = next(iter(incoming))
+        gid = gid_by_olid[old]
+        new_gid = supplied_gids.get(new) or gid_by_olid.get(new)
+
+        if new_gid and str(new_gid) != str(gid):
+            # The incoming identifier already has its own method; the legacy one belongs to another.
+            continue
+
+        gid_by_olid[new] = gid
+        replacements[old] = new
+
+    return gid_by_olid, replacements
 
 
 def _seed_incoming_product_gids(products: list[ImportProduct], product_gid_by_olid: dict[str, str]) -> None:
@@ -122,6 +224,24 @@ def _seed_incoming_product_gids(products: list[ImportProduct], product_gid_by_ol
 
         if olid not in product_gid_by_olid:
             product_gid_by_olid[olid] = str(uuid.uuid4())
+
+
+def _assign_bundle_compositions(
+    products: list[ImportProduct],
+    product_gid_by_olid: dict[str, str],
+    bundle_parent_gids: set[str],
+    component_gids: set[str],
+) -> None:
+    """Classify resolved products, giving package membership precedence."""
+    for product_data in products:
+        product_olid = product_data.get("olid")
+        product_gid = product_gid_by_olid.get(product_olid) if isinstance(product_olid, str) else None
+        if product_gid in bundle_parent_gids:
+            product_data["composition"] = "package"
+        elif product_gid in component_gids:
+            product_data["composition"] = "component"
+        elif "bundle_product_olids" in product_data:
+            product_data["composition"] = "single"
 
 
 def _prepare_bundle_compositions(products: list[ImportProduct], product_gid_by_olid: dict[str, str]) -> set[str]:
@@ -160,16 +280,7 @@ def _prepare_bundle_compositions(products: list[ImportProduct], product_gid_by_o
             bundle_parent_gids.add(parent_gid)
             component_gids.update(resolved_component_gids)
 
-    for product_data in products:
-        product_olid = product_data.get("olid")
-        product_gid = product_gid_by_olid.get(product_olid) if isinstance(product_olid, str) else None
-        if product_gid in bundle_parent_gids:
-            product_data["composition"] = "package"
-        elif product_gid in component_gids:
-            product_data["composition"] = "component"
-        elif "bundle_product_olids" in product_data:
-            product_data["composition"] = "single"
-
+    _assign_bundle_compositions(products, product_gid_by_olid, bundle_parent_gids, component_gids)
     return bundle_source_gids
 
 
@@ -202,7 +313,7 @@ def _resolve_supplier_name(supplier_gid: str | None, supplier_name_by_gid: dict[
     """Resolve a supplier name from the preloaded name map."""
     if not supplier_gid:
         return None
-    return supplier_name_by_gid.get(str(supplier_gid))
+    return supplier_name_by_gid.get(supplier_gid)
 
 
 def _build_error_stats(
@@ -216,7 +327,7 @@ def _build_error_stats(
     method_gid: str | None = None,
     method_name: str | None = None,
     validation_failed: bool = False,
-    error_details: dict[str, t.Any] | None = None,
+    error_details: AnyDict | None = None,
 ) -> list[ImportRunErrorStat]:
     """Build row-level importer error facts for one entity."""
     return [
@@ -247,7 +358,8 @@ def _ed_table_for_model(model_table: type[TypedTable]) -> type[TypedTable]:
     ed_table = db.find_model(ed_name)
     if ed_table is None:
         raise ValueError(f"Could not resolve typed Ed table for model {model_name} (expected {ed_name})")
-    return t.cast(type[TypedTable], ed_table)
+
+    return ed_table
 
 
 def _values_differ(old_value: t.Any, new_value: t.Any) -> bool:
@@ -266,7 +378,7 @@ def _determine_changed(
     *,
     compare_exclude_columns: set[str],
     effstatus: bool,
-    incoming_data: dict[str, t.Any],
+    incoming_data: AnyDict,
     payload_fields: list[str],
 ) -> dict[str, tuple[t.Any, t.Any]]:
     compare_fields = [
@@ -282,6 +394,88 @@ def _determine_changed(
     if old_effstatus != effstatus:
         changed_fields["effstatus"] = (old_effstatus, effstatus)
     return changed_fields
+
+
+def _linked_product_olids(products: list[ImportProduct]) -> set[str]:
+    """Collect follow-up, bundle, and related references needed for GID preloading."""
+    linked_product_olids = {
+        str(olid)
+        for product_data in products
+        for olid in (
+            [product_data["follow_up_product_olid"]]
+            if isinstance(product_data.get("follow_up_product_olid"), str)
+            else []
+        )
+        if olid
+    }
+    for product_data in products:
+        bundle_product_olids = product_data.get("bundle_product_olids")
+        if isinstance(bundle_product_olids, list):
+            linked_product_olids.update(str(olid) for olid in bundle_product_olids if isinstance(olid, str) and olid)
+        related_product_olids = product_data.get("related_product_olids")
+        if isinstance(related_product_olids, list):
+            linked_product_olids.update(str(olid) for olid in related_product_olids if isinstance(olid, str) and olid)
+    return linked_product_olids
+
+
+def _keep_for_import(
+    data: ImportMethod | ImportProduct, kind: str, type_stats: ImportTypeStats, stats: ImportStats
+) -> bool:
+    """Filter unsupported levels while recording skipped rows for the supplier."""
+    if keep_non_po_levels(data):
+        return True
+    type_stats.seen += 1
+    type_stats.skipped += 1
+    supplier_stats = _supplier_type_stats(stats, data.get("supplier_gid"), kind)
+    supplier_stats.seen += 1
+    supplier_stats.skipped += 1
+    return False
+
+
+def _incoming_bundle_triples(
+    products: list[ImportProduct],
+    product_gid_by_olid: dict[str, str],
+    bundle_source_gids: set[str],
+    warning_stats: list[ImportRunWarningStat],
+) -> set[tuple[str, str, str]]:
+    """Resolve bundle references and report components missing from the catalogue."""
+    incoming_triples: set[tuple[str, str, str]] = set()
+    for product_data in products:
+        product_olid = product_data.get("olid")
+        parent_gid = product_gid_by_olid.get(product_olid) if isinstance(product_olid, str) else None
+        bundle_product_olids = product_data.get("bundle_product_olids")
+        if not parent_gid or parent_gid not in bundle_source_gids or not isinstance(bundle_product_olids, list):
+            continue
+
+        for component_olid in bundle_product_olids:
+            component_gid = product_gid_by_olid.get(component_olid) if isinstance(component_olid, str) else None
+            if component_gid:
+                incoming_triples.add((parent_gid, Predicate.BUNDLES, component_gid))
+            else:
+                warning_stats.append(
+                    ImportRunWarningStat(
+                        warning_code=ImportWarningCode.EDUV_BUNDLE_REFERENCE_UNRESOLVED,
+                        message=f"Skipped unresolved Edu-V bundle reference {component_olid!r}.",
+                        product_name=product_data.get("name"),
+                        reason=f"Product {product_olid!r} references an unknown component",
+                        supplier_gid=product_data.get("supplier_gid"),
+                        entity_type="product",
+                        entity_gid=parent_gid,
+                        entity_olid=product_olid,
+                    )
+                )
+    return incoming_triples
+
+
+def _with_payload_defaults(
+    incoming_data: AnyDict, gid: str, source_defaults: TypedTable | None, payload_fields: list[str]
+) -> AnyDict:
+    """Fill omitted payload fields from the prior version without replacing explicit values."""
+    to_insert: AnyDict = dict(incoming_data, gid=gid)
+    if source_defaults is not None:
+        for field in payload_fields:
+            to_insert.setdefault(field, getattr(source_defaults, field, None))
+    return to_insert
 
 
 class ImportFlow(Domain):
@@ -362,13 +556,14 @@ class ImportFlow(Domain):
         self,
         model_table: type[TypedTable],
         gid: str,
-        incoming_data: dict[str, t.Any],
+        incoming_data: AnyDict,
         *,
         prio: int | ImportPriority,
         last_saved_by: str,
         effstatus: bool = True,
         compare_exclude_columns: set[str] | None = None,
         verbose: bool = False,
+        clear_missing_fields: bool = False,
     ) -> ChangeResult:
         """Insert a new effective-dated row when the incoming payload differs for a priority."""
         # note: this performs multiple row-level lookups and runs per imported item;
@@ -382,6 +577,9 @@ class ImportFlow(Domain):
         if incoming_gid is not None and str(incoming_gid) != str(gid):
             raise ValueError(f"incoming_data.gid ({incoming_gid}) does not match gid argument ({gid})")
         payload_fields = _payload_fields(model_table, compare_exclude_columns)
+        provided_data = dict(incoming_data)
+        if clear_missing_fields:
+            incoming_data = dict.fromkeys(payload_fields) | incoming_data
 
         latest_same_prio = (
             ed_table.where((ed_table.gid == gid) & (ed_table.prio == resolved_prio))
@@ -414,11 +612,8 @@ class ImportFlow(Domain):
         if verbose and not is_new:
             print(f"[import-changed] {ed_table._rname} gid={gid} changed_fields={changed_fields}")
 
-        source_defaults = latest_same_prio or fallback_current
-        to_insert = dict(incoming_data, gid=gid)
-        if source_defaults is not None:
-            for field in payload_fields:
-                to_insert.setdefault(field, getattr(source_defaults, field, None))
+        source_defaults = None if clear_missing_fields else latest_same_prio or fallback_current
+        to_insert = _with_payload_defaults(incoming_data, gid, source_defaults, payload_fields)
 
         valid_fields = set(ed_table.fields) - {"id"}
         filtered_payload = {field: value for field, value in to_insert.items() if field in valid_fields}
@@ -430,7 +625,9 @@ class ImportFlow(Domain):
             effdt=dt.datetime.now(),
         )
 
-        validation_errors = _validate_business_fields(ed_table, insert_payload)
+        validation_errors = _validate_business_fields(
+            ed_table, provided_data if clear_missing_fields else insert_payload
+        )
         if validation_errors:
             print(f"[import-invalid] {ed_table._rname} gid={gid} errors={validation_errors}")
             return ChangeResult(status=ChangeStatus.INVALID, validation_errors=validation_errors)
@@ -489,7 +686,6 @@ class ImportFlow(Domain):
     def upsert_suppliers(
         self,
         suppliers: list[ImportSupplier],
-        *,
         prio: int | ImportPriority = ImportPriority.IMPORTER_OK,
         last_saved_by: str = "supplier-import",
         verbose: bool = False,
@@ -589,9 +785,12 @@ class ImportFlow(Domain):
         imported_method_gids: set[str] = set()
         for method_data in methods:
             method_stats.seen += 1
+            supplier_stats = _supplier_type_stats(stats, method_data.get("supplier_gid"), "methods")
+            supplier_stats.seen += 1
             method_data, method_errors = prepare_method_data(method_data, method_gid_by_olid=method_gid_by_olid)
             if not method_data:
                 method_stats.skipped += 1
+                supplier_stats.skipped += 1
                 continue
 
             gid = method_data["gid"]
@@ -604,12 +803,28 @@ class ImportFlow(Domain):
                 prio=row_prio,
                 last_saved_by=last_saved_by,
                 verbose=verbose,
+                clear_missing_fields=ImportErrorCode.ROW_VALIDATION_FAILED in method_errors,
             )
             imported_method_gids.add(gid)
+            method_olid = method_data.get("olid")
+            if method_olid:
+                method_gid_by_olid[method_olid] = gid
             _handle_change_status(change_status, method_errors, method_stats)
+            _handle_change_status(change_status, method_errors, supplier_stats)
+            stats.entity_outcomes.append(
+                ImportEntityOutcome(
+                    entity_type="method",
+                    outcome=change_status.status.value,
+                    supplier_gid=method_data.get("supplier_gid"),
+                    entity_gid=gid,
+                    entity_olid=method_data.get("olid"),
+                    entity_name=method_data.get("name"),
+                ),
+            )
 
             if method_errors:
                 method_stats.issues += 1
+                supplier_stats.issues += 1
 
                 supplier_gid = method_data.get("supplier_gid")
 
@@ -642,14 +857,22 @@ class ImportFlow(Domain):
         resolved_prio: int,
         products: list[ImportProduct],
         product_stats: ImportTypeStats,
+        stats: ImportStats,
         last_saved_by: str,
         verbose: bool,
-        stats: ImportStats,
     ) -> dict[str, int]:
         """Import product rows and collect their resolved row priorities by gid."""
         product_prio_by_gid: dict[str, int] = {}
         for product_data in products:
             product_stats.seen += 1
+            supplier_stats = _supplier_type_stats(stats, product_data.get("supplier_gid"), "products")
+            supplier_stats.seen += 1
+            source_row = t.cast(JsonObject | None, product_data.pop("_source_row", None))
+            source_row_index = product_data.pop("_source_row_index", None)
+            source_row_validation_errors = product_data.pop("_source_row_validation_errors", [])
+            source_supplier_gid = product_data.get("supplier_gid")
+            source_olid = product_data.get("olid")
+            source_name = product_data.get("name")
 
             product_data, product_errors = prepare_product_data(
                 product_data,
@@ -658,6 +881,30 @@ class ImportFlow(Domain):
             )
             if not product_data:
                 product_stats.skipped += 1
+                supplier_stats.skipped += 1
+                if product_errors:
+                    product_stats.issues += 1
+                    supplier_stats.issues += 1
+                    stats.error_stats.extend(
+                        _build_error_stats(
+                            entity_type="product",
+                            error_codes=normalize_import_error_codes(product_errors),
+                            supplier_gid=source_supplier_gid,
+                            supplier_name=_resolve_supplier_name(source_supplier_gid, supplier_name_by_gid),
+                            entity_gid=None,
+                            entity_olid=source_olid,
+                            entity_name=source_name,
+                            validation_failed=ImportErrorCode.ROW_VALIDATION_FAILED in product_errors,
+                            error_details={
+                                "row_index": source_row_index,
+                                "messages": source_row_validation_errors
+                                or [error.label_nl for error in product_errors],
+                                "source_row": source_row,
+                            }
+                            if isinstance(source_row_index, int)
+                            else None,
+                        ),
+                    )
                 continue
 
             gid = product_data["gid"]
@@ -670,15 +917,40 @@ class ImportFlow(Domain):
                 prio=row_prio,
                 last_saved_by=last_saved_by,
                 verbose=verbose,
+                clear_missing_fields=ImportErrorCode.ROW_VALIDATION_FAILED in product_errors,
             )
             product_prio_by_gid[gid] = row_prio
             _handle_change_status(change_status, product_errors, product_stats)
+            _handle_change_status(change_status, product_errors, supplier_stats)
+            stats.entity_outcomes.append(
+                ImportEntityOutcome(
+                    entity_type="product",
+                    outcome=change_status.status.value,
+                    supplier_gid=product_data.get("supplier_gid"),
+                    entity_gid=gid,
+                    entity_olid=product_data.get("olid"),
+                    entity_name=product_data.get("name"),
+                ),
+            )
 
             if product_errors:
                 product_stats.issues += 1
+                supplier_stats.issues += 1
 
                 method_gid = product_data.get("method_gid")
                 supplier_gid = product_data.get("supplier_gid")
+                error_details = change_status.validation_errors
+                if source_row and isinstance(source_row_index, int):
+                    error_details = {
+                        "row_index": source_row_index,
+                        "messages": [
+                            f"{field_name}: {message}"
+                            for field_name, message in change_status.validation_errors.items()
+                        ]
+                        or source_row_validation_errors
+                        or [error.label_nl for error in product_errors],
+                        "source_row": source_row,
+                    }
 
                 stats.error_stats.extend(
                     _build_error_stats(
@@ -693,7 +965,7 @@ class ImportFlow(Domain):
                         method_name=method_name_by_gid.get(method_gid)
                         or method_name_by_olid.get(product_data.get("method_olid")),
                         validation_failed=change_status.status == ChangeStatus.INVALID,
-                        error_details=change_status.validation_errors,
+                        error_details=error_details,
                     ),
                 )
 
@@ -706,6 +978,7 @@ class ImportFlow(Domain):
         product_gid_by_olid: dict[str, str],
         bundle_source_prio_by_gid: dict[str, int],
         last_saved_by: str,
+        warning_stats: list[ImportRunWarningStat],
         verbose: bool = False,
     ) -> None:
         """Synchronize Edu-V bundle references as effective-dated Tagged edges."""
@@ -714,19 +987,7 @@ class ImportFlow(Domain):
 
         bundle_source_gids = set(bundle_source_prio_by_gid)
 
-        incoming_triples: set[tuple[str, str, str]] = set()
-        for product_data in products:
-            product_olid = product_data.get("olid")
-            parent_gid = product_gid_by_olid.get(product_olid) if isinstance(product_olid, str) else None
-            bundle_product_olids = product_data.get("bundle_product_olids")
-            if not parent_gid or parent_gid not in bundle_source_gids or not isinstance(bundle_product_olids, list):
-                continue
-
-            incoming_triples.update(
-                (parent_gid, Predicate.BUNDLES, product_gid_by_olid[component_olid])
-                for component_olid in bundle_product_olids
-                if isinstance(component_olid, str) and component_olid in product_gid_by_olid
-            )
+        incoming_triples = _incoming_bundle_triples(products, product_gid_by_olid, bundle_source_gids, warning_stats)
 
         existing_by_triple = {
             (row.subject_gid, row.predicate, row.object_gid): row.gid
@@ -758,7 +1019,7 @@ class ImportFlow(Domain):
                 verbose=verbose,
             )
 
-        self.db.executesql("select rebuild_tagged_model()")
+        rebuild_model(self.db, "tagged")
 
     def mark_removed_methods_and_products(
         self,
@@ -769,29 +1030,36 @@ class ImportFlow(Domain):
         last_saved_by: str,
         method_stats: ImportTypeStats,
         product_stats: ImportTypeStats,
+        stats: ImportStats,
         supplier_gid: str | None = None,
+        supplier_gids: set[str] | None = None,
     ) -> None:
-        """Mark missing method and product gids as removed for one import run."""
-        method_removed = self.mark_removed_with_prio(
-            model_table=Method,
-            ed_table=MethodEd,
-            prio=resolved_prio,
-            incoming_gids=imported_method_gids,
-            last_saved_by=last_saved_by,
-            supplier_gid=supplier_gid,
-        )
-        method_stats.removed += method_removed
+        """Mark missing method and product gids as removed for the imported supplier scope."""
+        supplier_scopes = supplier_gids if supplier_gids is not None else {supplier_gid}
+        for scoped_supplier_gid in supplier_scopes:
+            removed = self.mark_removed_with_prio(
+                model_table=Method,
+                ed_table=MethodEd,
+                prio=resolved_prio,
+                incoming_gids=imported_method_gids,
+                last_saved_by=last_saved_by,
+                supplier_gid=scoped_supplier_gid,
+            )
+            method_stats.removed += removed
+            _supplier_type_stats(stats, scoped_supplier_gid, "methods").removed += removed
         rebuild_model(self.db, "method")
 
-        product_removed = self.mark_removed_with_prio(
-            model_table=Product,
-            ed_table=ProductEd,
-            prio=resolved_prio,
-            incoming_gids=imported_product_gids,
-            last_saved_by=last_saved_by,
-            supplier_gid=supplier_gid,
-        )
-        product_stats.removed += product_removed
+        for scoped_supplier_gid in supplier_scopes:
+            removed = self.mark_removed_with_prio(
+                model_table=Product,
+                ed_table=ProductEd,
+                prio=resolved_prio,
+                incoming_gids=imported_product_gids,
+                last_saved_by=last_saved_by,
+                supplier_gid=scoped_supplier_gid,
+            )
+            product_stats.removed += removed
+            _supplier_type_stats(stats, scoped_supplier_gid, "products").removed += removed
         rebuild_model(self.db, "product")
 
     def import_methods_and_products(
@@ -803,6 +1071,7 @@ class ImportFlow(Domain):
         last_saved_by: str,
         mark_removed: bool = True,
         removed_supplier_gid: str | None = None,
+        removed_supplier_gids: set[str] | None = None,
         verbose: bool = False,
     ) -> ImportStats:
         """Import methods/products into effective-dated tables and rebuild models."""
@@ -810,34 +1079,26 @@ class ImportFlow(Domain):
         stats = ImportStats()
         method_stats = stats.methods
         product_stats = stats.products
+        rejected_supplier_gids = {
+            supplier_gid
+            for row in products
+            if ImportErrorCode.ROW_VALIDATION_FAILED in row.get("_errors", [])
+            and (supplier_gid := row.get("supplier_gid"))
+            and isinstance(supplier_gid, str)
+        }
+
+        methods = [row for row in methods if _keep_for_import(row, "methods", method_stats, stats)]
+        products = [row for row in products if _keep_for_import(row, "products", product_stats, stats)]
         method_olids = {str(olid) for method_data in methods if (olid := method_data.get("olid"))}
         product_olids = {str(olid) for product_data in products if (olid := product_data.get("olid"))}
         method_olids_from_products = {
             str(method_olid) for product_data in products if (method_olid := product_data.get("method_olid"))
         }
-        linked_product_olids = {
-            str(olid)
-            for product_data in products
-            for olid in (
-                [product_data["follow_up_product_olid"]]
-                if isinstance(product_data.get("follow_up_product_olid"), str)
-                else []
-            )
-            if olid
-        }
-        for product_data in products:
-            bundle_product_olids = product_data.get("bundle_product_olids")
-            if isinstance(bundle_product_olids, list):
-                linked_product_olids.update(
-                    str(olid) for olid in bundle_product_olids if isinstance(olid, str) and olid
-                )
-            related_product_olids = product_data.get("related_product_olids")
-            if isinstance(related_product_olids, list):
-                linked_product_olids.update(
-                    str(olid) for olid in related_product_olids if isinstance(olid, str) and olid
-                )
+        linked_product_olids = _linked_product_olids(products)
 
-        method_gid_by_olid = _preload_gid_by_olid(Method, method_olids | method_olids_from_products)
+        method_gid_by_olid, method_olid_replacements = _preload_method_gids(
+            methods, method_olids | method_olids_from_products
+        )
         product_gid_by_olid = _preload_gid_by_olid(Product, product_olids)
         product_gid_by_olid |= _preload_gid_by_olid(Product, linked_product_olids)
         _seed_incoming_product_gids(products, product_gid_by_olid)
@@ -846,7 +1107,7 @@ class ImportFlow(Domain):
             str(supplier_gid) for row in [*methods, *products] if (supplier_gid := row.get("supplier_gid"))
         }
         supplier_name_by_gid = {
-            str(row.gid): str(row.name)
+            row.gid: row.name
             for row in Supplier.where(Supplier.gid.belongs(list(supplier_gids))).select(Supplier.gid, Supplier.name)
             if row.gid and row.name
         }
@@ -862,6 +1123,12 @@ class ImportFlow(Domain):
         }
 
         with no_triggers(self.db):
+            for old, new in method_olid_replacements.items():
+                replace_method_olid_v1(self.db, old, new, last_saved_by=last_saved_by)
+
+            if method_olid_replacements:
+                rebuild_model(self.db, "method")
+
             imported_method_gids = self.import_methods(
                 methods=methods,
                 resolved_prio=resolved_prio,
@@ -897,9 +1164,17 @@ class ImportFlow(Domain):
                     gid: product_prio_by_gid[gid] for gid in bundle_source_gids if gid in product_prio_by_gid
                 },
                 last_saved_by=last_saved_by,
+                warning_stats=stats.warning_stats,
                 verbose=verbose,
             )
 
+        if mark_removed:
+            if removed_supplier_gids is not None:
+                removed_supplier_gids = removed_supplier_gids - rejected_supplier_gids
+            elif removed_supplier_gid in rejected_supplier_gids or (
+                removed_supplier_gid is None and rejected_supplier_gids
+            ):
+                mark_removed = False
         if mark_removed:
             with no_triggers(self.db):
                 self.mark_removed_methods_and_products(
@@ -909,7 +1184,9 @@ class ImportFlow(Domain):
                     last_saved_by=last_saved_by,
                     method_stats=method_stats,
                     product_stats=product_stats,
+                    stats=stats,
                     supplier_gid=removed_supplier_gid,
+                    supplier_gids=removed_supplier_gids,
                 )
 
         stats.count_stats.extend(
@@ -923,20 +1200,13 @@ class ImportFlow(Domain):
         return stats
 
 
-def rebuild_model(db: TypeDAL, table: t.Literal["method", "product", "supplier"]) -> None:
-    """Rebuild the model table for methods, products or suppliers."""
-    db.executesql(f"select rebuild_{table}_model()")
-
-
 def _preload_gid_by_vision_key(olids: set[str]) -> dict[tuple[str, str], str]:
     """Preload a mapping from (olid, onderwijskwaliteit) to internal gid for known rows."""
     if not olids:
         return {}
     rows = Vision.where(Vision.olid.belongs(list(olids))).select(Vision.olid, Vision.onderwijskwaliteit, Vision.gid)
     return {
-        (str(row.olid), str(row.onderwijskwaliteit)): str(row.gid)
-        for row in rows
-        if row.olid and row.onderwijskwaliteit and row.gid
+        (row.olid, row.onderwijskwaliteit): row.gid for row in rows if row.olid and row.onderwijskwaliteit and row.gid
     }
 
 
@@ -1028,7 +1298,21 @@ def _handle_change_status(
         stats.changed += 1
     elif change_status.status == ChangeStatus.INVALID:
         errors.append(ImportErrorCode.ROW_VALIDATION_FAILED)
-    # else: unchanged
+    else:
+        stats.unchanged += 1
+
+
+def _supplier_type_stats(
+    stats: ImportStats,
+    supplier_gid: str | None,
+    entity_type: str,
+) -> ImportTypeStats:
+    """Return the aggregate run's type stats for one supplier."""
+    if not supplier_gid:
+        return ImportTypeStats()
+
+    supplier_stats = stats.supplier_type_stats.setdefault(supplier_gid, SupplierTypeStats())
+    return supplier_stats.methods if entity_type == "methods" else supplier_stats.products
 
 
 def prepare_method_data(
@@ -1062,6 +1346,11 @@ def prepare_product_data(
 
     raw_errors: list[ImportErrorCode] = product_data.pop("_errors", [])
     row_errors = list(raw_errors) if isinstance(raw_errors, list) else []
+
+    if ImportErrorCode.ROW_VALIDATION_FAILED in row_errors and not all(
+        product_data.get(field) for field in ("supplier_gid", "olid", "name", "method_olid")
+    ):
+        return None, row_errors
 
     if not product_data.get("method_gid"):
         product_data["method_gid"] = _resolve_method_gid_from_olid(product_data.get("method_olid"), method_gid_by_olid)

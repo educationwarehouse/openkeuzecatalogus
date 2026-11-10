@@ -2,7 +2,7 @@
 
 import psycopg2.errors
 
-from shared_code.infra.database import advisory_semaphore_context
+from shared_code.infra.database.advisory_locks import advisory_semaphore_context
 from shared_code.infra.database.context import DatabaseContext
 
 DeadlockDetected: type[Exception] = psycopg2.errors.DeadlockDetected  # ty: ignore[unresolved-attribute]
@@ -10,6 +10,8 @@ DeadlockDetected: type[Exception] = psycopg2.errors.DeadlockDetected  # ty: igno
 
 def _refresh_all_materialized_views(db: DatabaseContext) -> list[str]:
     """Refresh every materialized view, concurrently when PostgreSQL supports it."""
+    from shared_code.services.caching.writes import invalidate_cache
+
     rows = db.executesql(
         "SELECT mview, refresh, is_concurrent, is_populated FROM materialized_views;",
         colnames=["name", "refresh", "is_concurrent", "is_populated"],
@@ -25,6 +27,12 @@ def _refresh_all_materialized_views(db: DatabaseContext) -> list[str]:
         print(query)
         try:
             db.executesql(query)
+
+            invalidate_cache(db, materialized_view)
+            bare_name = materialized_view.rsplit(".", 1)[-1]
+            if bare_name != materialized_view:
+                invalidate_cache(db, bare_name)
+
             db.commit()
             refreshed_views.append(materialized_view)
         except DeadlockDetected:

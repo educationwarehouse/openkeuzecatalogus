@@ -5,7 +5,7 @@ from pathlib import Path
 
 from typedal.tables import TypedTable
 
-from shared_code.data_model import MethodEd, ProductEd, SupplierEd, VisionEd
+from shared_code.data_model import AnyDict, MethodEd, ProductEd, SupplierEd, VisionEd
 from shared_code.data_model.fields.type_generation import render_typed_dict, write_generated
 from shared_code.infra.database import database_context
 
@@ -21,6 +21,9 @@ EXTRA_FIELDS = {
     "ImportMethod": {"_errors": "list[ImportErrorCode]"},
     "ImportProduct": {
         "_errors": "list[ImportErrorCode]",
+        "_source_row": "dict[str, object]",
+        "_source_row_index": "int",
+        "_source_row_validation_errors": "list[str]",
         "bundle_product_olids": "list[str]",
         "follow_up_product_olid": "str",
         "method_name": "str",
@@ -65,7 +68,7 @@ def render_import_payloads() -> str:
             include_relationships=False,
             include_properties=False,
         ).__annotations__
-        fields: dict[str, t.Any] = {
+        fields: AnyDict = {
             name: _field_annotation(model, name, annotations)
             for name in model.fields
             if name in annotations and name not in EXCLUDED_FIELD_NAMES

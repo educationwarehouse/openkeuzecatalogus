@@ -24,9 +24,51 @@ method, vision, and comparison modules exposed by the shared backend. Those modu
 construct public payloads only: importer-only fields and unavailable records do not
 reach the page.
 
-The detail template currently renders the public payload as formatted JSON. The
-comparison template renders common properties and education visions in a matrix, with
+Detail pages render the item's public fields, supplier, education visions, and products
+belonging to its method. The comparison template renders common properties and education visions in a matrix, with
 a client-side option to show only differing rows.
+
+Administrators can show or hide the complete **Inzichten** section on product and
+method detail pages via **Catalogusinstellingen > Algemene instellingen > De 12 thema's**
+(`/admin/catalog-settings`). The boolean setting is stored as `catalog.show_themes`
+in `catalogus_setting` and read on each detail request. Themes are shown by default
+when the key is absent; no migration or seeded row is needed. Hiding the section
+preserves all vision data and leaves specifications and other detail-page actions available.
+
+## Similar Learning Materials
+
+At the bottom of a detail page, `SimilarMaterials` selects other public catalogue items:
+
+- Methods must share at least one subject and have a public product.
+- Products must share at least one subject and at least one level.
+- The current item and removed items are excluded.
+
+Each shared subject or level adds two ranking points. Sharing the supplier adds one,
+so supplier preference can never outweigh an additional subject or level match.
+Ties use the catalogue search's daily seeded random ordering. Results are cached for
+five minutes, with the source's matching fields, day, and configured limit in the key.
+The section is omitted when no relevant alternatives exist, including when the source
+lacks the required subject or level data.
+
+Administrators set the global maximum in the shared **Catalogusinstellingen > Algemene
+instellingen** page (`/admin/catalog-settings`), under **Soortgelijke leermiddelen**. It is stored in the reusable
+`catalogus_setting` table under the key `catalog.similar_material_limit`, defaults
+to `9`, and accepts positive whole numbers only.
+The same value applies to product and method pages for every visitor.
+The setting is read on each request, and the current value is part of the suggestion
+cache key, so a saved change takes effect immediately without restarting the application.
+The `create_catalogus_setting_20261005_001` migration creates and seeds the setting.
+
+`CatalogusSetting` extends `BaseTable`, providing the standard `gid`, `created_at`,
+and `updated_at` fields alongside a unique `key` and JSONB `value`. The shared
+`CatalogusSettings` module reads values with caller-provided defaults and allows
+administrators and services to save JSON values. Individual features define their
+own defaults and validation. Updating a setting preserves its GID and creation time.
+
+Suggestions emit `catalog_search` events with `search_type="similar"`, source GID,
+configured limit, result revisions, and scores, including on cache hits. Suggestion
+links carry `source=similar`; the destination's `catalog_detail` event records this
+attribution and the HTTP `Referer` when supplied by the browser.
 
 Successful searches emit applog events with result row IDs and search scores. Those scores are
 the relevance ranks described in [Search ranking](search-ranking.md). Detail

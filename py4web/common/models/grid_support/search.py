@@ -13,9 +13,11 @@ from py4web.utils.form import FormStyleFactory as FormStyle
 from typedal import QueryBuilder, TypedTable
 from typedal.types import Field, Query
 
+from common.models.request_data import get_request_data
 from py4web import request
-from shared_code.data_model.mixins import SearchMixin
+from shared_code.data_model import AnyDict
 from shared_code.data_model.mixins.search import (
+    SearchMixin,
     apply_basic_search,
     basic_search_query,
 )
@@ -32,17 +34,6 @@ class LimitConfig(t.TypedDict):
 
 
 type T_Limit = dict[int, str] | t.Iterable[int] | LimitConfig | t.Literal[False] | None
-
-
-def get_request_data() -> dict[str, t.Any]:
-    """Retrieves and merges data from different parts of an HTTP request.
-
-    This function gathers data from form submissions, query parameters, or JSON-encoded
-    bodies in an HTTP request. On key conflicts, form data overrides query params,
-    and JSON overrides both.
-    """
-    json_data = request.json if isinstance(request.json, dict) else {}
-    return {**request.query, **request.forms, **json_data}
 
 
 class SearchField(Field):
@@ -133,6 +124,18 @@ class SearchField(Field):
             - dict[str, QueryBuilder]: Automatically looks up values[0] as key.
 
         """
+        default = kwargs.get("default")
+
+        def request_default() -> t.Any:
+            data = get_request_data()
+            if (value := data.get(fieldname)) is not None:
+                return value
+            elif callable(default):
+                return default()
+            else:
+                return default
+
+        kwargs["default"] = request_default
         super().__init__(fieldname, **kwargs)
         self.query_fn = query_fn
 
@@ -178,6 +181,24 @@ class EddieSearch:
     """Build a query and HTMX-backed search form from request filters."""
 
     builder: QueryBuilder[TypedTable] | None = None
+
+    def _apply_extra_filters(
+        self, table: type[TypedTable], builder: QueryBuilder, search_filters: t.Iterable[Field | SearchField]
+    ) -> QueryBuilder:
+        """Apply configured field filters without the built-in query and limit controls."""
+        for extra_filter in search_filters:
+            filter_name = extra_filter.name
+            filter_default = extra_filter.default() if callable(extra_filter.default) else extra_filter.default
+            if filter_value := self.data.get(filter_name, filter_default):
+                if isinstance(filter_value, str):
+                    with contextlib.suppress(Exception):
+                        filter_value = ast.literal_eval(filter_value)
+                filter_value = [filter_value] if not isinstance(filter_value, list) else filter_value
+                if isinstance(extra_filter, SearchField):
+                    builder = extra_filter.apply_filter(table, builder, filter_value)
+                else:
+                    builder = builder.where(SearchField.apply_standard_filter(table, filter_name, filter_value))
+        return builder
 
     def __init__(
         self,
@@ -237,24 +258,7 @@ class EddieSearch:
                     else apply_basic_search(search_query, table, builder)
                 )
 
-            # not using self.search_filters here, because that includes stuff like 'q' and 'limit'
-            for extra_filter in search_filters:
-                filter_name = extra_filter.name
-
-                if filter_value := self.data.get(filter_name, extra_filter.default):
-                    if isinstance(filter_value, str):
-                        # maybe it's a stringified value (e.g. when paginating)
-                        with contextlib.suppress(Exception):
-                            filter_value = ast.literal_eval(filter_value)
-
-                    filter_value = [filter_value] if not isinstance(filter_value, list) else filter_value
-
-                    # Use SearchField's custom query logic if available, otherwise standard filter
-                    if isinstance(extra_filter, SearchField):
-                        builder = extra_filter.apply_filter(table, builder, filter_value)
-                    else:
-                        # Standard Field: use the same logic as SearchField's default
-                        builder = builder.where(SearchField.apply_standard_filter(table, filter_name, filter_value))
+            builder = self._apply_extra_filters(table, builder, search_filters)
 
             if builder:
                 # truthy if any .where or .select was applied
@@ -333,7 +337,7 @@ class EddieSearch:
     def build_search_form(self) -> Form:
         """Build the HTMX search form used to filter the grid."""
         search_filter_names = {field.name for field in self.search_filters}
-        persistent_query_params: dict[str, t.Any] = {}
+        persistent_query_params: AnyDict = {}
         for key in request.query:
             if key.startswith("_") or key in search_filter_names:
                 continue

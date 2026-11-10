@@ -3,19 +3,24 @@
 import enum
 import shlex
 import typing as t
+import unicodedata
 from dataclasses import dataclass
 
 from pydal.helpers.classes import SQLCustomType
-from pydal.objects import Field as PydalField
+from pydal.objects import Expression
 from typedal import QueryBuilder
-from typedal.fields import Field as TypedalField
-from typedal.fields import TypedField, rname
+from typedal.fields import Field, TypedField, rname
 from typedal.mixins import Mixin
 from typedal.tables import TypedTable, _TypedTable
 from typedal.types import OrderBy, Query
 
 from shared_code.data_model.validators.is_uuid import is_uuid
 from shared_code.util.time import utcnow
+
+# note: Keep this equal to PostgreSQL's `pg_trgm.similarity_threshold`. To change it,
+#  add a migration that runs `ALTER ROLE CURRENT_USER SET # pg_trgm.similarity_threshold TO <new value>`
+#  so every new application database connection uses the threshold read by the index-supported `%` operator.
+TRIGRAM_SIMILARITY_THRESHOLD = 0.30
 
 
 def safe_quoted_split(terms: str) -> t.Generator[str]:
@@ -134,9 +139,47 @@ def escape_sql_like_value(value: str) -> str:
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
-def search_for_fieldtype(
-    field: PydalField | TypedalField, search: str, *, allow_exact_match: bool = True
-) -> Query | None:
+def normalize_search_value(value: str) -> str:
+    """Remove accents from a search value to match PostgreSQL's `unaccent` output."""
+    return "".join(char for char in unicodedata.normalize("NFKD", value) if not unicodedata.combining(char))
+
+
+def unaccent(field: Field | Expression) -> Expression:
+    """Wrap a field in PostgreSQL's `unaccent` function."""
+
+    def _unaccent(value: Field | Expression, query_env: dict[str, t.Any] | None = None) -> str:
+        return f"unaccent({value._dialect.expand(value, query_env=query_env or {})})"
+
+    return Expression(field.db, _unaccent, field, type=field.type)
+
+
+def _search_text_field(field: Field, search: str) -> Query:
+    """Apply accent-insensitive matching on PostgreSQL text fields."""
+    db = field.db
+    assert db, "field must have db"
+    adapter = db._adapter
+    assert adapter, "db must have adapter"
+    if adapter.dbengine == "postgres":
+        return unaccent(field.cast("text")).contains(normalize_search_value(search))
+    else:
+        return field.contains(search)
+
+
+def _search_exact_field(field: Field, search: str, allow_exact_match: bool) -> Query | None:
+    """Validate identifiers before matching and optionally match other types exactly."""
+    fieldtype = field.type
+    if fieldtype == "id":
+        if search.isdigit():
+            return field == search
+    elif isinstance(fieldtype, SQLCustomType) and fieldtype.native == "uuid":
+        if is_uuid(search):
+            return field == search
+    elif allow_exact_match:
+        return field == search
+    return None
+
+
+def search_for_fieldtype(field: Field, search: str, allow_exact_match: bool = True) -> Query | None:
     """Build a field-type-specific query condition for a search value."""
     fieldtype = field.type
 
@@ -144,23 +187,12 @@ def search_for_fieldtype(
         return None
 
     if fieldtype in ("string", "text"):
-        return field.cast("text").contains(search)
+        return _search_text_field(field, search)
     elif isinstance(fieldtype, str) and fieldtype.startswith("list:"):
         # manually use like instead of contains for partial matching:
         return field.ilike(f"%{search}%")
-    elif fieldtype == "id":
-        if search.isdigit():
-            return field == search
-        # else: can't match 'id' on non-digit
-    elif isinstance(fieldtype, SQLCustomType) and fieldtype.native == "uuid":
-        if is_uuid(search):
-            return field == search
-        # else: can't match uuid
-    elif allow_exact_match:
-        # fallback other types to exact match:
-        return field == search
-
-    return None
+    else:
+        return _search_exact_field(field, search, allow_exact_match)
 
 
 class SearchMixin(Mixin):
@@ -299,9 +331,8 @@ class SearchMixin(Mixin):
         cls,
         part: str,
         search_fields: list[str],
-        *,
         extra_conditions_fn: t.Callable[[str], t.Iterable[Query]] | None = None,
-        include_ranking: bool,
+        include_ranking: bool = False,
     ) -> TermSearchResult:
         """Build the OR-query and ranking clauses for a single search part."""
         part_query = cls.id == 0
@@ -354,11 +385,7 @@ class SearchMixin(Mixin):
         new_orderby = f"""CASE {" ".join(rank_clauses)} ELSE {max_rank + 1} END""" if rank_clauses else None
 
         if existing_orderby := builder.select_kwargs.get("orderby"):
-            existing_orderby = (
-                rname(existing_orderby)
-                if isinstance(existing_orderby, (TypedalField, PydalField))
-                else existing_orderby
-            )
+            existing_orderby = rname(existing_orderby) if isinstance(existing_orderby, Field) else existing_orderby
 
             new_orderby = f"{new_orderby}, {existing_orderby}" if new_orderby else existing_orderby
 
@@ -372,7 +399,6 @@ class SearchMixin(Mixin):
         cls,
         search: str,
         builder: QueryBuilder,
-        *,
         extra_conditions_fn: t.Callable[[str], t.Iterable[Query]] | None = None,
     ) -> QueryBuilder:
         """Apply the legacy field-order search ranking."""
@@ -406,11 +432,10 @@ class SearchMixin(Mixin):
     def search(
         cls,
         search: str = "",
-        *,
         order: OrderBy | t.Literal["random"] | None = None,
         limit: int | None = None,
         builder: QueryBuilder[t.Self] | None = None,
-        select: list[str | PydalField | TypedalField] | None = None,
+        select: list[str | Field] | None = None,
     ) -> QueryBuilder[t.Self]:
         """Build a search query with optional ordering, limit, and selected fields."""
         builder = builder or QueryBuilder(cls)
@@ -471,25 +496,26 @@ class RankedSearchMixin(SearchMixin):
         return tuple(rules)
 
     @staticmethod
-    def _trigram_condition(field: PydalField | TypedField[t.Any], part: str, threshold: float) -> Query:
-        """Return a safely quoted PostgreSQL trigram-similarity condition."""
+    def _trigram_condition(field: Field | TypedField[t.Any], part: str, threshold: float) -> Query:
+        """Return a safely quoted, index-supported PostgreSQL trigram condition."""
         if not isinstance(threshold, (int, float)) or not 0 <= threshold <= 1:
             raise ValueError("trigram threshold must be between 0 and 1")
+        if threshold != TRIGRAM_SIMILARITY_THRESHOLD:
+            raise ValueError("trigram threshold must match TRIGRAM_SIMILARITY_THRESHOLD")
         assert field.db, "Can't continue without db"
         value = field.db._adapter.represent(part, "string")
-        return Query(field.db, f"similarity(CAST({rname(field)} AS text), CAST({value} AS text)) >= {threshold:.2f}")
+        return Query(field.db, f"CAST({rname(field)} AS text) % CAST({value} AS text)")
 
     @classmethod
     def direct_search_rank_rule(
         cls,
         name: str,
-        field: PydalField | TypedField[t.Any],
-        *,
+        field: Field | TypedField[t.Any],
         exact: int | None = None,
         prefix: int | None = None,
         contains: int | None = None,
         trigram: int | None = None,
-        trigram_threshold: float = 0.30,
+        trigram_threshold: float = TRIGRAM_SIMILARITY_THRESHOLD,
     ) -> SearchRankRule:
         """Build a complete direct-field rule that can score every search part."""
 
@@ -512,17 +538,17 @@ class RankedSearchMixin(SearchMixin):
     def related_search_rank_rule(
         cls,
         name: str,
-        foreign_key: PydalField | TypedField[t.Any],
+        foreign_key: Field | TypedField[t.Any],
         *,
         related_table: type[TypedTable],
-        related_key: PydalField | TypedField[t.Any],
-        related_field: PydalField | TypedField[t.Any],
+        related_key: Field | TypedField[t.Any],
+        related_field: Field | TypedField[t.Any],
         exact: int | None = None,
         prefix: int | None = None,
         contains: int | None = None,
         trigram: int | None = None,
-        trigram_threshold: float = 0.30,
-        # todo: also make trigram_threshold configurable in UI
+        trigram_threshold: float = TRIGRAM_SIMILARITY_THRESHOLD,
+        # todo: also make trigram_threshold configurable in UI?
     ) -> SearchRankRule:
         """Build a complete related-field rule that can score every search part."""
         direct_rule = cls.direct_search_rank_rule(
@@ -567,13 +593,29 @@ class RankedSearchMixin(SearchMixin):
         )
 
     @classmethod
+    def _ranked_term_query(
+        cls,
+        term_query: Query,
+        search_term: SearchTerm,
+        rank_rules: tuple[SearchRankRule, ...],
+        rank_expressions: list[str],
+    ) -> Query:
+        """Combine a term's ranked field matches and retain scores for include terms."""
+        for rank_rule in rank_rules:
+            group = rank_rule.group_for_part(search_term.part)
+            if group_query := group.query:
+                term_query |= group_query
+                if search_term.mode is SearchTermMode.INCLUDE:
+                    rank_expressions.append(group.score_expression())
+        return term_query
+
+    @classmethod
     def _apply_search(
         cls,
         search: str,
         builder: QueryBuilder,
-        *,
+        extra_conditions_fn: t.Callable[[str], t.Iterable[Query]] | None = None,
         score_overrides: dict[str, dict[str, int | None]] | None = None,
-        **_: t.Any,
     ) -> QueryBuilder:
         """Filter and score rows, summing strongest per-field matches for include terms."""
         search = (search or "").strip()
@@ -581,17 +623,20 @@ class RankedSearchMixin(SearchMixin):
             return builder
 
         query = cls.id > 0  # start with true condition
-        rank_rules = cls.search_rank_rules(score_overrides)
+        rank_rules = cls.search_rank_rules(score_overrides=score_overrides)
         rank_expressions: list[str] = []
         for search_term in parsed_search_terms(search):
             term_query = cls.id == 0
-            for rank_rule in rank_rules:
-                group = rank_rule.group_for_part(search_term.part)
-                if group_query := group.query:
-                    term_query |= group_query
-                    if search_term.mode is SearchTermMode.INCLUDE:
-                        rank_expressions.append(group.score_expression())
+            # gid is a technical identifier, not relevance-ranked text. Keep an
+            # exact gid lookup available even when no configurable rule covers it.
+            if is_uuid(search_term.part):
+                term_query |= cls.gid == search_term.part
 
+            if extra_conditions_fn:
+                for condition in extra_conditions_fn(search_term.part):
+                    term_query |= condition
+
+            term_query = cls._ranked_term_query(term_query, search_term, rank_rules, rank_expressions)
             query = cls._combine_search_query(query, term_query, search_term.mode)
 
         rank_expression = " + ".join(rank_expressions) or "0"

@@ -14,6 +14,10 @@ from slugify import slugify
 from shared_code.util.env import bool_from_env
 
 type ImageUpload = tuple[str, str]
+type ImageDownload = tuple[bytes, str]
+
+MAX_EXTERNAL_IMAGE_BYTES = 10 * 1024 * 1024  # 10 MiB
+ALLOWED_EXTERNAL_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 
 
 class ImageStorageError(Exception):
@@ -51,10 +55,15 @@ class ImageStorage(Service, abc.ABC):
         """Return whether a URL is already served by this storage backend."""
         ...
 
+    @abc.abstractmethod
+    def download_url(self, url: str) -> ImageDownload:
+        """Read an image from one of this storage backend's own URLs."""
+        ...
+
     @classmethod
     def from_env(cls) -> ImageStorage:
         """Build the configured image-storage implementation."""
-        if bool_from_env("IMAGE_STORAGE_FAKE", True):
+        if bool_from_env("IMAGE_STORAGE_FAKE", default=True):
             from .fake import MockImageStorage
 
             return MockImageStorage.from_env()
@@ -66,7 +75,7 @@ class ImageStorage(Service, abc.ABC):
     @staticmethod
     def sha1_hash(text: str) -> str:
         """Return the SHA-1 digest used for non-secret filename obfuscation."""
-        return hashlib.sha1(text.encode()).hexdigest()  # noqa: S324 - filenames are not security controls
+        return hashlib.sha1(text.encode(), usedforsecurity=False).hexdigest()
 
     @classmethod
     def hash_filename(cls, isbn: str, salt: str | None = None) -> str:
@@ -101,7 +110,7 @@ class ImageStorage(Service, abc.ABC):
 
         try:
             content = source_path.read_bytes()
-            return self.upload_bytes(filename, content, self._guess_content_type(filename))
+            return self.upload_bytes(filename, content, content_type=self._guess_content_type(filename))
 
         except OSError as error:
             raise ImageDownloadError(f"Unable to read image from {source_path!r}") from error
@@ -116,14 +125,39 @@ class ImageStorage(Service, abc.ABC):
         source_name = original_filename or Path(unquote(urlparse(source_url).path)).name or "image"
         filename = self.create_filename(isbn, source_name)
 
+        content, content_type = self.download_external_url(source_url)
+        return self.upload_bytes(filename, content, content_type=content_type or self._guess_content_type(filename))
+
+    def download_external_url(self, source_url: str) -> ImageDownload:
+        """Download an image from an HTTP(S) source without storing it."""
+        parsed_source_url = urlparse(source_url)
+        if parsed_source_url.scheme not in {"http", "https"}:
+            raise ImageDownloadError(f"Image URL must use HTTP(S): {source_url!r}")
+
         try:
-            response = requests.get(source_url, timeout=10)
-            response.raise_for_status()
-        except requests.RequestException as error:
+            with requests.get(source_url, timeout=10, stream=True) as response:
+                response.raise_for_status()
+                content_type = response.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+                if not content_type:
+                    content_type = self._guess_content_type(parsed_source_url.path)
+                if content_type not in ALLOWED_EXTERNAL_IMAGE_TYPES:
+                    raise ImageDownloadError(f"Unsupported image type {content_type!r} at {source_url!r}")
+
+                content_length = response.headers.get("Content-Length")
+                if content_length is not None and int(content_length) > MAX_EXTERNAL_IMAGE_BYTES:
+                    raise ImageDownloadError(f"Image at {source_url!r} exceeds the size limit")
+
+                content_chunks = []
+                content_size = 0
+                for chunk in response.iter_content(chunk_size=64 * 1024):
+                    content_size += len(chunk)
+                    if content_size > MAX_EXTERNAL_IMAGE_BYTES:
+                        raise ImageDownloadError(f"Image at {source_url!r} exceeds the size limit")
+                    content_chunks.append(chunk)
+        except (requests.RequestException, ValueError) as error:
             raise ImageDownloadError(f"Unable to download image from {source_url!r}") from error
 
-        content_type = response.headers.get("Content-Type", "").split(";", 1)[0].strip() or None
-        return self.upload_bytes(filename, response.content, content_type or self._guess_content_type(filename))
+        return b"".join(content_chunks), content_type
 
     @staticmethod
     def _guess_content_type(filename: str) -> str:

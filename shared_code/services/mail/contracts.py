@@ -123,7 +123,7 @@ class Mailer(Service, abc.ABC):
     @classmethod
     def from_env(cls) -> Mailer:
         """Instantiate the configured mail transport from environment variables."""
-        if bool_from_env("SMTP_FAKE", True):
+        if bool_from_env("SMTP_FAKE", default=True):
             from .fake import MockMailer
 
             return MockMailer.from_env()
@@ -131,6 +131,21 @@ class Mailer(Service, abc.ABC):
             from .smtp import SMTPMailer
 
             return SMTPMailer.from_env()
+
+    def _set_message_body(self, message: EmailMessage, body: Body, encoding: str, raw: bool) -> None:
+        """Populate a raw body or the available plain text and HTML alternatives."""
+        if raw:
+            message.set_content(self._read_body_part(body, encoding=encoding) or "")
+        else:
+            text_body, html_body = self._split_body(body, encoding=encoding)
+            if text_body is not None:
+                message.set_content(text_body)
+            if html_body is not None:
+                if text_body is None:
+                    message.set_content("")
+                message.add_alternative(html_body, subtype="html")
+            if text_body is None and html_body is None:
+                message.set_content("")
 
     def build_message(
         self,
@@ -161,18 +176,7 @@ class Mailer(Service, abc.ABC):
         for key, value in (headers or {}).items():
             message[key] = value
 
-        if raw:
-            message.set_content(self._read_body_part(body, encoding) or "")
-        else:
-            text_body, html_body = self._split_body(body, encoding)
-            if text_body is not None:
-                message.set_content(text_body)
-            if html_body is not None:
-                if text_body is None:
-                    message.set_content("")
-                message.add_alternative(html_body, subtype="html")
-            if text_body is None and html_body is None:
-                message.set_content("")
+        self._set_message_body(message, body, encoding, raw)
 
         return message
 
@@ -197,8 +201,8 @@ class Mailer(Service, abc.ABC):
     @classmethod
     def _split_body(cls, body: Body, encoding: str = "utf-8") -> tuple[str | None, str | None]:
         if isinstance(body, tuple | list):
-            parts = [cls._read_body_part(part, encoding) for part in body]
+            parts = [cls._read_body_part(part, encoding=encoding) for part in body]
             text = parts[0] if len(parts) > 0 else None
             html = parts[1] if len(parts) > 1 else None
             return text, html
-        return cls._read_body_part(body, encoding), None
+        return cls._read_body_part(body, encoding=encoding), None

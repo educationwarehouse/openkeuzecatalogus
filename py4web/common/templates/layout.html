@@ -1,88 +1,136 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="nl">
+<!-- @formatter:off -->
+[[
+from py4web import request
+from shared_code.util.page_metadata import page_metadata
+page_meta = page_metadata(request.path, globals().get("title"))
+
+if "STATIC" not in locals():
+    def STATIC(folder, filename, app_name=None, **kwargs):
+        asset_parts = ["static", folder, filename]
+        if app_name is not None:
+            kwargs["use_appname"] = False
+        pass
+        if app_name and app_name != "_default":
+            asset_parts.insert(0, app_name)
+        pass
+        return URL(*asset_parts, **kwargs)
+    pass
+pass
+]]
+<!-- @formatter:on -->
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>[[if page_title := globals().get("title"):]][[=page_title]] | [[pass]][[block layout_title]]
-           Open Keuzecatalogus[[end]]</title>
-    <link rel="stylesheet" href="[[=URL('static/css/bundled-latest.css', use_appname=False)]]">
-    <script defer src="[[=URL('static/js/bundled-latest.js', use_appname=False)]]"></script>
-    <script src="https://kit.fontawesome.com/fe5a63b17a.js" crossorigin="anonymous"></script>
+    <title>[[block layout_title]][[=page_meta["title"]]][[end]]</title>
+    <meta name="description" content="[[=page_meta['description']]]">
+    <meta name="robots" content="[[=page_meta['robots']]]">
+    <link rel="canonical" href="[[=page_meta['canonical']]]">
+    <meta property="og:locale" content="nl_NL">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Open Keuzecatalogus Leermiddelen">
+    <meta property="og:title" content="[[=page_meta['social_title']]]">
+    <meta property="og:description" content="[[=page_meta['description']]]">
+    <meta property="og:url" content="[[=page_meta['canonical']]]">
+    <meta property="og:image" content="[[=page_meta['image']]]">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Open Keuzecatalogus Leermiddelen met twee studenten die samen leren">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="[[=page_meta['social_title']]]">
+    <meta name="twitter:description" content="[[=page_meta['description']]]">
+    <meta name="twitter:image" content="[[=page_meta['image']]]">
+    <meta name="twitter:image:alt" content="Open Keuzecatalogus Leermiddelen met twee studenten die samen leren">
+    [[block app_assets]]
+    [[# Shared Bootstrap/widgets live in the root (_default) app, also for private/admin pages. ]]
+    <link rel="stylesheet" href="[[=STATIC('css', 'bundled-latest.css', app_name='_default')]]">
+    <script defer src="[[=STATIC('js', 'bundled-latest.js', app_name='_default')]]"></script>
+    [[end]]
+    <script>
+window.okl_page = new AbortController();
+window.okl_assets = new Set();
+window.on_okl_ready = (callback) => {
+    const { signal } = window.okl_page;
+    async function ready() {
+        await Promise.all(window.okl_assets);
+        if (!signal.aborted) {
+            callback();
+        }
+    }
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", ready, { once: true, signal });
+    } else {
+        queueMicrotask(ready);
+    }
+};
+</script>
     [[block page_head]][[end]]
 </head>
-<body class="edwh-messagebus" data-bs-theme=light>
+<body class="edwh-messagebus" data-bs-theme="light" hx-ext="head-support" hx-boost="true" hx-history="false">
+<div id="okl-page-status" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
+<div id="okl-navigation-progress" class="okl-navigation-progress" hx-preserve role="progressbar" aria-label="Pagina laden" hidden></div>
 
 
-[[admin_user = globals().get("admin_user") or globals().get("user")]]
+[[auth = locals().get("auth", None)]]
+[[user = auth.get_user() if auth else None]]
+[[# error pages have no fixtures, so they pass the label in as 'user_email' instead ]]
+[[user_label = (user.full_name if user else '') or locals().get('user_email') or '']]
+[[okl_navigation = navigation_context() if 'navigation_context' in locals() else {'section': '', 'label': 'Menu', 'current': 'location'}]]
 
-[[if admin_user:]]
-<header class="container">
+
+[[block header_config]][[show_shared_header = True]][[end]]
+[[if show_shared_header:]]
+<header class="container okl-site-header">
     <nav class="navbar border-bottom mb-3 py-2">
-        <a class="navbar-brand mb-0 h1 fs-5" href="[[=URL('index')]]">Open Keuzecatalogus</a>
-        <div class="dropdown ms-auto">
-            <button class="btn btn-outline-secondary btn-sm dropdown-toggle"
-                    type="button"
-                    data-bs-toggle="dropdown"
-                    aria-expanded="false">
-                <i class="fa-regular fa-user me-1"></i>[[=admin_user.full_name]]
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end">
-                <li>
-                    <a class="dropdown-item" href="[[=URL('auth', 'profile', use_appname=False)]]">
-                        <i class="fa-regular fa-user me-2"></i>Profiel
-                    </a>
-                </li>
-                <li>
-                    <hr class="dropdown-divider">
-                </li>
-                <li>
-                    <a class="dropdown-item text-danger" href="[[=URL('auth', 'logout', use_appname=False)]]">
-                        <i class="fa-solid fa-arrow-right-from-bracket me-2"></i>Uitloggen
-                    </a>
-                </li>
-            </ul>
-        </div>
+        [[block header_brand]]
+        [[include './includes/okl_header_brand.html']]
+        [[end]]
+
+        [[block header_actions]]
+        [[block header_extra_actions]][[end]]
+        [[include './includes/okl_navigation.html']]
+        [[end]]
     </nav>
 </header>
 [[pass]]
 
-<main class="container py-3">
-    [[if globals().get("auth") and auth.is_impersonating():]]
-    <div class="alert alert-warning d-flex align-items-center justify-content-between gap-3" role="alert">
-        <div>
-            <strong>Impersonating.</strong>
-            Je werkt momenteel als een andere gebruiker.
-        </div>
-        <a class="btn btn-sm btn-outline-dark" href="[[=URL('admin', 'stop_impersonate', use_appname=False)]]">Stop</a>
-    </div>
-    [[pass]]
+[[block layout_main]]
+<main class="okl-app [[if locals().get('wide_layout'):]]container-fluid[[else:]]container[[pass]] py-3">
     [[include]]
 </main>
+[[end]]
 
-[[if flash_obj := globals().get('flash',''):]]
+[[block layout_footer]][[end]]
+
+[[if flash_obj := locals().get('flash',''):]]
 <template id="py4web-flash">
     <div class="alert [[=flash_obj.get('class') or 'alert-primary']]" role="alert">
-        [[=flash_obj.get('message')]]
+        [[=XML(flash_obj.get("message"), sanitize=True, permitted_tags=("a", "b", "strong", "em", "i", "u", "br/", "p", "ul", "ol", "li", "code", "pre"), allowed_attributes={"a": ("href", "title")})]]
     </div>
 </template>
 [[pass]]
 
 [[block page_scripts]][[end]]
 
-[[if locals().get('contenteditable-allowed'):]]
-[[# session var bestaat en session is geactiveerd door fixture en token is ingesteld + gevalideerd door p4w ]]
 <script>
-    // moet aan het eind/na bundle.js!!!
-    window.addEventListener("load", () => window.ew_start_editor())
+window.on_okl_ready(() => {
+    window.okl_editor_start ||= window.ew_start_editor;
+    [[if locals().get('contenteditable-allowed'):]]
+    window.ew_start_editor = window.okl_editor_start;
+    window.ew_start_editor();
+    window.okl_page.signal.addEventListener(
+        "abort",
+        () => {
+            return ContentTools.EditorApp.get().destroy();
+        },
+        { once: true },
+    );
+    [[else:]]
+    window.ew_start_editor = () => console.error("Only available for authenticated users.");
+    [[pass]]
+});
 </script>
-[[else:]]
-<script>
-    window.addEventListener("load", () => {
-        window.ew_start_editor = () => {
-            console.error("Only available for authenticated users.")
-        }
-    })
-</script>
-[[pass]]
 </body>
 </html>

@@ -147,7 +147,7 @@ class RequiresFixture(Fixture):
         self.or_else = self.transform_callback_on_request(self._or_else)
         self.condition = self.transform_callback_on_request(self._condition)
 
-        if not self.validate(context):
+        if not self.validate(ctx=context):
             self.back(context)
 
         return None

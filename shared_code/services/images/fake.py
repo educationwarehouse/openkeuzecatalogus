@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from urllib.parse import quote, unquote, urlparse
 
-from .contracts import ImageDownloadError, ImageStorage, ImageUpload
+from .contracts import ImageDownload, ImageDownloadError, ImageStorage, ImageUpload
 
 
 class MockImageStorage(ImageStorage):
@@ -52,6 +52,17 @@ class MockImageStorage(ImageStorage):
     def is_file_url(self, url: str) -> bool:
         """Return whether a URL points at this mock's local storage root."""
         return url.startswith(f"file://{quote(str(self.storage_path))}/")
+
+    def download_url(self, url: str) -> ImageDownload:
+        """Read one image stored by this local backend."""
+        if not self.is_file_url(url):
+            raise ImageDownloadError(f"Image URL is not served by this storage backend: {url!r}")
+
+        try:
+            image_path = Path(unquote(urlparse(url).path))
+            return image_path.read_bytes(), self._guess_content_type(image_path.name)
+        except OSError as error:
+            raise ImageDownloadError(f"Unable to read image from {url!r}") from error
 
     def _file_path(self, filename: str) -> Path:
         """Resolve a filename safely inside the configured local storage root."""

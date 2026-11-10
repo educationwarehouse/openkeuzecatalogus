@@ -7,10 +7,11 @@ from edwh_auth_rbac.model import IdentityKey
 from py4web.utils.auth import Auth, b16e
 from py4web.utils.form import FormStyleBootstrap5
 from pydal.objects import Row
-from typedal import TypeDAL
+from typedal.for_py4web import DAL
 from typedal.types import Query
 
 from common.fixtures.requires_fixture import Condition, OrElse, RequiresFixture
+from common.fixtures.session import PoppableSession
 from py4web import HTTP, URL, redirect, request
 from shared_code.data_model import AnyDict
 from shared_code.data_model.constants import ROLE_SUPPLIER
@@ -18,6 +19,7 @@ from shared_code.data_model.tables import AuthUser
 from shared_code.data_model.validators.is_existing_sso_account import build_normalized_email_match_query
 from shared_code.modules.auth import (
     AuthContext,
+    AuthScope,
 )
 from shared_code.modules.auth.password_reset import (
     RESET_PASSWORD_LINK_MAX_AGE_HOURS,
@@ -29,7 +31,6 @@ from shared_code.modules.auth.password_reset import (
 from shared_code.util.email import normalize_email_for_lookup
 
 from ... import settings
-from ...fixtures import PoppableSession
 from ..entree import setup_entree_plugin
 from .auth_enforcer import LoginRedirectAuthEnforcer
 from .auth_forms import LoggingAuthForms
@@ -54,7 +55,7 @@ ACCOUNT_BLOCKED = "account-blocked"
 class AppAuth(Auth):
     """Auth adapter that emits applog events for selected auth actions."""
 
-    db: TypeDAL
+    db: DAL
     form_source: LoggingAuthForms
     auth_context: AuthContext
     param: t.Any
@@ -94,9 +95,10 @@ class AppAuth(Auth):
             "user-registered": (
                 "Registratie succesvol. Er wordt een verificatiemail gestuurd. Controleer ook je spam."
             ),
-            "password-reset-link-sent": "Er is een link verstuurd om je wachtwoord opnieuw in te stellen.",
-            "magic-login-link-sent": "Als dit e-mailadres bestaat is er een magic login-link verstuurd.",
-            "magic-login-success": "Je bent ingelogd via een magic login-link.",
+            "password-reset-link-sent": "Als dit e-mailadres bij ons bekend is, "
+            "ontvang je een link om je wachtwoord opnieuw in te stellen.",
+            "magic-login-link-sent": "Als dit e-mailadres bij ons bekend is, "
+            "ontvang je een link waarmee je kunt inloggen.",
             "password-changed": "Je wachtwoord is gewijzigd.",
             "profile-saved": "Je profiel is opgeslagen.",
             "user-logout": "Je bent uitgelogd.",
@@ -155,27 +157,26 @@ class AppAuth(Auth):
         super().__init__(**kwargs)
         self.backend = backend
         self.form_source = LoggingAuthForms(self, applog=backend.applog)
-        # self.rbac = AuthRbac(self.db)
-        # self.rbac.define_model(
-        #     allowed_types=["user", "group", "item"],
-        #     redefine=True,
-        #     migrate=False,
-        # )
-        # self.db.commit()
-
         self.auth_context = backend.auth_context
 
+    def on_success(self, context: AnyDict) -> None:
+        """Inject 'auth' into the yatl template."""
+        super().on_success(context)
+        if (output := context.get("output")) and isinstance(output, dict):
+            # note: works better than `template_inject`
+            output.setdefault("auth", self)
+
     @classmethod
-    def from_dependencies(cls, session: PoppableSession, db: TypeDAL, backend: Py4webBackend) -> t.Self:
+    def from_dependencies(cls, session: PoppableSession, db: DAL, backend: Py4webBackend) -> t.Self:
         """Build an auth instance from the injected backend dependencies."""
         auth = cls(session=session, db=db, define_tables=False, backend=backend)
         auth.param.auth_enforcer = LoginRedirectAuthEnforcer(auth)
         auth.use_username = False
-        auth.param.registration_requires_confirmation = True
+        auth.param.registration_requires_confirmation = not settings.AUTO_APPROVE_AND_LOGIN_AFTER_REGISTRATION
         auth.param.registration_requires_approval = False
-        auth.param.login_after_registration = False
+        auth.param.login_after_registration = settings.AUTO_APPROVE_AND_LOGIN_AFTER_REGISTRATION
         auth.param.allowed_actions = ALLOWED_ACTIONS
-        auth.param.login_expiration_time = 3600
+        auth.param.login_expiration_time = settings.SESSION_IDLE_SECONDS
         auth.param.password_complexity = {"entropy": 50}
         auth.param.block_previous_password_num = 3
         auth.param.default_login_enabled = True
@@ -252,23 +253,23 @@ class AppAuth(Auth):
 
     def send_flash(self, message: str, status: str = "info") -> None:
         """Show a flash message with a Bootstrap severity suffix."""
-        self._send_flash(message or "?", f"alert-{status}")
+        self._send_flash(message or "?", class_name=f"alert-{status}")
 
     def flash_error(self, key: str) -> None:
         """Show an error flash message."""
-        self.send_flash(key, "danger")
+        self.send_flash(key, status="danger")
 
     def flash_warning(self, key: str) -> None:
         """Show a warning flash message."""
-        self.send_flash(key, "warning")
+        self.send_flash(key, status="warning")
 
     def flash_success(self, key: str) -> None:
         """Show a success flash message."""
-        self.send_flash(key, "success")
+        self.send_flash(key, status="success")
 
     def flash_info(self, key: str) -> None:
         """Show an informational flash message."""
-        self.send_flash(key, "info")
+        self.send_flash(key, status="info")
 
     def _query_from_token(self, token: str) -> Query:
         """Resolve reset-password tokens while preserving the base fallback."""
@@ -329,7 +330,7 @@ class AppAuth(Auth):
             mark_reset_password_expiry(token)
         return token
 
-    def get_or_register_user(self, user: dict[str, t.Any]) -> dict[str, t.Any] | None:
+    def get_or_register_user(self, user: AnyDict) -> AnyDict | None:
         """Attach a new federative identity to its existing local account when available."""
         if sso_id := user.get("sso_id"):
             if existing_sso_account := self.ensure_not_blocked(AuthUser.sso_id == sso_id):
@@ -475,6 +476,21 @@ class AppAuth(Auth):
         """@action.uses(auth.user) is broken, use this instead."""
         return self.requires(lambda: bool(self.get_user()), or_else=self._to_login)
 
+    def has_permission(self, gid: str, scope: AuthScope) -> bool:
+        """Return whether the current user may apply `scope` to `gid`."""
+        return self.auth_context.is_admin() or self.auth_context.has_permission(gid, scope)
+
+    def requires_permission(
+        self,
+        scope: AuthScope,
+        or_else: OrElse = None,
+    ) -> RequiresFixture:
+        """Require one RBAC scope for the `gid` captured by the current route."""
+        return self.requires_login() & self.requires(
+            lambda gid: self.has_permission(gid, scope),
+            or_else=or_else,
+        )
+
     def requires_membership(
         self,
         group_identifier: IdentityKey | list[IdentityKey],
@@ -497,6 +513,10 @@ class AppAuth(Auth):
             lambda: any(self.auth_context.has_membership(str(identifier)) for identifier in group_identifiers),
             or_else=or_else,
         )
+
+    def is_admin(self) -> bool:
+        """Return whether the actor has the admin role."""
+        return self.auth_context.is_admin()
 
 
 __all__ = ["ALLOWED_ACTIONS", "AppAuth"]

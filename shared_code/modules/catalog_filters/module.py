@@ -8,6 +8,8 @@ from typedal import QueryBuilder
 from shared_code.data_model import AnyDict, DynamicFilter, DynamicSort, Method, Product
 from shared_code.data_model.constants import CATALOG_APPLIES_TO_LABELS
 from shared_code.data_model.validators.sort_expression import parse_sort_expression
+from shared_code.services import CacheService
+from shared_code.services.caching import TableDep
 
 from .definitions import (
     CUSTOM_FILTERS,
@@ -23,9 +25,14 @@ from .types import (
     ResolvedCatalogFilters,
 )
 
+# Bound staleness if the cache backend is unavailable during invalidation.
+OPTIONS_TTL = 300
+
 
 class CatalogFilters(Domain):
     """Resolve, render, and apply catalogue filters for products and methods."""
+
+    caching: CacheService
 
     def resolve(
         self,
@@ -35,7 +42,38 @@ class CatalogFilters(Domain):
         option_builder: QueryBuilder[t.Any],
         sort_options: dict[str, CatalogSortOption[t.Any]] | None = None,
     ) -> ResolvedCatalogFilters:
-        """Resolve active filter definitions for one request."""
+        """Resolve active filter definitions for one request, options included.
+
+        The options come from `option_builder` before any active value narrows
+        it, so every request for one entity kind sees the same set and one cache
+        entry serves them all. Only `current_value` differs per request, and
+        that is parsed rather than queried, so it stays outside the block.
+        """
+        with self.caching("catalog_filter_options", entity_kind, scope=None, ttl=OPTIONS_TTL) as cache:
+            # resolved inside the block so the filter-config reads are recorded as deps
+            resolved = self._resolve(
+                entity_kind,
+                params=params,
+                option_builder=option_builder,
+                sort_options=sort_options,
+            )
+
+            if cache.valid:
+                return resolved.apply_options(cache.value)
+
+            cache.update_deps(TableDep(entity_kind))
+            cache.set(resolved.load_options().options_payload())
+            return resolved
+
+    def _resolve(
+        self,
+        entity_kind: CatalogEntityKind,
+        *,
+        params: AnyDict,
+        option_builder: QueryBuilder[t.Any],
+        sort_options: dict[str, CatalogSortOption[t.Any]] | None = None,
+    ) -> ResolvedCatalogFilters:
+        """Build the definitions and parse the active values. Queries no options."""
         if entity_kind not in t.get_args(CatalogEntityKind):
             raise ValueError("invalid 'entity_kind'")
 
@@ -90,6 +128,7 @@ class CatalogFilters(Domain):
         )
         for row in rows:
             metadata = DynamicFilterMetadata(
+                dynamic_filter_ed_id=row.id,
                 slug=row.slug,
                 label=row.label,
                 filter_kind=row.filter_kind,
@@ -176,10 +215,11 @@ class CatalogFilters(Domain):
             if order is None:
                 continue
 
-            options[str(row.slug)] = CatalogSortOption(
-                label=str(row.label),
+            options[row.slug] = CatalogSortOption(
+                label=row.label,
                 order=order,
-                is_default=bool(row.is_default),
+                is_default=row.is_default,
+                dynamic_sort_ed_id=row.id,
             )
 
         return options

@@ -14,9 +14,7 @@ if t.TYPE_CHECKING:
 
 def test_mock_entree_service_exposes_configured_payloads() -> None:
     """Mock service should return configured token and userinfo responses."""
-    service = MockEntreeOAuthService.with_injected(
-        auth_adapter=AuthAdapter.for_service("pytest.mock_entree_service")
-    )
+    service = MockEntreeOAuthService.with_injected(auth_adapter=AuthAdapter.for_service("pytest.mock_entree_service"))
     service.token_response = {"access_token": "fake-token"}
     service.userinfo_response = {"uid": "test-user", "sn": "Jansen"}
 
@@ -35,9 +33,9 @@ def test_mock_entree_service_exposes_configured_payloads() -> None:
 
 def test_normalize_userinfo_combines_infix_and_prefixes_email(db_psql: TypeDAL) -> None:
     """Service should map Entree names/email and include hashed password."""
-    service = RequestsEntreeOAuthService.with_injected(db=db_psql,
-                                                       auth_adapter=AuthAdapter.for_service("pytest.entree_service")
-                                                       )
+    service = RequestsEntreeOAuthService.with_injected(
+        db=db_psql, auth_adapter=AuthAdapter.for_service("pytest.entree_service")
+    )
 
     user = service.normalize_userinfo(
         {
@@ -55,9 +53,9 @@ def test_normalize_userinfo_combines_infix_and_prefixes_email(db_psql: TypeDAL) 
 
 def test_normalize_userinfo_without_mail_or_uid_returns_none(db_psql: TypeDAL) -> None:
     """Missing identity should stop user creation."""
-    service = RequestsEntreeOAuthService.with_injected(db=db_psql,
-                                                       auth_adapter=AuthAdapter.for_service("pytest.entree_service")
-                                                       )
+    service = RequestsEntreeOAuthService.with_injected(
+        db=db_psql, auth_adapter=AuthAdapter.for_service("pytest.entree_service")
+    )
 
     user = service.normalize_userinfo({"sn": "NoEmail"})
 
@@ -67,7 +65,5 @@ def test_normalize_userinfo_without_mail_or_uid_returns_none(db_psql: TypeDAL) -
 def test_entree_service_from_env_uses_mock_when_enabled(monkeypatch: MonkeyPatch) -> None:
     """`ENTREE_FAKE=1` should route to the fake implementation."""
     monkeypatch.setenv("ENTREE_FAKE", "1")
-    service = EntreeOAuthService.with_injected(
-        auth_adapter=AuthAdapter.for_service("pytest.mock_entree_service")
-    )
+    service = EntreeOAuthService.with_injected(auth_adapter=AuthAdapter.for_service("pytest.mock_entree_service"))
     assert isinstance(service, MockEntreeOAuthService)

@@ -11,6 +11,7 @@ from yatl.helpers import BUTTON, DIV, INPUT, LABEL, OPTION, SELECT, SPAN
 from shared_code.data_model import Method, Supplier
 from shared_code.data_model.mixins.search import SearchMixin
 from shared_code.data_model.tables.product import PRODUCT_COMPOSITION_LABELS
+from shared_code.util.html import convert_attrs
 
 from .types import CatalogFilterContext, DynamicFilterMetadata, FilterOption
 
@@ -32,11 +33,6 @@ class InvalidCatalogFilterValue(ValueError):
     def __init__(self, slug: str) -> None:
         """Initialize the error for the filter identified by `slug`."""
         super().__init__(f"Invalid value for catalogue filter {slug!r}")
-
-
-def convert_attrs[V](attrs: dict[str, V]) -> dict[str, V]:
-    """Convert literal HTML attrs into YATL-compatible keyword attrs."""
-    return {(key if key.startswith("_") else f"_{key}"): value for key, value in attrs.items()}
 
 
 def flatten_filter_values(values: list[t.Any]) -> t.Iterable[t.Any]:
@@ -108,6 +104,7 @@ class BaseCatalogFilterDefinition:
         self.metadata = metadata
         self.context = context
         self.current_value: str | list[str] | bool | None = None
+        self._options: list[FilterOption] | None = None
 
     @property
     def slug(self) -> str:
@@ -137,9 +134,28 @@ class BaseCatalogFilterDefinition:
         """Return the widget family used to render this filter."""
         return self.metadata.widget_kind or "select"
 
-    def options(self) -> list[FilterOption]:
-        """Return selectable options for this filter."""
+    def build_options(self) -> list[FilterOption]:
+        """Query this filter's selectable options. Filters that have none keep this."""
         return []
+
+    def options(self) -> list[FilterOption]:
+        """Return this filter's options, building them at most once.
+
+        Memoized so that forcing them up front and rendering afterwards costs one
+        set of queries, not two. Rendering asks for them through here, so a caller
+        that never forces them still works; it just pays during rendering.
+        """
+        if self._options is None:
+            self._options = self.build_options()
+        return self._options
+
+    def set_options(self, options: t.Iterable[FilterOption]) -> None:
+        """Seed the options from outside, instead of querying for them.
+
+        Lets a cached payload stand in for `build_options()`, so a hit renders
+        without touching the database.
+        """
+        self._options = list(options)
 
     @property
     def field(self) -> Field:
@@ -157,7 +173,8 @@ class BaseCatalogFilterDefinition:
         if self.widget_kind == "multi-select":
             return self.render_capsule_dropdown(multiple=True)
         elif self.widget_kind == "select":
-            return self.render_capsule_dropdown(multiple=False)
+            current_values = self.current_value if isinstance(self.current_value, list) else []
+            return self.render_capsule_dropdown(multiple=len(current_values) > 1)
 
         options = self.options()
         return DIV(
@@ -178,12 +195,27 @@ class BaseCatalogFilterDefinition:
             ),
         )
 
-    def render_capsule_dropdown(self, multiple: bool) -> HTMLElement:
+    def render_capsule_dropdown(self, multiple: bool, option_limit: int = 100) -> HTMLElement:
         """Render the capsule dropdown widget for single- and multi-select filters."""
         options = self.options()
         current_values = self.current_value if isinstance(self.current_value, list) else []
         current_value = self.current_value if isinstance(self.current_value, str) else ""
-        selected_values = set(current_values) if multiple else {current_value} if current_value else set()
+        if multiple:
+            selected_values = set(current_values)
+        else:
+            selected_values = set(current_values[:1] or ([current_value] if current_value else []))
+        windowed = len(options) > option_limit
+        visible_options = options[:option_limit] if windowed else options
+        if windowed:
+            visible_values = {option.value for option in visible_options}
+            visible_options = [
+                *[
+                    option
+                    for option in options
+                    if option.value in selected_values and option.value not in visible_values
+                ],
+                *visible_options,
+            ]
         input_type = "checkbox" if multiple else "radio"
         widget_kind = "multi-select" if multiple else "single-select"
 
@@ -197,6 +229,7 @@ class BaseCatalogFilterDefinition:
                         {
                             "class": "btn btn-light dropdown-toggle",
                             "type": "button",
+                            "id": self.filter_id(),
                             "data-bs-toggle": "dropdown",
                             "data-bs-auto-close": "outside",
                             "aria-expanded": "false",
@@ -239,7 +272,7 @@ class BaseCatalogFilterDefinition:
                                     },
                                 ),
                             )
-                            for option in options
+                            for option in visible_options
                         ],
                         _class="search-results",
                     ),
@@ -259,9 +292,11 @@ class BaseCatalogFilterDefinition:
                 **convert_attrs(
                     {
                         "class": "capsule-dropdown",
-                        "id": self.filter_id(),
                         "data-widget": widget_kind,
                         "data-placeholder": "Alles",
+                        "data-option-slug": self.slug if windowed else None,
+                        "data-option-kind": self.context.entity_kind if windowed else None,
+                        "data-option-limit": str(option_limit) if windowed else None,
                     },
                 ),
             ),
@@ -357,7 +392,7 @@ class DynamicFieldFilterDefinition(BaseCatalogFilterDefinition):
             return "multi-select"
         return self.metadata.widget_kind or "select"
 
-    def options(self) -> list[FilterOption]:
+    def build_options(self) -> list[FilterOption]:
         """Return distinct options derived from the bound field."""
         field = self.field
         values = self.context.option_builder.column(field, distinct=field)
@@ -426,7 +461,7 @@ class BooleanChoiceFilterDefinition(BaseCatalogFilterDefinition):
 
         return builder.where(self.field == (active_value == "T"))
 
-    def options(self) -> list[FilterOption]:
+    def build_options(self) -> list[FilterOption]:
         """Only show boolean options that are actually present in the current scope."""
         values = self.context.option_builder.column(self.field, distinct=self.field)
         options: list[FilterOption] = []
@@ -491,7 +526,7 @@ class BudgetFilterDefinition(BaseCatalogFilterDefinition):
 
         return builder.where(query)
 
-    def options(self) -> list[FilterOption]:
+    def build_options(self) -> list[FilterOption]:
         """Return the fixed public price brackets from the old platform."""
         return [FilterOption(value=f"{lower}-{upper}", label=label) for lower, upper, label in BUDGET_BRACKETS]
 
@@ -519,7 +554,7 @@ class SupplierFilterDefinition(BaseCatalogFilterDefinition):
 
         return builder.where(self.field.belongs(values))
 
-    def options(self) -> list[FilterOption]:
+    def build_options(self) -> list[FilterOption]:
         """Resolve supplier gids in scope to readable supplier names."""
         gids = [
             stringify_filter_value(value)
@@ -530,7 +565,7 @@ class SupplierFilterDefinition(BaseCatalogFilterDefinition):
             return []
 
         rows = Supplier.where(Supplier.gid.belongs(gids)).select(orderby=Supplier.name).collect()
-        return [FilterOption(value=str(row.gid), label=row.name) for row in rows if row.name]
+        return [FilterOption(value=row.gid, label=row.name) for row in rows if row.name]
 
 
 class MethodLookupFilterDefinition(BaseCatalogFilterDefinition):
@@ -556,7 +591,7 @@ class MethodLookupFilterDefinition(BaseCatalogFilterDefinition):
 
         return builder.where(self.field.belongs(values))
 
-    def options(self) -> list[FilterOption]:
+    def build_options(self) -> list[FilterOption]:
         """Resolve method gids in scope to readable method names."""
         gids = [
             stringify_filter_value(value)
@@ -567,7 +602,7 @@ class MethodLookupFilterDefinition(BaseCatalogFilterDefinition):
             return []
 
         rows = Method.where(Method.gid.belongs(gids)).select(orderby=Method.name).collect()
-        return [FilterOption(value=str(row.gid), label=row.name) for row in rows if row.name]
+        return [FilterOption(value=row.gid, label=row.name) for row in rows if row.name]
 
 
 class ProductCompositionFilterDefinition(BaseCatalogFilterDefinition):
@@ -593,7 +628,7 @@ class ProductCompositionFilterDefinition(BaseCatalogFilterDefinition):
 
         return builder.where(self.field.belongs(values))
 
-    def options(self) -> list[FilterOption]:
+    def build_options(self) -> list[FilterOption]:
         """Expose only the public composition values from the old platform."""
         values = {
             stringify_filter_value(value)

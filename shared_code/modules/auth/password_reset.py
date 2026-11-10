@@ -41,7 +41,6 @@ def mark_reset_password_expiry(
 
 
 def reset_password_expires_at(
-    *,
     now: dt.datetime | None = None,
     max_age: dt.timedelta | None = None,
 ) -> dt.datetime:

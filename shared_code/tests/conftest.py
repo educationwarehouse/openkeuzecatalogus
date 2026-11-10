@@ -6,8 +6,8 @@ import shutil
 import string
 import subprocess
 import typing as t
-import warnings
 import uuid
+import warnings
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -17,20 +17,30 @@ from edwh_auth_rbac import AuthRbac
 from shared_code.data_model import (
     AuthUser,
     DynamicFilter,
+    DynamicFilterEd,
     DynamicSort,
+    DynamicSortEd,
     MethodEd,
     ProductEd,
     Supplier,
     SupplierEd,
     VisionEd,
 )
-from shared_code.data_model.constants import ROLE_ADMIN, ROLE_BOARD, ROLE_LOCATION, ROLE_ORGANISATION, ROLE_SCHOOL, ROLE_SUPPLIER, ROLE_USER
+from shared_code.data_model.constants import (
+    ROLE_ADMIN,
+    ROLE_BOARD,
+    ROLE_LOCATION,
+    ROLE_ORGANISATION,
+    ROLE_SCHOOL,
+    ROLE_SUPPLIER,
+    ROLE_USER,
+)
+from shared_code.data_model.setup import define_tables
+from shared_code.infra.database import DatabaseContext as TypeDAL
+from shared_code.infra.database import database_context
 from shared_code.modules.auth import AuthAdapter
 from shared_code.modules.auth.contract import AuthActor, AuthContext
-from shared_code.data_model.setup import define_tables
-from shared_code.infra.database import database_context, DatabaseContext as TypeDAL
 from shared_code.services.applog import Applogger
-
 
 DEFAULT_SNAPSHOT_NAME = "testing.snapshot"
 MOCK_INBOX_PATH = Path(os.environ.get("SMTP_FAKE_INBOX_PATH", "/shared_cache/mail/mock_inbox.jsonl"))
@@ -73,15 +83,66 @@ def _build_psql_env() -> dict[str, str]:
     return env
 
 
+def _psql_session_diagnostics(env: dict[str, str]) -> str:
+    """Report remaining transactions and their locks after fixture SQL fails."""
+    sql = """
+        SELECT jsonb_pretty(jsonb_build_object(
+            'pid', activity.pid,
+            'application', activity.application_name,
+            'state', activity.state,
+            'transaction_age', (clock_timestamp() - activity.xact_start)::text,
+            'wait_type', activity.wait_event_type,
+            'wait_event', activity.wait_event,
+            'blocking_pids', pg_blocking_pids(activity.pid),
+            'locked_relations', (
+                SELECT jsonb_agg(DISTINCT locks.relation::regclass::text)
+                FROM pg_locks locks
+                WHERE locks.pid = activity.pid AND locks.granted AND locks.relation IS NOT NULL
+            ),
+            'last_sql', activity.query
+        ))
+        FROM pg_stat_activity activity
+        WHERE activity.datname = current_database()
+          AND activity.pid <> pg_backend_pid()
+          AND (activity.state <> 'idle' OR activity.xact_start IS NOT NULL)
+        ORDER BY activity.xact_start;
+    """
+    try:
+        result = subprocess.run(
+            ["psql", "-X", "-A", "-t", "-v", "ON_ERROR_STOP=1", "-c", sql],
+            env=env,
+            check=True,
+            capture_output=True,
+            timeout=5,
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+        return f"Could not inspect database sessions: {error}"
+    return result.stdout.decode(errors="replace").strip() or "No remaining active transactions."
+
+
 def _run_psql(sql: str) -> subprocess.CompletedProcess[bytes]:
-    """Execute raw SQL via psql using environment-based auth."""
+    """Execute fixture SQL with bounded lock waits and useful failure diagnostics."""
     env = _build_psql_env()
-    return subprocess.run(
-        ["psql", "-v", "ON_ERROR_STOP=1", "-c", sql],
-        env=env,
-        check=True,
-        capture_output=True,
-    )
+    env["PGCONNECT_TIMEOUT"] = "5"
+    env["PGAPPNAME"] = "pytest.schema-cleanup"
+    env["PGOPTIONS"] = env.get("PGOPTIONS", "") + " -c lock_timeout=10000 -c statement_timeout=30000"
+    try:
+        return subprocess.run(
+            ["psql", "-X", "-v", "ON_ERROR_STOP=1", "-c", sql],
+            env=env,
+            check=True,
+            capture_output=True,
+            timeout=40,
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+        stderr = (error.stderr or b"").decode(errors="replace").strip()
+        raise RuntimeError(
+            "Database fixture schema cleanup failed. Lock waits are limited to 10 seconds; "
+            "SQL execution to 30 seconds. An earlier test may have left a transaction open.\n"
+            f"SQL:\n{sql.strip()}\n"
+            f"psql failure: {error}\n{stderr}\n"
+            f"Remaining database sessions and locks:\n{_psql_session_diagnostics(env)}"
+        ) from error
 
 
 def _wipe_all_schemas() -> None:
@@ -303,7 +364,7 @@ def _build_auth_adapter(
     permission_set = set(permissions)
     actor = AuthActor(
         kind="user",
-        id=str(user.gid),
+        id=user.gid,
         email=user.email,
         name=user.full_name,
     )
@@ -332,7 +393,7 @@ def auth_user_factory(
         password: str = "ValidPass123!",  # noqa: S106 - test credential
         roles: t.Iterable[str] = (),
     ) -> AuthUser:
-        email = _unique_email(prefix, domain)
+        email = _unique_email(prefix, domain=domain)
         row, errors = AuthUser.validate_and_insert(
             email=email,
             first_name=first_name,
@@ -345,7 +406,7 @@ def auth_user_factory(
         assert user is not None
 
         for role in roles:
-            seeded_rbac.add_membership(str(user.gid), str(role))
+            seeded_rbac.add_membership(user.gid, str(role))
 
         AuthUser._db.commit()
         created_user_ids.append(user.id)
@@ -386,7 +447,7 @@ def auth_adapter_factory(
         check_membership: t.Callable[[AuthContext, str], bool] | None = None,
         check_permission: t.Callable[[AuthContext, str], bool] | None = None,
     ) -> AuthAdapter:
-        subject = str(user.gid)
+        subject = user.gid
         default_grant = lambda _ctx, current_subject, role: seeded_rbac.add_membership(current_subject, role)
         default_check = lambda _ctx, role: seeded_rbac.has_membership(subject, role)
         return _build_auth_adapter(
@@ -399,6 +460,7 @@ def auth_adapter_factory(
         )
 
     return create_adapter
+
 
 @pytest.fixture()
 def supplier_factory(db_per_file: TypeDAL) -> t.Iterator[t.Callable[..., Supplier]]:
@@ -429,7 +491,7 @@ def supplier_factory(db_per_file: TypeDAL) -> t.Iterator[t.Callable[..., Supplie
     yield create_supplier
 
     for supplier_id in reversed(created_supplier_ids):
-        supplier = Supplier(supplier_id)
+        supplier = SupplierEd(supplier_id)
         if supplier:
             supplier.delete_record()
     db_per_file.commit()
@@ -550,7 +612,7 @@ def vision_factory(db_per_file: TypeDAL) -> t.Iterator[t.Callable[..., VisionEd]
 @pytest.fixture()
 def dynamic_filter_factory(db_per_file: TypeDAL) -> t.Iterator[t.Callable[..., DynamicFilter]]:
     """Build and tear down dynamic filter rows created during one test."""
-    created_filter_ids: list[int] = []
+    created_filter_gids: list[str] = []
 
     def create_filter(
         *,
@@ -564,7 +626,7 @@ def dynamic_filter_factory(db_per_file: TypeDAL) -> t.Iterator[t.Callable[..., D
         handler_key: str | None = None,
         widget_kind: str | None = None,
     ) -> DynamicFilter:
-        row = DynamicFilter.insert(
+        row = DynamicFilterEd.insert(
             slug=_unique_slug(slug),
             label=label,
             filter_kind=filter_kind,
@@ -578,13 +640,13 @@ def dynamic_filter_factory(db_per_file: TypeDAL) -> t.Iterator[t.Callable[..., D
         )
         assert row is not None
         db_per_file.commit()
-        created_filter_ids.append(row.id)
-        return row
+        created_filter_gids.append(row.gid)
+        return DynamicFilter.where(DynamicFilter.gid == row.gid).first_or_fail()
 
     yield create_filter
 
-    for filter_id in reversed(created_filter_ids):
-        row = DynamicFilter(filter_id)
+    for filter_gid in reversed(created_filter_gids):
+        row = DynamicFilterEd.where(DynamicFilterEd.gid == filter_gid).first()
         if row:
             row.delete_record()
     db_per_file.commit()
@@ -593,7 +655,7 @@ def dynamic_filter_factory(db_per_file: TypeDAL) -> t.Iterator[t.Callable[..., D
 @pytest.fixture()
 def dynamic_sort_factory(db_per_file: TypeDAL) -> t.Iterator[t.Callable[..., DynamicSort]]:
     """Build and tear down dynamic sort rows created during one test."""
-    created_sort_ids: list[int] = []
+    created_sort_gids: list[str] = []
 
     def create_sort(
         *,
@@ -604,7 +666,7 @@ def dynamic_sort_factory(db_per_file: TypeDAL) -> t.Iterator[t.Callable[..., Dyn
         sort_order: int,
         is_default: bool = False,
     ) -> DynamicSort:
-        row = DynamicSort.insert(
+        row = DynamicSortEd.insert(
             slug=_unique_slug(slug),
             label=label,
             applies_to=applies_to,
@@ -615,13 +677,13 @@ def dynamic_sort_factory(db_per_file: TypeDAL) -> t.Iterator[t.Callable[..., Dyn
         )
         assert row is not None
         db_per_file.commit()
-        created_sort_ids.append(row.id)
-        return row
+        created_sort_gids.append(row.gid)
+        return DynamicSort.where(DynamicSort.gid == row.gid).first_or_fail()
 
     yield create_sort
 
-    for sort_id in reversed(created_sort_ids):
-        row = DynamicSort(sort_id)
+    for sort_gid in reversed(created_sort_gids):
+        row = DynamicSortEd.where(DynamicSortEd.gid == sort_gid).first()
         if row:
             row.delete_record()
     db_per_file.commit()
@@ -636,7 +698,7 @@ def supplier_user(
     return auth_user_factory(
         prefix="supplier",
         domain=(supplier.email_domains[0] if supplier.email_domains else "example.test"),
-        roles=[str(supplier.gid)],
+        roles=[supplier.gid],
     )
 
 
@@ -647,7 +709,7 @@ def supplier_adapter(
     supplier: Supplier,
 ) -> AuthAdapter:
     """Create an adapter for a user that belongs to a supplier."""
-    return auth_adapter_factory(supplier_user, roles=[ROLE_USER, str(supplier.gid)])
+    return auth_adapter_factory(supplier_user, roles=[ROLE_USER, supplier.gid])
 
 
 @pytest.fixture()
@@ -672,8 +734,8 @@ def education_warehouse_supplier(
     if not supplier:
         raise RuntimeError("Failed to create the Education Warehouse supplier")
 
-    if not seeded_rbac.has_membership(str(supplier.gid), ROLE_ADMIN):
-        seeded_rbac.add_membership(str(supplier.gid), ROLE_ADMIN)
+    if not seeded_rbac.has_membership(supplier.gid, ROLE_ADMIN):
+        seeded_rbac.add_membership(supplier.gid, ROLE_ADMIN)
         db_per_file.commit()
 
     return supplier
@@ -687,8 +749,12 @@ def education_warehouse_supplier_user(
     """Create a user that belongs to the Education Warehouse supplier."""
     return auth_user_factory(
         prefix="education-warehouse",
-        domain=(education_warehouse_supplier.email_domains[0] if education_warehouse_supplier.email_domains else "example.test"),
-        roles=[str(education_warehouse_supplier.gid)],
+        domain=(
+            education_warehouse_supplier.email_domains[0]
+            if education_warehouse_supplier.email_domains
+            else "example.test"
+        ),
+        roles=[education_warehouse_supplier.gid],
     )
 
 
@@ -700,8 +766,12 @@ def education_warehouse_admin_user(
     """Create a user that receives admin access through the supplier hierarchy."""
     return auth_user_factory(
         prefix="education-warehouse",
-        domain=(education_warehouse_supplier.email_domains[0] if education_warehouse_supplier.email_domains else "example.test"),
-        roles=[str(education_warehouse_supplier.gid)],
+        domain=(
+            education_warehouse_supplier.email_domains[0]
+            if education_warehouse_supplier.email_domains
+            else "example.test"
+        ),
+        roles=[education_warehouse_supplier.gid],
     )
 
 
@@ -714,7 +784,7 @@ def education_warehouse_supplier_adapter(
     """Create an adapter for an Education Warehouse supplier user."""
     return auth_adapter_factory(
         education_warehouse_supplier_user,
-        roles=[ROLE_USER, str(education_warehouse_supplier.gid)],
+        roles=[ROLE_USER, education_warehouse_supplier.gid],
     )
 
 
@@ -727,9 +797,8 @@ def education_warehouse_admin_adapter(
     """Create an adapter for a user who inherits admin through the supplier chain."""
     return auth_adapter_factory(
         education_warehouse_admin_user,
-        roles=[ROLE_USER, str(education_warehouse_supplier.gid), ROLE_ADMIN],
+        roles=[ROLE_USER, education_warehouse_supplier.gid, ROLE_ADMIN],
     )
-
 
 
 def _pg_env() -> tuple[dict[str, str], dict[str, str]]:

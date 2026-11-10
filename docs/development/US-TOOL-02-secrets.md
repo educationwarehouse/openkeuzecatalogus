@@ -115,7 +115,14 @@ reference values from earlier ones.
    - When `1`, all subsequent prompts use `force_default=True`
 5. **Debug & scaling**: `PY4WEB_DEBUG_MODE`, `PY4WEB_REPLICAS`
    - Dev: debug=1, replicas=1; Production: debug=0, replicas=3
-6. **Schema version**: `SCHEMA_VERSION` (auto-computed hash, no prompt)
+6. **Schema version and caching**: `SCHEMA_VERSION` (auto-computed hash, no
+   prompt; doubles as the cache build id), `CACHE_BACKEND` (default `redis`),
+   `REDIS_CACHE_DB` (only when the chain names `redis`, default `1`),
+   `ROUTE_STATS` (dev `redis`, otherwise `applog`), `ROUTE_STATS_SLOW_MS`
+   (only when the chain names `applog`, default `500`)
+   - `check_env` keeps existing values: a `.env` still carrying the old
+     `ROUTE_STATS=1` names no sink and records nothing until it is changed
+   - See [Caching](../architecture/caching.md)
 7. **Subdomain**: `PY4WEB_SUBDOMAIN`
 8. **Applog credentials**: `PY4WEB_APPLOG_ID/KEY`, `TOOLS_APPLOG_ID/KEY`
    - IDs use `hosting_domain`; keys are random

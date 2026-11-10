@@ -1,162 +1,23 @@
 """Browser test for auth/register mail delivery."""
 
-import json
 import re
-import time
-import typing as t
 import uuid
 
 from playwright.sync_api import Page
 
-from .conftest import (
-    APPLOG_PATH,
-    BASE_URL,
-    MOCK_EMAIL_DOMAIN,
-    MOCK_INBOX_PATH,
-    RESET_PASSWORD_LINK_MAX_AGE_HOURS,
+from .auth_helpers import (
+    _extract_magic_login_url,
+    _extract_reset_password_url,
+    _extract_verify_url,
+    _get_new_email_address,
+    _read_applog_events,
+    _read_messages,
+    get_cookies,
+    wait_for_auth_markers,
+    wait_for_email,
+    wait_for_specific_email,
 )
-
-
-def _get_new_email_address(prefix: str, suffix: str | None = None) -> str:
-    suffix = uuid.uuid4().hex[:10] if suffix is None else suffix
-    return f"{prefix}-{suffix}@{MOCK_EMAIL_DOMAIN}"
-
-
-def _read_messages() -> list[dict]:
-    if not MOCK_INBOX_PATH.exists():
-        return []
-    lines = [line for line in MOCK_INBOX_PATH.read_text(encoding="utf-8").splitlines() if line.strip()]
-    return [json.loads(line) for line in lines]
-
-
-def _read_applog_events() -> list[dict]:
-    if not APPLOG_PATH.exists():
-        return []
-    lines = [line for line in APPLOG_PATH.read_text(encoding="utf-8").splitlines() if line.strip()]
-    return [json.loads(line) for line in lines]
-
-
-def _extract_verify_url(
-    message: dict, pattern: re.Pattern[str] = re.compile(r"https?://[^\s\"'<>]+/auth/verify_email[^\s\"'<>]*")
-) -> str | None:
-    text = f"{message.get('text_body') or ''}\n{message.get('html_body') or ''}"
-    match = pattern.search(text)
-    if not match:
-        return None
-    return match.group(0).replace("&amp;", "&")
-
-
-def _extract_reset_password_url(
-    message: dict, pattern: re.Pattern[str] = re.compile(r"https?://[^\s\"'<>]+/auth/reset_password[^\s\"'<>]*")
-) -> str | None:
-    text = f"{message.get('text_body') or ''}\n{message.get('html_body') or ''}"
-    match = pattern.search(text)
-    if not match:
-        return None
-    return match.group(0).replace("&amp;", "&")
-
-
-def _extract_magic_login_url(
-    message: dict, pattern: re.Pattern[str] = re.compile(r"https?://[^\s\"'<>]+/auth/magic_login[^\s\"'<>]*")
-) -> str | None:
-    text = f"{message.get('text_body') or ''}\n{message.get('html_body') or ''}"
-    match = pattern.search(text)
-    if not match:
-        return None
-    return match.group(0).replace("&amp;", "&")
-
-
-def get_cookies(page: Page, name: str = "shared_session") -> list[dict]:
-    """Collect cookies with a specific name from the active Playwright context."""
-    return [cookie for cookie in page.context.cookies() if cookie.get("name") == name]
-
-
-def _wait_for_matching_email(
-    email: str,
-    matcher: t.Callable[[dict], bool],
-    error_message: str,
-    max_wait_seconds: int = 10,
-    check_interval: float = 0.2,
-    start_at: int = 0,
-) -> dict | None:
-    """Poll inbox until a new message for `email` satisfies `matcher`."""
-    deadline = time.time() + max_wait_seconds
-    while time.time() < deadline:
-        messages = _read_messages()
-        for msg in messages[start_at:]:
-            if email not in (msg.get("all_recipients") or []):
-                continue
-            if matcher(msg):
-                return msg
-        time.sleep(check_interval)
-    raise AssertionError(error_message)
-
-
-def wait_for_email(
-    email: str,
-    max_wait_seconds: int = 10,
-    check_interval: float = 0.2,
-    start_at: int = 0,
-) -> dict | None:
-    """Poll the fake inbox for a recipient and return the first matching message."""
-    return _wait_for_matching_email(
-        email=email,
-        matcher=lambda _msg: True,
-        error_message=f"No fake mail found for {email}",
-        max_wait_seconds=max_wait_seconds,
-        check_interval=check_interval,
-        start_at=start_at,
-    )
-
-
-def wait_for_specific_email(
-    email: str,
-    pattern: re.Pattern[str],
-    max_wait_seconds: int = 10,
-    check_interval: float = 0.2,
-    start_at: int = 0,
-) -> dict | None:
-    """Poll the fake inbox for a recipient and regex-matched content from new messages."""
-
-    def _pattern_match(msg: dict) -> bool:
-        text = f"{msg.get('subject') or ''}\n{msg.get('text_body') or ''}\n{msg.get('html_body') or ''}"
-        return pattern.search(text) is not None
-
-    return _wait_for_matching_email(
-        email=email,
-        matcher=_pattern_match,
-        error_message=f"No fake mail found for {email} matching {pattern.pattern}",
-        max_wait_seconds=max_wait_seconds,
-        check_interval=check_interval,
-        start_at=start_at,
-    )
-
-
-def wait_for_auth_markers(
-    email: str | None,
-    expected_markers: set[str],
-    timeout_seconds: int = 10,
-    start_at: int = 0,
-) -> set[str]:
-    """Wait until applog auth actions for `email` include all expected markers."""
-    deadline = time.time() + timeout_seconds
-    while time.time() < deadline:
-        events = _read_applog_events()
-        seen = {
-            str(event.get("action"))
-            for event in events[start_at:]
-            if event.get("kind") == "auth_action" and (email is None or event.get("email") == email)
-        }
-        if expected_markers.issubset(seen):
-            return seen
-        time.sleep(0.2)
-
-    events = _read_applog_events()
-    return {
-        str(event.get("action"))
-        for event in events[start_at:]
-        if event.get("kind") == "auth_action" and (email is None or event.get("email") == email)
-    }
+from .settings import APPLOG_PATH, BASE_URL, MOCK_EMAIL_DOMAIN, RESET_PASSWORD_LINK_MAX_AGE_HOURS
 
 
 def test_entree_mock_login_works_and_logs_success(page: Page) -> None:
@@ -216,7 +77,7 @@ def test_sso_user_can_request_and_use_magic_login_link(page: Page) -> None:
 
     page.goto(f"{BASE_URL}/auth/logout")
     page.goto(f"{BASE_URL}/auth/login")
-    page.fill("input[name='email']", sso_email)
+    page.fill("input[name='email']", request_email)
     page.fill("input[name='password']", "NotTheSSOPassword123!")
     page.locator("button[type='submit'], input[type='submit']").first.click()
     page.wait_for_url("**/auth/login**")

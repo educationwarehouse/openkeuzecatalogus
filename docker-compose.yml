@@ -1,3 +1,12 @@
+x-security-hardening: &security-hardening
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+
+x-memory-limit: &memory-limit
+  mem_limit: 5g
+
 networks:
   broker:
     name: broker
@@ -12,13 +21,12 @@ services:
       context: migrate
       args:
         PIP_INDEX_URL: https://devpi.edwh.nl/root/pypi/+simple/
-        B2_ATTACHMENTS_KEY: ${B2_ATTACHMENTS_KEY}
-        B2_ATTACHMENTS_KEYID: ${B2_ATTACHMENTS_KEYID}
     depends_on:
       - pg-0
       - redis-master
     extra_hosts:
       host.docker.internal: host-gateway
+    <<: [*security-hardening, *memory-limit]
     environment: &shared_environment
       PROJECT: ${PROJECT}
       PYTHONIOENCODING: "UTF-8"
@@ -26,6 +34,13 @@ services:
       PY4WEB_SUBDOMAIN: ${PY4WEB_SUBDOMAIN}
       STATE_OF_DEVELOPMENT: ${STATE_OF_DEVELOPMENT:-ONT}
       REDIS_MASTER_HOST: redis-master
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Run edwh setup to configure REDIS_PASSWORD}
+      SESSION_IDLE_SECONDS: ${SESSION_IDLE_SECONDS:-604800}
+      SESSION_ABSOLUTE_SECONDS: ${SESSION_ABSOLUTE_SECONDS:-2592000}
+      SIGNED_URL_SECONDS: ${SIGNED_URL_SECONDS:-604800}
+      UPLOAD_MAX_BYTES: ${UPLOAD_MAX_BYTES:-52428800}
+      LLM_FIELD_MAX_CHARS: ${LLM_FIELD_MAX_CHARS:-20000}
+      LLM_CALL_MAX_CHARS: ${LLM_CALL_MAX_CHARS:-100000}
       REDIS_SLAVE_HOST: redis-slave
       INSIDE_DOCKER_POSTGRES_URI: ${INSIDE_DOCKER_POSTGRES_URI}
       POSTGRES_URI: ${INSIDE_DOCKER_POSTGRES_URI}
@@ -34,6 +49,13 @@ services:
       DB_FOLDER: "/tmp"
       USE_TYPEDAL: 1
       TYPEDAL_CACHING: 0
+      # asked by `edwh setup` (see tasks.py). SCHEMA_VERSION above doubles as
+      # the cache build id, so no separate variable for it.
+      CACHE_BACKEND: ${CACHE_BACKEND:-redis}
+      REDIS_CACHE_HOST: redis-master
+      REDIS_CACHE_DB: ${REDIS_CACHE_DB:-1}
+      ROUTE_STATS: ${ROUTE_STATS:-none}
+      ROUTE_STATS_SLOW_MS: ${ROUTE_STATS_SLOW_MS:-500}
       PYTHONPATH: /pythonpath
       EMAIL_VERIFICATION_SEED: ${EMAIL_VERIFICATION_SEED}
       NTFY_ERROR_URL: ${NTFY_ERROR_URL}
@@ -56,6 +78,7 @@ services:
       APPLICATION_NAME: ${APPLICATION_NAME}
       SERVICE_NAME: migrate
       EDDIE_EMAIL: ${EDDIE_EMAIL}
+      AUTO_APPROVE_AND_LOGIN_AFTER_REGISTRATION: ${AUTO_APPROVE_AND_LOGIN_AFTER_REGISTRATION:-0}
       ENTREE_FAKE: ${ENTREE_FAKE:-0}
       ENTREE_CLIENT_ENDPOINT: ${ENTREE_CLIENT_ENDPOINT}
       ENTREE_CLIENT_ID: ${ENTREE_CLIENT_ID}
@@ -82,6 +105,7 @@ services:
       IMAGE_STORAGE_ACCESS_KEY_ID: ${IMAGE_STORAGE_ACCESS_KEY_ID}
       IMAGE_STORAGE_SECRET_ACCESS_KEY: ${IMAGE_STORAGE_SECRET_ACCESS_KEY}
       IMAGE_STORAGE_PUBLIC_BASE_URL: ${IMAGE_STORAGE_PUBLIC_BASE_URL}
+      CATALOG_REPORT_EMAIL: ${CATALOG_REPORT_EMAIL:-info@openkeuzecatalogus.nl}
       # mail:
       SMTP_FAKE: ${SMTP_FAKE:-1}
       SMTP_SERVER: ${SMTP_SERVER}
@@ -150,6 +174,7 @@ services:
     expose:
       - 8000
       - 7999
+    <<: [*security-hardening, *memory-limit]
     environment:
       <<: *shared_environment
       PY4WEB_PASSWORD_FILE: /p4w/password.txt # to parameterize the _dashboard app
@@ -173,6 +198,10 @@ services:
       COVERAGE_FILE: ${PY4WEB_COVERAGE_FILE:-}
     command: python3 py4web_bjoern.py
     volumes:
+      - type: bind
+        source: ./migrate/data
+        target: /data
+        read_only: true
       - type: bind
         source: ./shared_code
         target: /pythonpath/shared_code
@@ -235,6 +264,7 @@ services:
         max-file: "2"
 
   pgq-scrapers: &pgq
+    restart: unless-stopped
     build:
       context: pgq
     command: pgq run pgq.consumers.scrapers:main --batch-size 1
@@ -242,6 +272,7 @@ services:
     # if you have slower jobs, batch size 1 helps with parallizing (at the cost of more overhead)
     networks:
       - backend
+    <<: [*security-hardening, *memory-limit]
     environment:
       <<: *shared_environment
       SERVICE_NAME: pgq-scrapers
@@ -273,6 +304,21 @@ services:
       - type: bind
         source: ./shared_applog
         target: /shared_applog
+      # py4web stages keuzecanvas HTML here and streams the rendered PDF back out of it
+      # (same mount as the py4web service), so pgq-pdf needs it read-write
+      - type: bind
+        source: ./shared_user_storage
+        target: /shared_user_storage
+
+  pgq-scheduler:
+    # this is the one that has `pgq.schedule`, the others just contain endpoints (except health-check).
+    <<: *pgq
+    command: pgq run pgq.consumers.scheduler:main --batch-size 1
+    environment:
+      <<: *shared_environment
+      SERVICE_NAME: pgq-scheduler
+    deploy:
+      replicas: 1 # prevent double scheduling
 
   pgq-applog:
     <<: *pgq
@@ -281,7 +327,7 @@ services:
       SERVICE_NAME: pgq-applog
     command: pgq run pgq.consumers.applog:main --batch-size 5
     deploy:
-      replicas: 1
+      replicas: ${PGQ_WORKERS:-3} # workers
 
   pgq-maintenance:
     <<: *pgq
@@ -290,14 +336,54 @@ services:
       SERVICE_NAME: pgq-maintenance
     command: pgq run pgq.consumers.maintenance:main --batch-size 1
     deploy:
-      replicas: 1
+      replicas: ${PGQ_WORKERS:-3} # workers
+
+  pgq-pdf:
+    <<: *pgq
+    build:
+      context: pgq
+      dockerfile: pdf.Dockerfile
+      additional_contexts:
+        pgq-base: service:pgq-scrapers
+    environment:
+      <<: *shared_environment
+      SERVICE_NAME: pgq-pdf
+    command: pgq run pgq.consumers.pdf:main --batch-size 1
+    deploy:
+      # note: different variable:
+      replicas: ${PDF_WORKERS:-2} # workers
+
+  load:
+    image: locustio/locust:2.46.6
+    user: "1050:1050"
+    profiles:
+      - load
+    depends_on:
+      py4web:
+        condition: service_healthy
+    <<: [*security-hardening, *memory-limit]
+    working_dir: /mnt/locust
+    volumes:
+      - type: bind
+        source: ./locust
+        target: /mnt/locust
+        read_only: true
+      - type: bind
+        source: ./shared_cache/load
+        target: /reports
+    networks:
+      - backend
+    restart: "no"
 
   playwright:
+    profiles:
+      - test
     build:
       context: ./playwright
     depends_on:
       py4web:
         condition: service_healthy
+    <<: [*security-hardening, *memory-limit]
     environment:
       <<: *shared_environment
       SERVICE_NAME: playwright
@@ -322,14 +408,19 @@ services:
     ports:
       - "${REDIS_PORT}:6379"
     restart: unless-stopped
+    <<: [*security-hardening, *memory-limit]
     networks:
       - backend
+    user: "999:999"
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD:?Run edwh setup to configure REDIS_PASSWORD}
+    command: ["sh", "-c", 'exec redis-server --requirepass "$$REDISCLI_AUTH" --maxmemory "${REDIS_MAXMEMORY:-3gb}" --maxmemory-policy noeviction']
     logging:
       driver: "json-file"
       options:
         max-size: "25m"
         max-file: "2"
-    healthcheck:
+    healthcheck: &redis-healthcheck
       test: [ "CMD-SHELL", "redis-cli ping | grep PONG" ]
       interval: 1m30s
       timeout: 3s
@@ -338,11 +429,16 @@ services:
       start_interval: 10s
 
   redis-slave:
+    <<: [*security-hardening, *memory-limit]
     restart: unless-stopped
     image: redis
     depends_on:
       - redis-master
-    command: redis-server --slaveof redis-master 6379
+    user: "999:999"
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD:?Run edwh setup to configure REDIS_PASSWORD}
+    command: ["sh", "-c", 'exec redis-server --replicaof redis-master 6379 --masterauth "$$REDISCLI_AUTH" --requirepass "$$REDISCLI_AUTH" --maxmemory "${REDIS_MAXMEMORY:-3gb}" --maxmemory-policy noeviction']
+    healthcheck: *redis-healthcheck
     networks:
       - backend
     logging:
@@ -353,6 +449,7 @@ services:
 
   ######### postgresql ###############
   pg-0: # Standalone PostgreSQL instance
+    <<: [*security-hardening, *memory-limit]
     build:
       context: postgres
     restart: unless-stopped

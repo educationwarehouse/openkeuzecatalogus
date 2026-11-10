@@ -10,7 +10,6 @@ class ImportMethod(t.TypedDict, total=False):
     guide_price: float
     sample_copies: str
     preview_digital_environment: str
-    gid: str
     olid: str
     supplier_gid: str
     levels: list[str]
@@ -38,7 +37,8 @@ class ImportMethod(t.TypedDict, total=False):
     effstatus: bool
     last_saved_by: str
     prio: int
-    sync_gid: str
+    sync_gid: str | None
+    gid: str
     _errors: list[ImportErrorCode]
 
 class ImportProduct(t.TypedDict, total=False):
@@ -67,7 +67,6 @@ class ImportProduct(t.TypedDict, total=False):
     is_consumption_product: bool | None
     sale_unit_size: int | None
     supported_until_date: dt.date | None
-    gid: str
     olid: str
     supplier_gid: str
     levels: list[str]
@@ -95,8 +94,12 @@ class ImportProduct(t.TypedDict, total=False):
     effstatus: bool
     last_saved_by: str
     prio: int
-    sync_gid: str
+    sync_gid: str | None
+    gid: str
     _errors: list[ImportErrorCode]
+    _source_row: dict[str, object]
+    _source_row_index: int
+    _source_row_validation_errors: list[str]
     bundle_product_olids: list[str]
     follow_up_product_olid: str
     method_name: str
@@ -113,12 +116,13 @@ class ImportSupplier(t.TypedDict, total=False):
     endpoint_type: str
     endpoint_base_url: str | None
     endpoint_publisher: str | None
-    gid: str
+    endpoint_uses_pagination: bool
     effdt: dt.datetime
     effstatus: bool
     last_saved_by: str
     prio: int
-    sync_gid: str
+    sync_gid: str | None
+    gid: str
 
 class ImportVision(t.TypedDict, total=False):
     """Generated importer payload for VisionEd."""
@@ -126,9 +130,9 @@ class ImportVision(t.TypedDict, total=False):
     onderwijskwaliteit: str
     visie: str
     property_bag: object
-    gid: str
     effdt: dt.datetime
     effstatus: bool
     last_saved_by: str
     prio: int
-    sync_gid: str
+    sync_gid: str | None
+    gid: str

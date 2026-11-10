@@ -4,6 +4,7 @@ import dataclasses as dc
 import typing as t
 from uuid import UUID
 
+import pydal
 from edwh_auth_rbac import AuthRbac
 from endow import Injectable
 
@@ -14,6 +15,11 @@ if t.TYPE_CHECKING:
     from shared_code.infra.database import DatabaseContext
 
 ActorKind = t.Literal["user", "service", "anonymous"]
+AuthScope = t.Literal["read", "write", "invite"]
+
+
+# subquery or iterable:
+type PermittedObjects = str | t.Collection[str]
 
 
 @dc.dataclass(frozen=True)
@@ -57,11 +63,11 @@ class AuthAdapter:
 
     - Input predicate overrides use check_*:
         check_membership(self, role)
-        check_permission(self, permission)
+        check_permission(self, gid, scope)
 
       These are optional constructor inputs. If omitted:
         has_membership(role) -> role in roles
-        has_permission(permission) -> permission in permissions
+        has_permission(gid, scope) -> False
     """
 
     get_actor: t.Callable[[], AuthActor]
@@ -69,11 +75,14 @@ class AuthAdapter:
     get_roles: t.Callable[[AuthContext], set[str]] = lambda self: set()
     get_permissions: t.Callable[[AuthContext], set[str]] = lambda self: set()
     get_permitted_object_ids: t.Callable[[AuthContext, str], set[str]] = lambda self, privilege: set()
+    get_permitted_object_ids_subquery: t.Callable[[AuthContext, str], PermittedObjects] = lambda self, privilege: (
+        frozenset()
+    )
     grant_membership: t.Callable[[AuthContext, str, str], t.Any] | None = None
     revoke_membership: t.Callable[[AuthContext, str, str], t.Any] | None = None
     check_membership: t.Callable[[AuthContext, str], bool] | None = None
     check_subject_membership: t.Callable[[AuthContext, str, str], bool] | None = None
-    check_permission: t.Callable[[AuthContext, str], bool] | None = None
+    check_permission: t.Callable[[AuthContext, str, AuthScope], bool] | None = None
 
     @classmethod
     def for_service(cls, service_name: str) -> AuthAdapter:
@@ -111,13 +120,19 @@ class AuthContext(Injectable):
         if self._rbac:
             return self._rbac
 
-        self._rbac = AuthRbac(self.db)
-        self._rbac.define_model(
-            allowed_types=["user", "group", "item"],
-            redefine=True,
-            migrate=False,
-        )
-        self.db.commit()
+        self._rbac = AuthRbac(t.cast(pydal.DAL, self.db))
+
+        # Define the rbac model once per DAL: redefining replaces `db.identity` & co., leaving typed models such as
+        # `Identity` bound to the old Table objects; mixing both in one query then fails with "Name conflict".
+        if not getattr(self.db, "_rbac_model_defined", False):
+            self._rbac.define_model(
+                allowed_types=["user", "group", "item"],
+                redefine=True,
+                migrate=False,
+            )
+            self.db._rbac_model_defined = True
+            self.db.commit()
+
         return self._rbac
 
     @property
@@ -235,16 +250,30 @@ class AuthContext(Injectable):
 
         return self.adapter.check_subject_membership(self, str(subject), str(role))
 
-    def has_permission(self, permission: str) -> bool:
-        """Return whether the actor has the given permission."""
+    def has_permission(self, gid: str, scope: AuthScope) -> bool:
+        """Return whether the actor has `scope` on the object identified by `gid`."""
         if self.adapter.check_permission:
-            return self.adapter.check_permission(self, permission)
+            return self.adapter.check_permission(self, gid, scope)
 
-        return permission in self.permissions
+        return False
 
     def permitted_object_ids(self, privilege: str) -> set[str]:
         """Return object identities the actor may access with one privilege."""
+        # note: not your first choice since it preloads, prefer `permitted_object_ids_subquery`,
+        #       only use this as a last resort.
         return self.adapter.get_permitted_object_ids(self, privilege)
+
+    def permitted_object_ids_subquery(self, privilege: str) -> PermittedObjects:
+        """Return a subquery over the object identities the actor may access with one privilege.
+
+        Prefer this over `permitted_object_ids`: it composes into the surrounding query
+        instead of preloading every gid.
+
+        The result is raw SQL, so hand it to `belongs()` and nothing else: never iterate,
+        index or `len()` it. An actor without an identity yields an empty collection, which
+        pydal renders as `(1=0)`.
+        """
+        return self.adapter.get_permitted_object_ids_subquery(self, privilege)
 
     def is_admin(self) -> bool:
         """Return whether the actor has the admin role."""
@@ -254,6 +283,18 @@ class AuthContext(Injectable):
     def for_service(cls, service_name: str) -> t.Self:
         """Build a service-scoped context for internal callers."""
         return cls.with_injected(auth_adapter=AuthAdapter.for_service(service_name))
+
+
+def _rbac_role_names(rbac: AuthRbac, actor_id: str | None) -> set[str]:
+    """Return the role keys (group emails) the actor belongs to, including nested groups."""
+    if not actor_id:
+        return set()
+
+    user = rbac.get_user(actor_id, return_memberships=True)
+    if not user:
+        return set()
+
+    return {membership["email"] for membership in user.get("memberships", []) if membership["email"]}
 
 
 def edwh_rbac_adapter(
@@ -266,13 +307,21 @@ def edwh_rbac_adapter(
     return AuthAdapter(
         get_actor=get_actor,
         get_session_gid=get_session_gid,
+        get_roles=lambda context: _rbac_role_names(get_rbac(context), context.id),
         get_permitted_object_ids=lambda context, privilege: (
             set(get_rbac(context).get_permissions(context.id, privilege)) if context.id else set()
+        ),
+        get_permitted_object_ids_subquery=lambda context, privilege: (
+            # `get_permissions_subquery` returns SQL text, not a Query, whatever its docstring says.
+            (get_rbac(context).get_permissions_subquery(context.id, privilege)) if context.id else frozenset()
         ),
         grant_membership=lambda context, subject, role: get_rbac(context).add_membership(subject, role),
         revoke_membership=lambda context, subject, role: get_rbac(context).remove_membership(subject, role),
         check_membership=lambda context, role: bool(context.id and get_rbac(context).has_membership(context.id, role)),
         check_subject_membership=lambda context, subject, role: bool(get_rbac(context).has_membership(subject, role)),
+        check_permission=lambda context, gid, scope: bool(
+            context.id and get_rbac(context).has_permission(context.id, gid, scope),
+        ),
     )
 
 
@@ -280,5 +329,7 @@ __all__ = [
     "AuthActor",
     "AuthAdapter",
     "AuthContext",
+    "AuthScope",
+    "PermittedObjects",
     "edwh_rbac_adapter",
 ]

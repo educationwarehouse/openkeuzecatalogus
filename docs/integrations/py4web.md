@@ -21,6 +21,45 @@ The project currently has four routable py4web apps under `py4web/apps/`:
 
 `py4web/common` is not an app surface — it lives outside `py4web/apps/` and provides shared fixtures, models, and error rendering used by all four apps above.
 
+## HTML Parser for Editable Pages
+
+We selected the `soup5ever-experimental` tree builder from
+[`soup5ever`](https://pypi.org/project/soup5ever/) for the full-page parse in
+`ContentEditableV2`. The fixture parses rendered HTML, changes editable
+sections, then serializes the entire page.
+It therefore needs a parser that repairs malformed markup as a browser would;
+otherwise, the round trip can change what visitors see. One relevant case is
+formatting left open across elements, which must continue in the next element.
+
+The earlier `html5lib` parser preserved the tested HTML5 structure but was slow.
+[`html5_parser`](https://html5-parser.readthedocs.io/en/latest/) was an
+intermediate experiment on this branch: it passed the same checks and was much
+faster, but required compatible `lxml` and libxml2 builds. Both `soup5ever`
+builders, built on [Servo's `html5ever`](https://github.com/servo/html5ever),
+passed those checks without that libxml2 compatibility requirement. The
+experimental builder was fastest in this run at 18.1 ms, compared with 23.2 ms
+for the regular builder. The standard library's `html.parser` and `lxml` missed
+some of the checked HTML5 behavior.
+
+In one py4web-container run on a generated page with 1,000 articles, the median of
+three parse-only runs was:
+
+| Parser                    | Median parse time | HTML5 checks |
+|---------------------------|-------------------|--------------|
+| `soup5ever-experimental`  | 18.1 ms           | 5/5          |
+| `soup5ever`               | 23.2 ms           | 5/5          |
+| `html5_parser`            | 27.5 ms           | 5/5          |
+| `html5lib`                | 170.5 ms          | 5/5          |
+| `lxml`                    | 57.3 ms           | 2/5          |
+| `html.parser`             | 80.6 ms           | 0/5          |
+
+The five checks cover foster parenting, implied `tbody`, paragraph closing,
+formatting reconstruction, and option closing. They are a focused sample, not a
+full HTML5 conformance suite; timings depend on the input and environment. Repeat
+the comparison with `edwh local.bench-html-parsers` and use `--verbose` for details.
+Import `soup5ever` before calling
+`BeautifulSoup(html, "soup5ever-experimental")` so its tree builder is registered.
+
 ## Request Normalization
 
 Public catalogue requests are normalized via `py4web/common/models/request_data.py`:

@@ -4,7 +4,10 @@ import contextlib
 import sys
 import typing as t
 
-from pydal import DAL
+import pydal
+import typedal
+
+type DAL = pydal.DAL | typedal.TypeDAL
 
 
 def upsert_index_v1(
@@ -25,6 +28,39 @@ def upsert_index_v1(
             ;
         """
     db.executesql(sql)
+
+
+def create_trigram_index_v1(db: DAL, full_table_name: str, column: str) -> None:
+    """Create the trigram index used by case-insensitive and fuzzy text search."""
+    index_name = f"{full_table_name}_{column}_trgm_idx"
+    db.executesql(f"""
+    CREATE INDEX {index_name}
+        ON public.{full_table_name} USING gin (({column}::text) gin_trgm_ops);
+    """)
+
+
+def convert_to_effdt_v1(db: DAL, table: str) -> None:
+    """Convert a gid table into an effective-dated source table.
+
+    Existing rows become effective at the conversion timestamp. Callers must move
+    any foreign keys that target `gid` to the current model table separately.
+    """
+    table_ed = f"{table}_ed"
+    db.executesql(f"""
+        ALTER TABLE {table} RENAME TO {table_ed};
+        ALTER TABLE {table_ed} DROP CONSTRAINT IF EXISTS {table}_gid_key;
+        ALTER TABLE {table_ed}
+            ADD COLUMN effdt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            ADD COLUMN effstatus boolean NOT NULL DEFAULT TRUE,
+            ADD COLUMN prio integer NOT NULL DEFAULT 0,
+            ADD COLUMN last_saved_by varchar NOT NULL DEFAULT 'migration/convert_to_effdt',
+            ADD COLUMN sync_gid uuid NOT NULL DEFAULT uuidv7()
+                CONSTRAINT {table_ed}_unique_sync_gid UNIQUE;
+        CREATE INDEX {table_ed}_id_effdt
+            ON {table_ed} (gid ASC, effdt DESC, id ASC);
+        ALTER TABLE {table_ed}
+            ALTER COLUMN effdt SET DEFAULT utcnow();
+    """)
 
 
 def is_materialized_view(db: DAL, name: str, scheme: str = "public") -> bool:
@@ -217,8 +253,10 @@ def no_triggers(db: DAL) -> t.Generator[None]:
     )
     try:
         yield
+    except:
+        db.rollback()
+        raise
     finally:
-        # always happens
         db.executesql(
             """
         -- re-enable triggers

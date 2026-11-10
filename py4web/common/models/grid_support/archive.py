@@ -7,11 +7,12 @@ from py4web.utils.grid import GridClassStyleBootstrap5
 from pydal.objects import Row
 from typedal.types import Field
 from yatl import TAGGER as HTMLElement
-from yatl.helpers import DIV, SPAN, TABLE, TD, TH, TR, XML, A, I
+from yatl.helpers import BUTTON, DIV, SPAN, TABLE, TD, TH, TR, XML, A, I
 
 from shared_code.data_model.mixins.effdt import EffdtTable
+from shared_code.util.html import convert_attrs
 
-from .actions import GridActionButton
+from .actions import GridActionButton, post_action_form
 
 
 def merge_class_style(*classes: str, class_style_dict: dict[str, str] | None = None) -> dict[str, str]:
@@ -29,19 +30,28 @@ def _build_action_buttons(
 ) -> HTMLElement:
     buttons = (btn(row) for btn in action_buttons)
     td_style = class_style.get("grid-td-buttons")
+    rendered_buttons = []
+
+    for btn in buttons:
+        element = BUTTON if btn.method == "POST" else A
+        attrs = {"type": "submit"} if btn.method == "POST" else {"href": btn.url}
+
+        button = element(
+            (I(_class=f"fa {btn.icon}") if btn.icon else ""),
+            SPAN(XML(f"&nbsp;{btn.text}") if btn.text else ""),
+            _class=btn.override_classes or btn.additional_classes or class_style.classes["grid-details-button"],
+            _style=btn.override_styles or btn.additional_styles or "",
+            _title=btn.text,
+            **(convert_attrs(attrs) | btn.attrs),
+        )
+
+        if btn.method == "POST":
+            button = post_action_form(button, btn.url, message=btn.message)
+
+        rendered_buttons.append(button)
+
     return TD(
-        *[
-            A(
-                (I(_class=f"fa {btn.icon}") if btn.icon else ""),
-                SPAN(XML(f"&nbsp;{btn.text}") if btn.text else ""),
-                _href=btn.url,
-                _class=btn.override_classes or btn.additional_classes or class_style.classes["grid-details-button"],
-                _style=btn.override_styles or btn.additional_styles or "",
-                _title=btn.text,
-                **btn.attrs,
-            )
-            for btn in buttons
-        ],
+        *rendered_buttons,
         _class=td_style.get("_class", ""),
         _style=td_style.get("_style", ""),
     )
@@ -51,7 +61,7 @@ def _build_tr(
     row: Row,
     changed_fields: list[Field],
     class_style: GridClassStyleBootstrap5,
-    action_buttons: t.Iterable[t.Callable[[Row], GridActionButton]],
+    action_buttons: t.Sequence[t.Callable[[Row], GridActionButton]],
 ) -> HTMLElement:
     tds = []
 
@@ -65,6 +75,30 @@ def _build_tr(
     return TR(*tds, **class_style.get("grid-tr"))
 
 
+def _highlight_archive_changes(
+    rows: list[tuple[Row, HTMLElement]],
+    changed_fields: list[Field],
+    id_field: Field,
+    latest_id: str | int,
+    offset: int,
+) -> None:
+    """Mark the current version and values changed from the preceding version."""
+    for (this_data, this_tr), (next_data, _) in itertools.pairwise(rows):
+        if str(this_data[id_field.name]) == str(latest_id):
+            current_class = this_tr.attributes.get("_class", "")
+            this_tr["_class"] = f"{current_class} current-row".strip()
+
+        for col_idx, field in enumerate(changed_fields, start=offset):
+            if str(this_data[field]) != str(next_data[field]):
+                td = this_tr[col_idx]
+                td["_class"] = f"{td.attributes.get('_class', '')} highlight".strip()
+
+    last_data, last_tr = rows[-1]
+    if last_data[id_field.name] == latest_id:
+        current_class = last_tr.attributes.get("_class", "")
+        last_tr["_class"] = f"{current_class} current-row".strip()
+
+
 def build_archive_table(
     table_ed: type[EffdtTable],
     latest_id: str | int,
@@ -76,6 +110,7 @@ def build_archive_table(
 ) -> HTMLElement:
     """Build the archive table for a single effective-dated row."""
     class_style = class_style or GridClassStyleBootstrap5()
+    action_buttons = tuple(action_buttons)
 
     db = db or table_ed._db
     id_field = table_ed._id
@@ -111,22 +146,7 @@ def build_archive_table(
         rows.append((row, tr))
 
     offset = 1 if action_buttons else 0
-    for (this_data, this_tr), (next_data, _) in itertools.pairwise(rows):
-        if str(this_data[id_field.name]) == str(latest_id):
-            current_class = this_tr.attributes.get("_class", "")
-            this_tr["_class"] = f"{current_class} current-row".strip()
-
-        for col_idx, field in enumerate(changed_fields, start=offset):
-            if str(this_data[field]) != str(next_data[field]):
-                td = this_tr[col_idx]
-                td["_class"] = f"{td.attributes.get('_class', '')} highlight".strip()
-
-    # Final current row check for the last row
-    last_data, last_tr = rows[-1]
-
-    if last_data[id_field.name] == latest_id:
-        current_class = last_tr.attributes.get("_class", "")
-        last_tr["_class"] = f"{current_class} current-row".strip()
+    _highlight_archive_changes(rows, changed_fields, id_field, latest_id, offset)
 
     table_html = TABLE(
         TR(*headers, **class_style.get("grid-tr")),

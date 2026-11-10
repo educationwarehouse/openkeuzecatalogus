@@ -1,14 +1,15 @@
 """Organisation RBAC permission regression checks."""
 
+import typing as t
+
 import pytest
 from edwh_auth_rbac import AuthRbac
 
-from shared_code.data_model import OrganisationEd, AuthUser
+from shared_code.data_model import AuthUser, OrganisationEd
 from shared_code.data_model.constants import OrganisationType
 from shared_code.infra.database import DatabaseContext
 from shared_code.modules.auth import AuthAdapter
 from shared_code.modules.organisations import OrganisationBackend
-import typing as t
 
 BOARD_GID = "dc0874bb-0901-406b-8567-c646e61eeb3b"
 SCHOOL_NOORD_GID = "9f5788bd-d8c5-428c-b61e-0b980733275b"
@@ -23,13 +24,11 @@ def _make_backend(auth_adapter: AuthAdapter, db: DatabaseContext) -> Organisatio
         db=db,
         auth_adapter=auth_adapter,
     )
-    
 
 
 def _insert_organisation(
     name: str,
     organisation_type: OrganisationType,
-    *,
     email_domains: list[str] | None = None,
 ) -> OrganisationEd:
     """Create one effective-dated organisation row for RBAC tests."""
@@ -58,18 +57,20 @@ def _assert_permission_shape(
     assert rbac.has_permission(board_member.gid, board_gid, "read")
     assert rbac.has_permission(board_member.gid, board_gid, "write")
     assert rbac.has_permission(board_member.gid, school_noord_gid, "read")
-    assert rbac.has_permission(board_member.gid, school_noord_gid, "write")
+    assert not rbac.has_permission(board_member.gid, school_noord_gid, "write")
     assert rbac.has_permission(board_member.gid, school_zuid_gid, "read")
-    assert rbac.has_permission(board_member.gid, school_zuid_gid, "write")
+    assert not rbac.has_permission(board_member.gid, school_zuid_gid, "write")
     assert rbac.has_permission(board_member.gid, vestiging_centrum_gid, "read")
-    assert rbac.has_permission(board_member.gid, vestiging_centrum_gid, "write")
+    assert not rbac.has_permission(board_member.gid, vestiging_centrum_gid, "write")
 
     assert rbac.has_permission(school_zuid_member.gid, school_zuid_gid, "read")
     assert rbac.has_permission(school_zuid_member.gid, school_zuid_gid, "write")
     assert rbac.has_permission(school_zuid_member.gid, vestiging_rijn_gid, "read")
     assert rbac.has_permission(school_zuid_member.gid, vestiging_rijn_gid, "write")
-    assert rbac.has_permission(school_zuid_member.gid, vestiging_centrum_gid, "read")
+    assert not rbac.has_permission(school_zuid_member.gid, vestiging_centrum_gid, "read")
     assert not rbac.has_permission(school_zuid_member.gid, vestiging_centrum_gid, "write")
+    assert rbac.has_permission(school_zuid_member.gid, board_gid, "read")
+    assert not rbac.has_permission(school_zuid_member.gid, board_gid, "write")
 
     assert rbac.has_permission(vestiging_centrum_member.gid, vestiging_centrum_gid, "read")
     assert rbac.has_permission(vestiging_centrum_member.gid, vestiging_centrum_gid, "write")
@@ -84,8 +85,8 @@ def test_seeded_organisation_permissions(
     """Verify seeded organisation permissions on the example hierarchy."""
 
     # based on organisation_relations.json, check that
-    # - a member of Voorbeeldbestuur has full permissions on School Noord and School Zuid and Vestiging Centrum
-    # - a member of School Zuid has write access to Vestiging Rijn but only readonly access to Vestiging Centrum
+    # - a member of Voorbeeldbestuur may read but not write School Noord, School Zuid, and Vestiging Centrum
+    # - a member of School Zuid has no access to Vestiging Centrum
     # - a member of vestiging Centrum only has read-access to Voorbeeldbestuur
 
     board_member = auth_user_factory(prefix="board-member", roles=[BOARD_GID])
@@ -143,9 +144,7 @@ def test_new_organisation_permissions_for_privileged_actor(
     db_per_file.commit()
 
     privileged_auth = (
-        auth_adapter_factory(admin_user)
-        if actor_kind == "admin"
-        else AuthAdapter.for_service("pytest.organisations")
+        auth_adapter_factory(admin_user) if actor_kind == "admin" else AuthAdapter.for_service("pytest.organisations")
     )
     backend = _make_backend(privileged_auth, db_per_file)
     rbac = backend.auth.raw_rbac

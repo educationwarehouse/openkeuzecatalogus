@@ -1,6 +1,7 @@
 """Project task runner commands."""
 
 import enum
+import json
 import os
 import pathlib
 import random
@@ -14,6 +15,7 @@ import textwrap
 import typing as t
 import uuid
 import warnings
+from collections import Counter
 from pathlib import Path
 
 import edwh
@@ -23,8 +25,12 @@ from edwh import DOCKER_COMPOSE
 from edwh.__about__ import __version__ as EDWH_VERSION
 from edwh.tasks import LintOutput, OutputMode, run_command_with_output, warn_plugin_version_check
 from ewok import Context, task
+from tabulate import tabulate
 from termcolor import cprint
 from tqdm import tqdm
+
+# local:
+from task_support import py4web_call
 
 MINIMAL_REQUIRED_EDWH_VERSION = "1.10.0"
 
@@ -113,7 +119,7 @@ def generate_jwt_key(c: Context, overwrite: bool = False) -> str:
     shared_keys = Path("shared_keys")
     shared_keys.mkdir(exist_ok=True)
 
-    edwh.tasks.set_permissions(c, str(shared_keys))
+    edwh.tasks.set_permissions(c, str(shared_keys), filepermissions=660, directorypermissions=2770)
 
     key_file = shared_keys / "jwt.key"
 
@@ -124,7 +130,7 @@ def generate_jwt_key(c: Context, overwrite: bool = False) -> str:
         private_key = key_file.read_text()
     except FileNotFoundError:
         private_key = secrets.token_hex(4096)
-        key_file.touch()
+        key_file.touch(mode=0o660)
         key_file.write_text(private_key)
 
     return private_key
@@ -164,12 +170,23 @@ def uptimerobot_autoadd(c: Context) -> None:
 
 
 @task()
+def pip_compile_all(c: Context) -> None:
+    """Compile all requirements with hashes, retaining compatible existing pins."""
+    c.run("edwh pip.compile shared_code/requirements.in --generate-hashes")
+    c.run("edwh pip.compile py4web,migrate,pgq,playwright --generate-hashes")
+    c.run("edwh pip.compile requirements-dev.in --generate-hashes")
+
+
+@task()
 def pip_bump_all(c: Context) -> None:
-    """Bump all .txt files using `edwh pip.upgrade`."""
+    """Bump all .txt files using `edwh pip.upgrade`.
+
+    Requires pip-compile plugin 0.7 or newer for hash generation.
+    """
     c.run("uv cache clean")
-    c.run("edwh pip.upgrade shared_code/requirements.in")
-    c.run("edwh pip.upgrade py4web,migrate,pgq,playwright")
-    c.run("edwh pip.upgrade requirements-dev.in")
+    c.run("edwh pip.upgrade shared_code/requirements.in --generate-hashes")
+    c.run("edwh pip.upgrade py4web,migrate,pgq,playwright --generate-hashes")
+    c.run("edwh pip.upgrade requirements-dev.in --generate-hashes")
 
 
 @task()
@@ -203,6 +220,39 @@ def setup_smtp(_: Context, dotenv_path: Path, sod: str = "") -> None:
     edwh.check_env("SMTP_PASSWORD", "", "SMTP Login Password")
     edwh.check_env("SMTP_TLS", "0", "Use (start)TLS? (1 for yunohost)")
     edwh.check_env("SMTP_SSL", "0", "Use SSL? (0 for yunohost)")
+
+
+@task()
+def setup_ai(_: Context, sod: StateOfDevelopment, use_default: bool = False) -> None:
+    """Ask for the configured AI provider and its OpenRouter-compatible settings."""
+    provider = edwh.check_env(
+        key="AI_PROVIDER",
+        default="mock" if sod.is_ontwikkel() else "disabled",
+        comment="AI provider: disabled, mock, openrouter, or openai-compatible.",
+        allowed_values=("disabled", "mock", "openrouter", "openai-compatible"),
+        force_default=use_default,
+    )
+    if provider not in {"openrouter", "openai-compatible"}:
+        return
+
+    edwh.check_env(
+        key="AI_MODEL",
+        default="",
+        comment="Model identifier, for example openai/gpt-5.",
+        force_default=use_default,
+    )
+    edwh.check_env(
+        key="AI_HOST",
+        default="https://openrouter.ai/api/v1",
+        comment="OpenRouter-compatible API base URL.",
+        force_default=use_default,
+    )
+    edwh.check_env(
+        key="AI_API_KEY",
+        default="",
+        comment="API key for the selected AI provider.",
+        force_default=use_default,
+    )
 
 
 @task()
@@ -454,6 +504,42 @@ def default_eduv_output_path(input_path: str) -> Path:
 
 
 @task()
+def dehint_fonts(_ctx: Context, paths: str) -> None:
+    """Remove problematic TrueType hinting from one or more WOFF2 fonts."""
+    from fontTools.ttLib import TTFont
+    from fontTools.ttLib.tables import ttProgram
+
+    for path in shlex.split(paths):
+        font = TTFont(path)
+        glyph_table = font["glyf"]
+        for name in font.getGlyphOrder():
+            glyph = t.cast(t.Any, glyph_table[name])
+            if hasattr(glyph, "program"):
+                glyph.program = ttProgram.Program()
+                glyph.program.fromBytecode(b"")
+
+        for tag in ("fpgm", "prep", "cvt "):
+            if tag in font:
+                del font[tag]
+
+        maxp = t.cast(t.Any, font["maxp"])
+        maxp.maxZones = 0
+        maxp.maxTwilightPoints = 0
+        maxp.maxStorage = 0
+        maxp.maxFunctionDefs = 0
+        maxp.maxInstructionDefs = 0
+        maxp.maxStackElements = 0
+        maxp.maxSizeOfInstructions = 0
+
+        if "gasp" in font:
+            t.cast(t.Any, font["gasp"]).gaspRange = {0xFFFF: 0x0A}
+
+        font.flavor = "woff2"
+        font.save(path)
+        cprint(f"Dehinted {path}", color="green")
+
+
+@task()
 def generate_eduv_models(
     c: Context,
     input_path: str,
@@ -496,22 +582,83 @@ def generate_eduv_models(
     cprint(f"Successfully wrote EDU-V models to: {resolved_output_path}", "green")
 
 
+@task(flags={"simple": ("simple", "s")})
+def discover_publishers(c: Context, simple: bool = False) -> None:
+    """Show Kennisnet publishers with their existing supplier import configuration."""
+    result = py4web_call(c, "discover_eduv_publishers")
+    publishers = result["publishers"]
+    if simple:
+        for publisher in publishers:
+            print(f"{publisher['publisher']} ({publisher['version']})")
+        return
+
+    rows = [
+        (
+            publisher["publisher"],
+            publisher["version"],
+            ", ".join(publisher["suppliers"]) or "nee",
+            "ja" if publisher["uses_eduv_import"] else "nee",
+        )
+        for publisher in publishers
+    ]
+
+    print(
+        tabulate(
+            rows, headers=("Uitgever", "Versie", "Bekende leverancier", "Edu-V import"), tablefmt="rounded_outline"
+        )
+    )
+    version_counts = Counter(publisher["version"] for publisher in publishers)
+    print("; ".join(f"{count} at {version}" for version, count in sorted(version_counts.items())))
+
+    unknown_publishers = {publisher["publisher"] for publisher in publishers if not publisher["suppliers"]}
+    if unknown_publishers:
+        print(f"{len(unknown_publishers)} onbekende uitgevers. Importeer ze met: ew local.import-publishers")
+
+
 @task()
-def discover_publishers(c: Context) -> None:
-    """List unique publishers from both EDU-V product catalogue versions with their version."""
-    c.run(
-        "curl -fsSL https://catalogus.edu-v.kennisnet.nl/v1/products "
-        "| jq -r '[.[].publisher | select(. != null)] | unique[] | [., \"v1\"] | @tsv'"
+def import_publishers(c: Context) -> None:
+    """Create missing suppliers from Kennisnet's highest available Edu-V version."""
+    result = py4web_call(c, "import_eduv_publishers")
+    imported_publishers = result["imported_publishers"]
+    print(f"{len(imported_publishers)} uitgevers geïmporteerd.")
+
+
+def _setup_error_signals(hostname: str, is_dev: bool, use_default: bool) -> None:
+    """Configure error-ticket delivery and its backend-specific settings."""
+    error_signal_backend = edwh.check_env(
+        key="ERROR_SIGNAL_BACKEND",
+        default="mock" if is_dev else "ntfy",
+        comment="Backend for stored error-ticket signals: mock, ntfy, or a future backend.",
+        force_default=use_default,
     )
-    c.run(
-        "curl -fsSL https://catalogus.edu-v.kennisnet.nl/v2/products "
-        "| jq -r '[.[].publisher | select(. != null)] | unique[] | [., \"v2\"] | @tsv'"
+    edwh.check_env(
+        key="ERROR_SIGNAL_QUEUE_PATH",
+        default="/shared_cache/error_signals/pending",
+        comment="Disk-backed queue for pending error-ticket signals.",
+        force_default=use_default,
     )
+    if error_signal_backend == "mock":
+        edwh.check_env(
+            key="ERROR_SIGNAL_MOCK_PATH",
+            default="/shared_cache/error_signals/mock.jsonl",
+            comment="JSONL output path for mock error-ticket signals.",
+            force_default=use_default,
+        )
+    elif error_signal_backend == "ntfy":
+        edwh.check_env(
+            key="NTFY_ERROR_URL",
+            default=f"EDWH-DEV-ERROR-{hostname}",
+            comment="Ntfy.sh error channel, use a production-specific channel in production.",
+            prefix="https://ntfy.sh/",
+            force_default=use_default,
+        )
 
 
 @task()
 def setup(c: Context) -> None:
     """Setup or update the ontwikkel_omgeving environment."""
+    # Shared files use 660 so only the owner and microservices group can access
+    # them; 2770 keeps directories private and passes that group to new files.
     print("Setting up/updating ontwikkel_omgeving ...")
 
     dotenv_path = Path(".env")
@@ -596,8 +743,52 @@ def setup(c: Context) -> None:
         force_default=use_default,
     )
 
-    # Schema + secrets
+    # Schema + secrets. SCHEMA_VERSION doubles as the cache build id: it is
+    # folded into every cache key so entries from an earlier schema are not
+    # served to newer code.
     edwh.set_env_value(dotenv_path, "SCHEMA_VERSION", edwh.tasks.calculate_schema_hash())
+
+    # Caching
+    cache_backend = edwh.check_env(
+        key="CACHE_BACKEND",
+        default="redis",
+        comment=(
+            "Cache storage: any comma-separated chain of redis, postgres, memory or none. "
+            "'memory' is single-process only; a chain like 'redis,postgres' tries the fast "
+            "store first and lets the durable one catch an outage."
+        ),
+        force_default=use_default,
+    )
+    cache_backends = {name.strip() for name in cache_backend.split(",")}
+
+    if "redis" in cache_backends:
+        edwh.check_env(
+            key="REDIS_CACHE_DB",
+            default="1",
+            comment="Logical Redis database for the cache. Keep it off 0, where py4web stores sessions.",
+            force_default=use_default,
+        )
+
+    # Request tracking, not gated on the cache backend: slow requests are worth
+    # finding with or without a cache.
+    route_stats_chain = edwh.check_env(
+        key="ROUTE_STATS",
+        default="redis" if is_dev else "applog",
+        comment=(
+            "Request tracking: any comma-separated chain of redis, applog or none. "
+            "'redis' keeps the per-route counters behind the cache-candidates admin page; "
+            "'applog' logs one event per request slower than ROUTE_STATS_SLOW_MS."
+        ),
+        force_default=use_default,
+    )
+
+    if "applog" in {name.strip().lower() for name in route_stats_chain.split(",")}:
+        edwh.check_env(
+            key="ROUTE_STATS_SLOW_MS",
+            default="500",
+            comment="Log a request to the applog once it takes longer than this, in milliseconds.",
+            force_default=use_default,
+        )
 
     edwh.check_env(
         key="PY4WEB_SUBDOMAIN",
@@ -636,33 +827,7 @@ def setup(c: Context) -> None:
     )
 
     # Notifications
-    error_signal_backend = edwh.check_env(
-        key="ERROR_SIGNAL_BACKEND",
-        default="mock" if is_dev else "ntfy",
-        comment="Backend for stored error-ticket signals: mock, ntfy, or a future backend.",
-        force_default=use_default,
-    )
-    edwh.check_env(
-        key="ERROR_SIGNAL_QUEUE_PATH",
-        default="/shared_cache/error_signals/pending",
-        comment="Disk-backed queue for pending error-ticket signals.",
-        force_default=use_default,
-    )
-    if error_signal_backend == "mock":
-        edwh.check_env(
-            key="ERROR_SIGNAL_MOCK_PATH",
-            default="/shared_cache/error_signals/mock.jsonl",
-            comment="JSONL output path for mock error-ticket signals.",
-            force_default=use_default,
-        )
-    elif error_signal_backend == "ntfy":
-        edwh.check_env(
-            key="NTFY_ERROR_URL",
-            default=f"EDWH-DEV-ERROR-{hostname}",
-            comment="Ntfy.sh error channel, use a production-specific channel in production.",
-            prefix="https://ntfy.sh/",
-            force_default=use_default,
-        )
+    _setup_error_signals(hostname, is_dev=is_dev, use_default=use_default)
     edwh.check_env(
         key="NTFY_WARNING_URL",
         default=f"EDWH-DEV-WARNING-{hostname}",
@@ -679,6 +844,12 @@ def setup(c: Context) -> None:
     )
 
     # Redis + Postgres
+    edwh.check_env(
+        key="REDIS_PASSWORD",
+        default=secrets.token_urlsafe(32),
+        comment="Password shared by Redis sessions, caches and replication",
+        force_default=use_default,
+    )
     edwh.check_env(
         key="REDIS_PORT",
         default=str(edwh.tasks.next_value(c, "REDIS_PORT", 6379)),
@@ -857,6 +1028,15 @@ def setup(c: Context) -> None:
         force_default=use_default,
     )
 
+    if is_dev:
+        edwh.check_env(
+            key="AUTO_APPROVE_AND_LOGIN_AFTER_REGISTRATION",
+            default="0",
+            comment="Automatically approve and log in newly registered accounts (development only).",
+            allowed_values=("0", "1"),
+            force_default=use_default,
+        )
+
     edwh.check_env(
         key="ENTREE_CLIENT_ENDPOINT",
         default="oidcng.entree.kennisnet.nl" if state_of_development.is_productie() else "oidcng.entree-s.kennisnet.nl",
@@ -881,21 +1061,20 @@ def setup(c: Context) -> None:
     # setup_grist(c, use_default=use_default)
     setup_py4web_password(c, use_default=use_default)
 
-    setup_smtp(c, dotenv_path, str(state_of_development))
+    setup_smtp(c, dotenv_path, sod=str(state_of_development))
+    setup_ai(c, state_of_development, use_default=use_default)
     setup_image_storage(c, state_of_development, use_default=use_default)
     uptimerobot_autoadd(c)
 
     # Permissions and setup
     print("Setting file and directory permissions")
-    c.sudo("chown -R 1050:1050 migrate/flags")
-    c.sudo("chown -R 1050:1050 migrate/data")
-    c.sudo("chown -R 1050:1050 shared_cache")
-
+    edwh.tasks.set_permissions(c, "migrate/data", filepermissions=660, directorypermissions=2770)
+    edwh.tasks.set_permissions(c, "migrate/flags", filepermissions=660, directorypermissions=770)
     edwh.tasks.set_permissions(c, "py4web/apps")
     edwh.tasks.set_permissions(c, "shared_code/generated")
-    edwh.tasks.set_permissions(c, "shared_cache", filepermissions=666, directorypermissions=777)
-    edwh.tasks.set_permissions(c, "shared_applog")
-    edwh.tasks.set_permissions(c, "shared_user_storage")
+    edwh.tasks.set_permissions(c, "shared_cache", filepermissions=660, directorypermissions=2770)
+    edwh.tasks.set_permissions(c, "shared_applog", filepermissions=660, directorypermissions=2770)
+    edwh.tasks.set_permissions(c, "shared_user_storage", filepermissions=660, directorypermissions=2770)
 
     generate_jwt_key(c)
     bundler_build(c)
@@ -908,6 +1087,50 @@ def setup(c: Context) -> None:
 def queue_pgq(ctx: Context, entrypoint: str, payload: str = "{}", container: str = "pgq-scrapers") -> None:
     """Enqueue an entrypoint with optional payload in the pgq job system."""
     ctx.run(f"{DOCKER_COMPOSE} exec -T {container} pgskewer enqueue {shlex.quote(entrypoint)} {shlex.quote(payload)}")
+
+
+@task()
+def bench_html_parsers(ctx: Context, blocks: int = 1000, repeat: int = 3, verbose: bool = False) -> None:
+    """Compare HTML parser speed and selected HTML5 behavior in the py4web image."""
+    if not 1 <= blocks <= 3000 or not 1 <= repeat <= 10:
+        raise ValueError("blocks must be 1..3000 and repeat must be 1..10")
+
+    command_result = ctx.run(
+        f"{DOCKER_COMPOSE} run --rm --no-deps py4web "
+        f"python3 benchmarks/html_parsers.py --blocks {blocks} --repeat {repeat}",
+        hide=True,
+    )
+    benchmark = json.loads(command_result.stdout)
+    results = sorted(
+        benchmark["results"],
+        key=lambda result: (
+            result["error"] is not None,
+            -sum(check["passed"] for check in result["checks"]),
+            result["median_ms"] if result["median_ms"] is not None else float("inf"),
+        ),
+    )
+    rows = []
+    for result in results:
+        checks = result["checks"]
+        rows.append(
+            (
+                result["parser"],
+                f"{result['median_ms']:.1f}" if result["median_ms"] is not None else "ERROR",
+                f"{sum(check['passed'] for check in checks)}/{len(checks)}" if checks else "—",
+            ),
+        )
+
+    print(f"Generated HTML: {benchmark['html_bytes']:,} bytes, {benchmark['blocks']} articles")
+    print(f"Median of {benchmark['repeat']} parse-only runs; all results use Beautiful Soup trees.\n")
+    print(tabulate(rows, headers=("Parser", "Median ms", "HTML5 checks"), tablefmt="github"))
+
+    if verbose:
+        for result in results:
+            print(f"\n{result['parser']}:")
+            if result["error"]:
+                print(f"  ERROR: {result['error']}")
+            for check in result["checks"]:
+                print(f"  {'PASS' if check['passed'] else 'FAIL'}  {check['name']}")
 
 
 def find_ty() -> str:
@@ -925,6 +1148,33 @@ def lint_ruff_fmt(ctx: Context, mode: OutputMode = "cli") -> bool:
     return ruff_imports_success and ruff_format_success
 
 
+def ensure_bun(ctx: Context) -> str | None:
+    """Return the Bun executable, installing it with Bun's official installer when needed."""
+    if bunx := shutil.which("bunx"):
+        return bunx
+
+    bunx = Path.home() / ".bun" / "bin" / "bunx"
+    if bunx.is_file():
+        return str(bunx)
+
+    cprint("Installing Bun", color="yellow")
+    installer = ctx.run("curl -fsSL https://bun.com/install | bash", pty=True, warn=True)
+    if installer.failed or not bunx.is_file():
+        cprint("Unable to install Bun", color="red")
+        return None
+
+    return str(bunx)
+
+
+def lint_tsc(ctx: Context, mode: OutputMode = "cli") -> bool:
+    """Run TypeScript type checks."""
+    if not (bunx := ensure_bun(ctx)):
+        return False
+    return run_command_with_output(
+        ctx, shlex.join((bunx, "--package", "typescript", "tsc", "--noEmit")), mode=mode, tool="tsc"
+    )
+
+
 def lint_fixmes(ctx: Context, mode: OutputMode = "cli") -> bool:
     """Fail when source comments contain FIXME markers."""
     return run_command_with_output(
@@ -939,13 +1189,32 @@ def lint_fixmes(ctx: Context, mode: OutputMode = "cli") -> bool:
 
 
 @task()
+def fmt_prettier(ctx: Context) -> bool | None:
+    """Format JavaScript, TypeScript, and application SCSS files with Prettier."""
+    if bunx := ensure_bun(ctx):
+        patterns = "'**/*.js' '**/*.ts' 'py4web/apps/*/assets/css/**/*.scss'"
+
+        return edwh.tasks.run_pty_ok(ctx, bunx, f"prettier --write {patterns} > /dev/null")
+    else:
+        return None
+
+
+@task()
+def fmt(ctx: Context) -> None:
+    """Format JavaScript, TypeScript, and application SCSS files with Prettier."""
+    color = "green" if fmt_prettier(ctx) else "red"
+    cprint("⬤ prettier", color=color)
+
+
+@task()
 def lint(ctx: Context) -> LintOutput:
-    """Extend `edwh lint` with Ruff import/format checks and `ty check`."""
+    """Extend `edwh lint` with Ruff, Ty, and TypeScript checks."""
     result = ctx["result"]
     mode: OutputMode = result["mode"]
 
     success = dict(result["results"]) | {
         "formatting (ruff)": lint_ruff_fmt(ctx, mode=mode),
+        "type checking (tsc)": lint_tsc(ctx, mode=mode),
         "fixme": lint_fixmes(ctx, mode=mode),
         "custom rules": run_command_with_output(ctx, "edwh linting.custom", mode=mode, tool="custom rules"),
     }

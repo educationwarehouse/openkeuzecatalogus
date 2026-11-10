@@ -17,7 +17,7 @@ This project runs database migrations through [edwh-migrate](https://github.com/
 Key environment settings used in this repo:
 
 - `MIGRATE_URI`: database connection used by migration tooling.
-- `SCHEMA_VERSION`: used for the migration lock file name.
+- `SCHEMA_VERSION`: used for the migration lock file name. It is a hash of `shared_code/`, and it also serves as the cache build id (see [Caching](../architecture/caching.md#keys)).
 - `MIGRATIONS_FILE`: points to migration registration file (here: `/pythonpath/shared_code/migrations/migrations.py`).
 - `DB_FOLDER`: local DAL folder (`/tmp` in this setup).
 - `USE_TYPEDAL`: enables `TypeDAL` during migrations.
@@ -100,6 +100,8 @@ If no restore file exists:
 - Configure:
   - `MIGRATE_SEED_BASE_URL`
   - `MIGRATE_SEED_BEARER_TOKEN`
+- Tests import the same seed tables only when `MIGRATE_SEED_CATALOG_CONFIGURATION=1`; their
+  `MIGRATE_SEED_BASE_URL` must use a local `file://` URL.
 - Endpoint convention used by this migration:
   - `{MIGRATE_SEED_BASE_URL}/seed/product_ed`
   - `{MIGRATE_SEED_BASE_URL}/seed/supplier_ed`
@@ -249,6 +251,7 @@ This keeps dependent trigger/function/model structures consistent with altered s
 
 - Migrations that depend on optional environment configuration must **skip gracefully**: check the variable, print `[migrate] ...` and `return True` (see `seed_data_from_old_server_json_20260526_001`). Skipping counts as success and is recorded as such.
 - Migrations with a hard requirement may read `os.environ[...]` directly; a missing variable then fails the migration and it is retried on the next run (see `create_superset_readonly_user_20260622_001`). Choose deliberately between the two patterns.
+- A migration for an optional feature can instead be **registered conditionally**, under a module-level `if` (see `create_cache_tables_20260921_001`, registered only when `CACHE_BACKEND` names `postgres`). Unlike skipping, nothing is recorded while the condition is false, so the migration still runs once the condition holds. Changing `.env` doesn't change `SCHEMA_VERSION`, though, so migrate won't run again on its own: remove `/flags/migrate-<SCHEMA_VERSION>.complete` and run it. The test commands put `CACHE_BACKEND=postgres` in their baseline environment (`default_testing_env()` in `test.tasks.py`) so the migration keeps getting exercised.
 
 ### Helper Inventory
 

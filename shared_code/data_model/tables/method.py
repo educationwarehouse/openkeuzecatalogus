@@ -7,18 +7,24 @@ from typedal import Ref, TypedField, relationship
 from typedal.helpers import classproperty
 
 from shared_code.data_model.mixins.search import RankedSearchMixin
-from shared_code.data_model.tables.base import BaseTable
+from shared_code.data_model.representers import dutch_currency
+from shared_code.data_model.tables.base import EffdtTable
 from shared_code.data_model.tables.shared_product import SharedProductField
 
 if t.TYPE_CHECKING:
     from shared_code.data_model.tables import Product, Supplier  # noqa: F401
 
 
-class MethodEd(BaseTable, SharedProductField):
+class MethodEd(EffdtTable, SharedProductField):
     """Effective-dated method source table."""
 
     name = TypedField(str, label="Methode Naam")
-    guide_price = TypedField(float, label="Richtprijs", requires=IS_NULL_OR(IS_FLOAT_IN_RANGE()))
+    guide_price = TypedField(
+        float,
+        label="Richtprijs",
+        requires=IS_NULL_OR(IS_FLOAT_IN_RANGE()),
+        represent=dutch_currency,
+    )
     sample_copies = TypedField(str, label="Inkijkexemplaren")
     preview_digital_environment = TypedField(str, label="Preview Digitale Omgeving")
 

@@ -1,2 +1,5 @@
 [pytest]
+timeout = "120"
+timeout_method = "thread"
+required_plugins = ["pytest-timeout"]
 asyncio_mode = "auto"

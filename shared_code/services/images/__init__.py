@@ -1,10 +1,11 @@
 """Image-storage service implementations."""
 
-from .contracts import ImageDownloadError, ImageStorage, ImageStorageError, ImageUpload, ImageUploadError
+from .contracts import ImageDownload, ImageDownloadError, ImageStorage, ImageStorageError, ImageUpload, ImageUploadError
 from .fake import MockImageStorage
 from .minio import MinioImageStorage
 
 __all__ = [
+    "ImageDownload",
     "ImageDownloadError",
     "ImageStorage",
     "ImageStorageError",

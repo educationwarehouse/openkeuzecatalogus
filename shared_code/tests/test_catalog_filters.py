@@ -5,7 +5,53 @@ import typing as t
 from typedal import TypeDAL
 
 from shared_code.data_model import DynamicFilter, DynamicSort, MethodEd, Product, ProductEd, Supplier
-from shared_code.modules.catalog_filters import CatalogFilters
+from shared_code.modules.catalog_filters import CatalogFilters, any_value_matches
+
+
+def test_any_value_matches_returns_none_or_matches_any_list_value(
+    migrated_db_per_file: None,
+    supplier_factory: t.Callable[..., Supplier],
+    method_factory: t.Callable[..., MethodEd],
+    product_factory: t.Callable[..., ProductEd],
+) -> None:
+    """The overlap query is absent for no values and ORs all supplied values."""
+    assert migrated_db_per_file is None
+
+    supplier = supplier_factory(name="Overlap Supplier", email_domains=["overlap.example.test"])
+    method = method_factory(
+        supplier_gid=supplier.gid,
+        olid="overlap-method-001",
+        name="Overlap Method",
+    )
+    product_factory(
+        supplier_gid=supplier.gid,
+        method_gid=method.gid,
+        olid="overlap-product-001",
+        name="VMBO Product",
+        levels=["vmbo"],
+    )
+    product_factory(
+        supplier_gid=supplier.gid,
+        method_gid=method.gid,
+        olid="overlap-product-002",
+        name="HAVO Product",
+        levels=["havo"],
+    )
+    product_factory(
+        supplier_gid=supplier.gid,
+        method_gid=method.gid,
+        olid="overlap-product-003",
+        name="VWO Product",
+        levels=["vwo"],
+    )
+
+    assert any_value_matches(Product.levels, []) is None
+
+    query = any_value_matches(Product.levels, ["vmbo", "havo"])
+    assert query is not None
+    rows = Product.where(query).select(Product.olid, orderby=Product.olid)
+
+    assert rows.column(Product.olid) == ["overlap-product-001", "overlap-product-002"]
 
 
 def test_catalog_filters_resolve_product_filters_tracks_active_values(
@@ -22,12 +68,12 @@ def test_catalog_filters_resolve_product_filters_tracks_active_values(
 
     supplier = supplier_factory(name="Catalog Supplier", email_domains=["catalog-filters.example.test"])
     method = method_factory(
-        supplier_gid=str(supplier.gid),
+        supplier_gid=supplier.gid,
         olid="catalog-method-001",
         name="Catalog Method",
     )
     product_factory(
-        supplier_gid=str(supplier.gid),
+        supplier_gid=supplier.gid,
         method_gid=method.gid,
         olid="catalog-product-001",
         name="Algebra Product",
@@ -103,26 +149,26 @@ def test_catalog_filters_apply_combines_search_and_dynamic_filters(
 
     supplier = supplier_factory(name="Apply Supplier", email_domains=["apply-filters.example.test"])
     method = method_factory(
-        supplier_gid=str(supplier.gid),
+        supplier_gid=supplier.gid,
         olid="apply-method-001",
         name="Apply Method",
     )
     product_factory(
-        supplier_gid=str(supplier.gid),
+        supplier_gid=supplier.gid,
         method_gid=method.gid,
         olid="apply-product-001",
         name="Algebra VMBO",
         levels=["vmbo"],
     )
     product_factory(
-        supplier_gid=str(supplier.gid),
+        supplier_gid=supplier.gid,
         method_gid=method.gid,
         olid="apply-product-002",
         name="Algebra HAVO",
         levels=["havo"],
     )
     product_factory(
-        supplier_gid=str(supplier.gid),
+        supplier_gid=supplier.gid,
         method_gid=method.gid,
         olid="apply-product-003",
         name="Biology VMBO",

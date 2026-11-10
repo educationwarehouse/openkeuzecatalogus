@@ -1,14 +1,20 @@
 """Integration tests for effective-dated model sync."""
+
+import datetime as dt
 import uuid
 from abc import ABC
-import datetime as dt
 
 import pytest
 from edwh_migrate import ViewMigrationManager
 from typedal import TypeDAL
 
-from shared_code.data_model import Method, MethodEd, Product, ProductEd, SupplierEd
-from shared_code.data_model.mixins.effdt.helpers import ed_restore_by_id, model_to_ed, update_effectivedated
+from shared_code.data_model import DecisionProcess, DecisionTeamEd, Method, MethodEd, Product, ProductEd, SupplierEd
+from shared_code.data_model.mixins.effdt.helpers import (
+    ed_restore_by_id,
+    model_to_ed,
+    update_effectivedated,
+    validate_and_update_effectivedated,
+)
 from shared_code.migrations.migration_support.core import (
     create_effdted_model_view_with_prio_v4,
     no_triggers,
@@ -90,7 +96,13 @@ def test_executesql_placeholders_prevent_sql_injection(migrated_db_per_file: Non
     dummy_method_gid = str(uuid.uuid4())
     dummy_supplier_gid = str(uuid.uuid4())
 
-    ProductEd.insert(olid="sql-injection-safe-1", name="SQL Injection Safe 1", available="leverbaar", method_gid=dummy_method_gid, supplier_gid=dummy_supplier_gid)
+    ProductEd.insert(
+        olid="sql-injection-safe-1",
+        name="SQL Injection Safe 1",
+        available="leverbaar",
+        method_gid=dummy_method_gid,
+        supplier_gid=dummy_supplier_gid,
+    )
     db_per_file.commit()
 
     malicious_olid = "missing' OR 1=1 --"
@@ -114,6 +126,33 @@ def test_executesql_placeholders_prevent_sql_injection(migrated_db_per_file: Non
     assert safe_count_placeholders == safe_count_tstring == safe_count_orm == 0
 
 
+def test_rebuild_decision_team_model_keeps_referenced_processes(
+    migrated_db_per_file: None, db_per_file: TypeDAL
+) -> None:
+    """Rebuilding teams must preserve processes that reference the current model."""
+    assert migrated_db_per_file is None
+
+    team = DecisionTeamEd.insert(
+        name="Rebuild team",
+        location_gid=str(uuid.uuid4()),
+        last_saved_by="pytest",
+    )
+    assert team is not None
+    process = DecisionProcess.insert(
+        team_gid=team.gid,
+        schoolyear="2026-2027",
+        start_date=dt.date.today(),
+    )
+    assert process is not None
+
+    db_per_file.executesql("SELECT rebuild_decision_team_model();")
+
+    assert db_per_file.executesql(
+        "SELECT team_gid FROM decision_process WHERE gid = %(gid)s;",
+        placeholders={"gid": process.gid},
+    ) == [(team.gid,)]
+
+
 def test_product_ed_insert_populates_product_model(migrated_db_per_file: None, db_per_file: TypeDAL) -> None:
     """An insert into `product_ed` should populate `product_model` for the same gid."""
     assert migrated_db_per_file is None
@@ -133,7 +172,7 @@ def test_product_ed_insert_populates_product_model(migrated_db_per_file: None, d
     row = Product.where(Product.gid == inserted_row.gid).first_or_fail()
 
     assert row.id == inserted_row.id
-    assert str(row.gid) == str(inserted_row.gid)
+    assert row.gid == inserted_row.gid
     assert row.olid == "product-model-sync-test"
     assert row.name == "Product Model Sync Test"
     assert row.effstatus is True
@@ -152,7 +191,7 @@ def test_product_ed_insert_populates_product_model(migrated_db_per_file: None, d
     row = Product.where(Product.gid == inserted_row.gid).first_or_fail()
 
     assert row.id == inserted_row.id
-    assert str(row.gid) == str(inserted_row.gid)
+    assert row.gid == inserted_row.gid
     assert row.olid == "product-model-sync-test"
     assert row.name == "Product Model Sync Test"
     assert row.effstatus is True
@@ -169,7 +208,7 @@ def test_product_ed_insert_populates_product_model(migrated_db_per_file: None, d
 
     row = Product.where(Product.gid == inserted_row.gid).first_or_fail()
 
-    assert str(row.gid) == str(inserted_row.gid)
+    assert row.gid == inserted_row.gid
     assert row.olid == "product-model-sync-test-higher"
     assert row.name == "Product Model Sync Test Higher"
     assert row.effstatus is True
@@ -223,7 +262,7 @@ def test_method_ed_higher_prio_wins_when_effdt_matches(
     row = Method(gid=gid)
 
     assert row
-    assert str(row.gid) == gid
+    assert row.gid == gid
     assert row.olid == "method-prio-high"
     assert row.name == "Method Prio High"
     assert row.effstatus is True
@@ -283,7 +322,7 @@ def test_no_triggers_requires_targeted_and_global_rebuilds(
 
     product_row = Product.where(Product.gid == product_gid).first_or_fail()
 
-    assert str(product_row.gid) == product_gid
+    assert product_row.gid == product_gid
     assert product_row.olid == "product-no-triggers-test"
     assert product_row.name == "Product No Triggers Test"
     assert Method.where(Method.gid == method_gid).count() == 0
@@ -295,7 +334,7 @@ def test_no_triggers_requires_targeted_and_global_rebuilds(
 
     method_row = Method.where(Method.gid == method_gid).first_or_fail()
 
-    assert str(method_row.gid) == method_gid
+    assert method_row.gid == method_gid
     assert method_row.olid == "method-no-triggers-test"
     assert method_row.name == "Method No Triggers Test"
 
@@ -480,6 +519,56 @@ def test_effective_dated_helper_functions_use_real_tables(
             effdt=duplicate_effdt,
             last_saved_by="duplicate.test",
         )
+
+
+def test_validate_and_update_effectivedated_uses_validated_record_updates(
+    migrated_db_per_file: None,
+    db_per_file: TypeDAL,
+) -> None:
+    """Validate fields before creating the next effective-dated product revision."""
+    assert migrated_db_per_file is None
+
+    supplier_gid = str(uuid.uuid4())
+    method_gid = str(uuid.uuid4())
+    product_gid = str(uuid.uuid4())
+    SupplierEd.insert(gid=supplier_gid, name="Validated update supplier", olid="validated-update-supplier")
+    MethodEd.insert(
+        gid=method_gid,
+        supplier_gid=supplier_gid,
+        olid="validated-update-method",
+        name="Validated update method",
+        available="leverbaar",
+    )
+    ProductEd.insert(
+        gid=product_gid,
+        supplier_gid=supplier_gid,
+        method_gid=method_gid,
+        olid="validated-update-product",
+        name="Original product name",
+        available="leverbaar",
+    )
+    db_per_file.commit()
+
+    product = Product.where(Product.gid == product_gid).first_or_fail()
+    updated, errors = validate_and_update_effectivedated(Product, product, name="Validated product name")
+
+    assert errors is None
+    assert updated is not None
+    assert Product.where(Product.gid == product_gid).first_or_fail().name == "Validated product name"
+    assert ProductEd.where(ProductEd.gid == product_gid).count() == 2
+
+    invalid, errors = validate_and_update_effectivedated(Product, updated, available="invalid")
+
+    assert invalid is None
+    assert errors is not None
+    assert "available" in errors
+    assert ProductEd.where(ProductEd.gid == product_gid).count() == 2
+
+    invalid, errors = validate_and_update_effectivedated(Product, updated, unknown_field="value")
+
+    assert invalid is None
+    assert errors == {"unknown_field": "invalid"}
+    assert ProductEd.where(ProductEd.gid == product_gid).count() == 2
 
 
 @pytest.mark.parametrize(

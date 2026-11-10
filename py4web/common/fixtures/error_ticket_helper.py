@@ -1,11 +1,11 @@
 """Capture request-scoped error ticket data before py4web tears fixtures down."""
 
-import typing as t
 from contextvars import ContextVar
 
 from py4web.core import Fixture
 
 from py4web import request
+from shared_code.data_model import AnyDict
 from shared_code.services.error_tickets import AuthInfo, RequestInfo, SnapshotDict, redact_request_info
 
 
@@ -14,15 +14,15 @@ class ErrorTicketHelper(Fixture):
 
     _snapshot: ContextVar[SnapshotDict | None] = ContextVar("error_ticket_snapshot", default=None)
 
-    def on_request(self, context: dict[str, t.Any]) -> None:
+    def on_request(self, context: AnyDict) -> None:
         """Clear the cached snapshot before the next request starts."""
         self._snapshot.set(None)
 
-    def on_error(self, context: dict[str, t.Any]) -> None:
+    def on_error(self, context: AnyDict) -> None:
         """Capture request and auth data when the request fails."""
         self._snapshot.set(SnapshotDict(auth=self._snapshot_auth_info(), request=self._snapshot_request_info()))
 
-    def on_success(self, context: dict[str, t.Any]) -> None:
+    def on_success(self, context: AnyDict) -> None:
         """Drop any snapshot after a successful request."""
         self.teardown()
 
@@ -30,13 +30,17 @@ class ErrorTicketHelper(Fixture):
     def _snapshot_auth_info() -> AuthInfo:
         from common.models import auth_context
 
-        if user := auth_context.user:
-            return AuthInfo(
-                user_email=user.email or "",
-                user_groups=auth_context.roles,
-            )
-        else:
+        if not (user := auth_context.user):
             return AuthInfo()
+
+        try:
+            user_groups = auth_context.roles
+        except Exception:
+            # runs before the db fixture rolls back, so a failed transaction can't answer role queries;
+            # the error page then re-checks admin access after rollback.
+            user_groups = []
+
+        return AuthInfo(user_email=user.email or "", user_groups=user_groups)
 
     @staticmethod
     def _snapshot_request_info() -> RequestInfo:

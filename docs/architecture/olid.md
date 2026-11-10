@@ -24,7 +24,9 @@ Examples:
 - `olid://isbn/9781402894626#91b6`
 - `olid://unregistered/supplier/gid-123#6a6b`
 
-The fragment is derived from the normalized URI and acts as a short integrity suffix. It is not random.
+The fragment is deterministic. Standard identifiers use a short integrity suffix derived from the normalized URI.
+Unregistered keys changed by slugification also include the original key in the four-character hash, preserving identity
+distinctions that the readable slug cannot express.
 
 ## Normalization Rules
 
@@ -53,9 +55,30 @@ If the input already uses an `isbn:` or `ean:` scheme, or the input string parse
 If the input is not a recognized URL or ISBN-like value:
 
 - the hierarchy becomes `unregistered`
-- the path becomes `<prefix>/<key>`
+- the path becomes `<prefix>/<slug>`
+- `slug` is generated with `slugify`: it is lowercase ASCII, transliterates accents, and replaces whitespace and punctuation with hyphens
 
 This is the default for internal or source-local identifiers that do not yet have a standard external namespace.
+Keys that differ by case, accents, punctuation, or whitespace can share the readable path but have different fragments.
+Keys already equal to their slug, including supplier UUIDs, retain their existing identifiers.
+
+Edu-V product identifiers are ISBNs or UUID GIDs, so their OLIDs stay unchanged. Method source keys combine
+the lowercased publisher and product-family name, and their OLIDs need a backfill.
+
+The `backfill_collision_resistant_olids_20261005_001` migration reconstructs method keys from existing
+method and supplier metadata and stored importer source rows. It appends new
+effective-dated method versions at each existing priority without changing GIDs or historical rows,
+updates saved selections, then rebuilds the current method model and learning-material view.
+Historical importer events keep their original identifiers. Unavailable source keys produce warnings;
+their existing OLIDs stay unchanged. Ambiguous mappings still abort. UUID-based method keys stay unchanged.
+
+Deploy the migration before starting the updated importer workers. Imports also check the legacy hash
+of each incoming method URI. A matching legacy method is upgraded using the same effective-dated
+correction helper, preserving its GID, history and saved selections. Competing incoming identifiers
+abort the import. A legacy method is left untouched when the incoming OLID already belongs to
+another method. No external catalogue snapshot or replacement table is needed.
+The four-character hash has a finite collision space; hashing the original key fixes
+normalization-induced collisions without changing the OLID format.
 
 ## Supplier Behavior
 

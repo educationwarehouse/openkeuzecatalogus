@@ -3,20 +3,32 @@ configurations:
     js: # to bundle.js
       - /* add required class to body */ document.body.classList.add("edwh-messagebus")
       - https://unpkg.com/hyperscript.org@0.9.4/dist/_hyperscript_w9y.min.js
-      - https://unpkg.com/htmx.org@1.6.1
+      - https://cdn.jsdelivr.net/npm/htmx.org@2.0.10/dist/htmx.min.js
+      - https://cdn.jsdelivr.net/npm/htmx-ext-head-support@2.0.5/dist/head-support.min.js
       - https://cdnjs.cloudflare.com/ajax/libs/ContentTools/1.6.16/content-tools.min.js
-      - https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js
-      # not using the .min because that breaks when minifying again:
-      - https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.js
+      - https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js
+      - https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js
+      - https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/nl.js
+      - $in_app/assets/js/app-navigation.ts
+      - $in_app/assets/js/auth-form.ts
+      - $in_app/assets/js/faq.ts
+      - py4web/apps/private/assets/js/javascript_dependencies.js
       - $in_app/assets/js/bootstrap-flash.js
       - $in_app/assets/js/editor.js
       - $in_app/assets/js/multiselectwidget.ts
+      - $in_app/assets/js/singleselectwidget.ts
+      - $in_app/assets/js/native-select.ts
+      - $in_app/assets/js/date-input.ts
       - $in_app/assets/js/catalogfilters.ts
       - $in_app/assets/js/comparison-selection.ts
+      - $in_app/assets/js/catalog-detail.ts
+      - $in_app/assets/js/platform-navigation.ts
+      - $in_app/assets/js/motion.ts
     css: # to bundle.css
-      - https://cdnjs.cloudflare.com/ajax/libs/ContentTools/1.6.16/content-tools.min.css
-      - https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.css
       - $in_app/assets/css/app.scss
+      - https://cdnjs.cloudflare.com/ajax/libs/ContentTools/1.6.16/content-tools.min.css
+      - https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css
+      - $in_app/assets/css/editor-icons.scss
 
     config:
       minify: 1
@@ -27,10 +39,77 @@ configurations:
       out_app: py4web/apps/_default
       in_app: py4web/apps/_default
 
+  private:
+    js:
+      - https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js
+      - py4web/apps/_default/assets/js/wizard-progress.ts
+      - py4web/apps/_default/assets/js/wizard-stepper.ts
+      - $in_app/assets/js/visie.js
+      - $in_app/assets/js/leermiddelen_search_modal.ts
+      - py4web/apps/_default/assets/js/process-overview.ts
+    # The bundler runs both pipelines, including for this JavaScript-only bundle.
+    css:
+      - /* Private pages reuse the shared stylesheet. */
+    config:
+      minify: 1
+      hash: 1
+      filename: private
+      output_css: $out_app/static/css/$filename-$version.css
+      output_js: $out_app/static/js/$filename-$version.js
+      out_app: py4web/apps/private
+      in_app: py4web/apps/private
+
+  vision-pdf:
+    # bundle.build runs both pipelines for every configuration in bundler 6.1.0.
+    # Keep this CSS-only bundle explicit instead of emitting a missing-js warning.
+    js:
+      - /* CSS-only PDF bundle; no browser JavaScript required. */
+    css:
+      - py4web/apps/private/assets/css/vision-pdf.scss
+    config:
+      minify: 1
+      hash: 1
+      filename: vision-pdf
+      output_css: $out_app/static/css/$filename-$version.css
+      output_js: $out_app/static/js/$filename-$version.js
+      out_app: py4web/apps/private
+      in_app: py4web/apps/private
+
+  error-game:
+    js:
+      - $in_app/assets/js/error-game.ts
+    css:
+      - $in_app/assets/css/_error-game.scss
+    config:
+      minify: 1
+      hash: 1
+      filename: error-game
+      output_css: $out_app/static/css/$filename-$version.css
+      output_js: $out_app/static/js/$filename-$version.js
+      out_app: py4web/apps/_default
+      in_app: py4web/apps/_default
+
+  llm-playground:
+    js:
+      - $in_app/assets/js/llm-playground.ts
+    css:
+      - $in_app/assets/css/llm-playground.scss
+    config:
+      minify: 1
+      hash: 1
+      filename: llm-playground
+      output_css: $out_app/static/css/$filename-$version.css
+      output_js: $out_app/static/js/$filename-$version.js
+      out_app: py4web/apps/admin
+      in_app: py4web/apps/admin
+
   admin:
     js: # to admin.js
-      - /* nothing yet */
+      - https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js
+      - https://cdn.jsdelivr.net/npm/easymde@2.18.0/dist/easymde.min.js
+      - py4web/apps/_default/assets/js/admin-ui.ts
     css: # to admin.css
+      - https://cdn.jsdelivr.net/npm/easymde@2.18.0/dist/easymde.min.css
       - $in_app/assets/css/admin.scss
 
     config:

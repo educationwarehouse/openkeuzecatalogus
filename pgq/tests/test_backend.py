@@ -5,6 +5,7 @@ import weakref
 
 from pgq.backend import pgq_backend
 from shared_code.data_model import AuthUser
+from shared_code.services.deferred import PgqDeferredWork
 
 
 def test_pgq_backend_releases_database_context() -> None:
@@ -31,6 +32,15 @@ def test_pgq_backend_releases_database_context() -> None:
     assert AuthUser._db is None
     assert not getattr(AuthUser.email, "requires", None)
     assert db_reference() is None
+
+
+def test_pgq_deferred_work_decodes_json_results_without_losing_unexpected_values() -> None:
+    """Stored PGQ values preserve nulls, non-text values, and malformed JSON safely."""
+    assert PgqDeferredWork._decode_result(None) is None
+    assert PgqDeferredWork._decode_result({"already": "decoded"}) == {"already": "decoded"}
+    assert PgqDeferredWork._decode_result(b'{"status": "done"}') == {"status": "done"}
+    assert PgqDeferredWork._decode_result('["first", 2]') == ["first", 2]
+    assert PgqDeferredWork._decode_result("not-json") == "not-json"
 
     with pgq_backend("pytest.pgq.backend2") as backend:
         assert AuthUser._db is backend.db

@@ -31,6 +31,7 @@ shared_code/
       smtp.py
       fake.py
     applog/
+    caching/
     entree/
   migrations/
     migrations.py
@@ -62,7 +63,7 @@ ORM-backed data model definitions.
 - Keeps persistence model code grouped and discoverable.
 
 ### `services/`
-External or side-effecting capabilities (mail, applog, remote APIs).
+External or side-effecting capabilities (mail, applog, caching, remote APIs).
 - Use package directories per service family or adapter boundary.
 - Keep contracts explicit (`contracts.py`) where practical.
 - Put real adapters in implementation files (e.g. `smtp.py`).
@@ -105,8 +106,11 @@ They do **not** represent final product domains. Replace them with actual bounde
 - [Compose runtime overview](architecture/overview.md)
 - [Dependency rules](architecture/dependency-rules.md)
 - [Auth and RBAC](architecture/auth-rbac.md)
+- [Decision processes and Keuzecanvas](architecture/decision-processes.md)
 - [Catalogue filtering](architecture/catalog-filters.md)
+- [Homepage discussion timeline](architecture/homepage-timeline.md)
 - [Search ranking](architecture/search-ranking.md)
+- [Caching and request tracking](architecture/caching.md)
 - [Public catalogue pages and comparisons](architecture/public-catalogue.md)
 - [Scraper import architecture](architecture/scraper-imports.md)
 - [Effective-dated `_ed` and `_model` tables](architecture/effective-dated-models.md)

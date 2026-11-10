@@ -1,17 +1,19 @@
 # OL standby: IP-swap en n8n devdb-sync
 
-Deze documentatie beschrijft hoe OL2 als standby-server wordt bijgehouden en hoe het dedicated IP handmatig wordt omgezet van OL1 naar OL2.
+Deze documentatie beschrijft hoe OL2 als standby-server wordt bijgehouden en hoe het dedicated IP handmatig wordt
+omgezet van OL1 naar OL2.
 
 > Deze documentatie bevat interne infrastructuurgegevens zoals IP-adressen en servernamen.
 > Deel dit document alleen intern en zet het niet in een publieke repository.
-> Secrets zoals SSH keys, tokens, `.env` waardes, pop URL's en delete URL's mogen nooit in deze documentatie worden opgeslagen.
+> Secrets zoals SSH keys, tokens, `.env` waardes, pop URL's en delete URL's mogen nooit in deze documentatie worden
+> opgeslagen.
 
 ## Situatie
 
-| Server | Rol | Private vSwitch IP |
-|---|---|---:|
-| OL1 | Actieve productie | `192.168.100.2` |
-| OL2 | Standby | `192.168.100.1` |
+| Server | Rol               | Private vSwitch IP |
+|--------|-------------------|--------------------|
+| OL1    | Actieve productie | `192.168.100.2`    |
+| OL2    | Standby           | `192.168.100.1`    |
 
 Dedicated public IP:
 
@@ -40,7 +42,8 @@ https://openkeuzecatalogus.edwh.nl
 
 De n8n workflow zorgt ervoor dat OL2 regelmatig een recente databasekopie krijgt van OL1.
 
-De workflow draait via SSH-commando’s. Hiervoor wordt key-based SSH gebruikt. De gebruikte SSH-user mag alleen de benodigde devdb-commando’s uitvoeren.
+De workflow draait via SSH-commando’s. Hiervoor wordt key-based SSH gebruikt. De gebruikte SSH-user mag alleen de
+benodigde devdb-commando’s uitvoeren.
 
 ### Workflow-overzicht
 
@@ -140,7 +143,8 @@ Dit is belangrijk zodat tijdelijke snapshots niet onnodig blijven bestaan.
 
 Als er geen delete URL beschikbaar is, doet de workflow niets extra’s.
 
-De database-sync is dan al uitgevoerd, maar de tijdelijke upload kon niet automatisch worden verwijderd. Dit moet zichtbaar blijven in de n8n-run, zodat dit eventueel handmatig gecontroleerd kan worden.
+De database-sync is dan al uitgevoerd, maar de tijdelijke upload kon niet automatisch worden verwijderd. Dit moet
+zichtbaar blijven in de n8n-run, zodat dit eventueel handmatig gecontroleerd kan worden.
 
 ---
 
@@ -153,7 +157,8 @@ Voor deze standby-opzet gelden de volgende beveiligingsafspraken:
 - De pop URL en delete URL uit `devdb.push` worden als geheim behandeld.
 - Tijdelijke devdb-snapshots worden na een succesvolle restore verwijderd.
 - n8n logt de workflow-uitvoering, inclusief snapshot, push, reset en delete-stap.
-- Fouten in de workflow moeten zichtbaar zijn, zodat mislukte restores of niet-verwijderde snapshots opgevolgd kunnen worden.
+- Fouten in de workflow moeten zichtbaar zijn, zodat mislukte restores of niet-verwijderde snapshots opgevolgd kunnen
+  worden.
 - De website blijft via HTTPS bereikbaar via Traefik.
 - Bestandssynchronisatie is nog buiten scope. Op dit moment wordt alleen de database via devdb gesynchroniseerd.
 

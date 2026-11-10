@@ -9,10 +9,10 @@ from pytest import MonkeyPatch
 from typedal import TypeDAL
 
 from shared_code.data_model import DynamicFilter, DynamicSort, MethodEd, Product, ProductEd, Supplier
-from shared_code.services.applog import Applogger, DequeApplogger
-from shared_code.services.applog.handler import process_applog_deque
 from shared_code.modules.auth import AuthAdapter
 from shared_code.modules.products import ProductBackend
+from shared_code.services.applog import Applogger, DequeApplogger
+from shared_code.services.applog.handler import process_applog_deque
 
 
 def _make_backend(auth: AuthAdapter, db: TypeDAL) -> ProductBackend:
@@ -21,6 +21,8 @@ def _make_backend(auth: AuthAdapter, db: TypeDAL) -> ProductBackend:
         db=db,
         auth_adapter=auth,
     )
+
+
 def test_product_backend_resolve_public_filters_uses_product_sort_options(
     migrated_db_per_file: None,
     db_per_file: TypeDAL,
@@ -71,24 +73,24 @@ def test_product_backend_list_public_products_excludes_removed_and_applies_sorti
 
     supplier = supplier_factory(name="Product Supplier", email_domains=["product-public.example.test"])
     method = method_factory(
-        supplier_gid=str(supplier.gid),
+        supplier_gid=supplier.gid,
         olid="product-method-001",
         name="Product Method",
     )
     product_factory(
-        supplier_gid=str(supplier.gid),
+        supplier_gid=supplier.gid,
         method_gid=method.gid,
         olid="product-001",
         name="Beta Product",
     )
     product_factory(
-        supplier_gid=str(supplier.gid),
+        supplier_gid=supplier.gid,
         method_gid=method.gid,
         olid="product-002",
         name="Alpha Product",
     )
     product_factory(
-        supplier_gid=str(supplier.gid),
+        supplier_gid=supplier.gid,
         method_gid=method.gid,
         olid="product-003",
         name="Removed Product",
@@ -125,12 +127,12 @@ def test_product_backend_search_uses_the_public_results_sort(
 
     supplier = supplier_factory(name="Multi Sort Search Supplier", email_domains=["multi-sort-search.example.test"])
     method = method_factory(
-        supplier_gid=str(supplier.gid),
+        supplier_gid=supplier.gid,
         olid="multi-sort-search-method",
         name="Multi Sort Search Method",
     )
     product_factory(
-        supplier_gid=str(supplier.gid),
+        supplier_gid=supplier.gid,
         method_gid=method.gid,
         olid="multi-sort-search-product",
         name="Stimulus Multi Sort Product",
@@ -184,18 +186,18 @@ def test_product_search_applog_records_each_result_id_and_rank(
 
     supplier = supplier_factory(name="Search Rank Supplier", email_domains=["search-rank.example.test"])
     method = method_factory(
-        supplier_gid=str(supplier.gid),
+        supplier_gid=supplier.gid,
         olid="search-rank-method",
         name="Search Rank Method",
     )
     first_product = product_factory(
-        supplier_gid=str(supplier.gid),
+        supplier_gid=supplier.gid,
         method_gid=method.gid,
         olid="search-rank-product-1",
         name="Algebra Basis",
     )
     second_product = product_factory(
-        supplier_gid=str(supplier.gid),
+        supplier_gid=supplier.gid,
         method_gid=method.gid,
         olid="search-rank-product-2",
         name="Algebra Plus",
@@ -249,18 +251,18 @@ def test_product_search_is_exported_to_catalog_search_report(
 
     supplier = supplier_factory(name="Search Report Supplier", email_domains=["search-report.example.test"])
     method = method_factory(
-        supplier_gid=str(supplier.gid),
+        supplier_gid=supplier.gid,
         olid="search-report-method-001",
         name="Search Report Method",
     )
     product_factory(
-        supplier_gid=str(supplier.gid),
+        supplier_gid=supplier.gid,
         method_gid=method.gid,
         olid="search-report-product-001",
         name="Algebra Basis",
     )
     product_factory(
-        supplier_gid=str(supplier.gid),
+        supplier_gid=supplier.gid,
         method_gid=method.gid,
         olid="search-report-product-002",
         name="Algebra Plus",
@@ -323,43 +325,45 @@ def test_product_backend_list_my_products_returns_only_member_rows(
     hidden_supplier = supplier_factory(name="Hidden Product Supplier", email_domains=["hidden-product.example.test"])
 
     visible_method = method_factory(
-        supplier_gid=str(visible_supplier.gid),
+        supplier_gid=visible_supplier.gid,
         olid="visible-product-method-001",
         name="Visible Product Method",
     )
     hidden_method = method_factory(
-        supplier_gid=str(hidden_supplier.gid),
+        supplier_gid=hidden_supplier.gid,
         olid="hidden-product-method-001",
         name="Hidden Product Method",
     )
 
     visible_product = product_factory(
-        supplier_gid=str(visible_supplier.gid),
+        supplier_gid=visible_supplier.gid,
         method_gid=visible_method.gid,
         olid="visible-product-001",
         name="Visible Product",
     )
     hidden_product = product_factory(
-        supplier_gid=str(hidden_supplier.gid),
+        supplier_gid=hidden_supplier.gid,
         method_gid=hidden_method.gid,
         olid="hidden-product-001",
         name="Hidden Product",
     )
 
-    user = auth_user_factory(prefix="product-member", domain="visible-product.example.test", roles=[str(visible_supplier.gid)])
+    user = auth_user_factory(
+        prefix="product-member", domain="visible-product.example.test", roles=[visible_supplier.gid]
+    )
     backend = _make_backend(auth_adapter_factory(user), db_per_file)
 
     rows = backend.list_my_products().collect()
 
-    assert {str(row.gid) for row in rows} == {str(visible_product.gid)}
-    assert str(hidden_product.gid) not in {str(row.gid) for row in rows}
+    assert {row.gid for row in rows} == {visible_product.gid}
+    assert hidden_product.gid not in {row.gid for row in rows}
 
     Product.where(Product.gid == visible_product.gid).first_or_fail().delete_record()
     db_per_file.commit()
 
     archived_rows = backend.list_my_products(with_deleted=True).collect()
 
-    assert {str(row.gid) for row in archived_rows} == {str(visible_product.gid)}
+    assert {row.gid for row in archived_rows} == {visible_product.gid}
     assert {row.effstatus for row in archived_rows} == {True, False}
 
 
@@ -374,26 +378,30 @@ def test_product_backend_list_my_products_with_deleted_returns_all_rows_for_admi
     """Admins should see active and archived products from every supplier."""
     assert migrated_db_per_file is None
 
-    first_supplier = supplier_factory(name="Admin Product Supplier One", email_domains=["admin-product-one.example.test"])
-    second_supplier = supplier_factory(name="Admin Product Supplier Two", email_domains=["admin-product-two.example.test"])
+    first_supplier = supplier_factory(
+        name="Admin Product Supplier One", email_domains=["admin-product-one.example.test"]
+    )
+    second_supplier = supplier_factory(
+        name="Admin Product Supplier Two", email_domains=["admin-product-two.example.test"]
+    )
     first_method = method_factory(
-        supplier_gid=str(first_supplier.gid),
+        supplier_gid=first_supplier.gid,
         olid="admin-product-method-001",
         name="Admin Product Method One",
     )
     second_method = method_factory(
-        supplier_gid=str(second_supplier.gid),
+        supplier_gid=second_supplier.gid,
         olid="admin-product-method-002",
         name="Admin Product Method Two",
     )
     first_product = product_factory(
-        supplier_gid=str(first_supplier.gid),
+        supplier_gid=first_supplier.gid,
         method_gid=first_method.gid,
         olid="admin-product-001",
         name="Admin Product One",
     )
     second_product = product_factory(
-        supplier_gid=str(second_supplier.gid),
+        supplier_gid=second_supplier.gid,
         method_gid=second_method.gid,
         olid="admin-product-002",
         name="Admin Product Two",
@@ -404,7 +412,7 @@ def test_product_backend_list_my_products_with_deleted_returns_all_rows_for_admi
 
     backend = _make_backend(education_warehouse_admin_adapter, db_per_file)
     rows = backend.list_my_products(with_deleted=True).collect()
-    row_gids = {str(row.gid) for row in rows}
+    row_gids = {row.gid for row in rows}
 
-    assert {str(first_product.gid), str(second_product.gid)}.issubset(row_gids)
-    assert any(str(row.gid) == str(first_product.gid) and row.effstatus is False for row in rows)
+    assert {first_product.gid, second_product.gid}.issubset(row_gids)
+    assert any(row.gid == first_product.gid and row.effstatus is False for row in rows)

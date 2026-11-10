@@ -2,6 +2,7 @@
 
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import AbstractContextManager, contextmanager
+from io import BytesIO
 from urllib.parse import urlencode
 
 import pytest
@@ -47,16 +48,23 @@ def admin_app_request_context() -> None:
 
 
 @pytest.fixture()
-def request_query() -> Callable[[Mapping[str, str]], AbstractContextManager[None]]:
+def request_query() -> Callable[[Mapping[str, str | list[str]]], AbstractContextManager[None]]:
     """Temporarily set the active request query through Ombott's environment."""
 
     @contextmanager
-    def set_query(params: Mapping[str, str]) -> Iterator[None]:
+    def set_query(params: Mapping[str, str | list[str]]) -> Iterator[None]:
         original_query_string = request.environ.get("QUERY_STRING", "")
-        request.environ["QUERY_STRING"] = urlencode(params)
+        original_wsgi_input = request.environ.get("wsgi.input")
+        request["QUERY_STRING"] = urlencode(params, doseq=True)
+        request["wsgi.input"] = BytesIO()
+
         try:
             yield
         finally:
-            request.environ["QUERY_STRING"] = original_query_string
+            request["QUERY_STRING"] = original_query_string
+            if original_wsgi_input is None:
+                del request["wsgi.input"]
+            else:
+                request["wsgi.input"] = original_wsgi_input
 
     return set_query

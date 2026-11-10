@@ -19,7 +19,7 @@ auth_adapter = edwh_rbac_adapter(
     get_actor=lambda: (
         AuthActor(
             kind="user",
-            id=str(u.gid),
+            id=u.gid,
             email=u.email,
             name=u.full_name,
         )
@@ -39,7 +39,7 @@ backend = Py4webBackend.with_injected(auth_adapter=auth_adapter)
 db = backend.db
 auth_context = backend.auth_context
 
-define_tables(db)
+define_tables(db, caching=backend.caching)
 
 auth = AppAuth.from_dependencies(session, db, backend)
 
@@ -48,5 +48,6 @@ __all__ = [
     "auth",
     "auth_context",
     "backend",
+    "db",
     "session",
 ]

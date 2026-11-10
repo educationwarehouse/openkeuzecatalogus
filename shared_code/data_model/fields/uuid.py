@@ -38,6 +38,14 @@ def InternalUUIDField(**kw: t.Unpack[FieldSettings]) -> TypedField[str]:
 
 
 # noinspection PyPep8Naming
+def UUIDReferenceField(**kw: t.Unpack[FieldSettings]) -> TypedField[str]:
+    """Reference an existing UUID without generating an unrelated identifier."""
+    settings: FieldSettings = {"default": None} | kw
+
+    return InternalUUIDField(**settings)
+
+
+# noinspection PyPep8Naming
 def OptionalUUIDField(**kw: t.Unpack[FieldSettings]) -> TypedField[str | None]:
     """Database type is nullable uuid, Python type is str | None."""
     settings: FieldSettings = {

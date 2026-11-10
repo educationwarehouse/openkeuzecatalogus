@@ -8,10 +8,12 @@ import typing as t
 from endow import Service
 
 from shared_code.data_model import Product
-from shared_code.infra.database import DatabaseContext, database_context
+from shared_code.infra.database import DatabaseContext, database_context, rebuild_model
+from shared_code.infra.database.bulk_operations import bulk_operation_context
 from shared_code.modules.auth import AuthAdapter
-from shared_code.modules.scrapers.flow import ImportFlow, rebuild_model
-from shared_code.modules.scrapers.run_log import record_importer_run, resolve_supplier_name
+from shared_code.modules.scrapers.errors import ImportWarningCode
+from shared_code.modules.scrapers.flow import ImportFlow
+from shared_code.modules.scrapers.run_log import record_importer_run, resolve_supplier_name, start_importer_run
 from shared_code.modules.scrapers.types import (
     CdnImageUploadStats,
     ImportMethod,
@@ -21,8 +23,6 @@ from shared_code.modules.scrapers.types import (
     ImportStats,
     ImportSupplier,
     ImportVision,
-    JsonObject,
-    JsonValue,
 )
 from shared_code.services import Applogger, ImageStorage
 from shared_code.services.images import ImageStorageError
@@ -33,9 +33,11 @@ class ImportRunExtras(t.TypedDict, total=False):
 
     base_url: str
     endpoint_publisher: str | None
-    supplier_gid: str
+    endpoint_uses_pagination: bool
+    supplier_gid: str | None
     endpoint_type: str | None
     job_key: str | None
+    trigger: str | None
 
 
 class AbstractImporter(Service, abc.ABC):
@@ -51,10 +53,13 @@ class AbstractImporter(Service, abc.ABC):
     flow: ImportFlow
 
     source = "unknown-importer"
+    prune_aggregate_runs = False
     priority: ImportPriority = ImportPriority.IMPORTER_OK
     mark_removed: bool = True
     last_saved_by: str | None = None
     supplier_gid: str | None = None
+    run_gid: str | None = None
+    removed_supplier_gids: set[str] | None = None
 
     def __init__(self, **_: t.Any) -> None:
         """Ignore constructor extras that individual importers may accept."""
@@ -91,6 +96,10 @@ class AbstractImporter(Service, abc.ABC):
         """Run after all import steps."""
         return None
 
+    def after_run_logged(self, run_gid: str, stats: ImportStats | None) -> None:
+        """Persist importer-specific reporting facts after the generic run record exists."""
+        return None
+
     def import_suppliers(self) -> ImportStats:
         """Import supplier rows and persist their run stats."""
         stats = ImportStats()
@@ -121,6 +130,7 @@ class AbstractImporter(Service, abc.ABC):
             last_saved_by=last_saved_by,
             mark_removed=mark_removed,
             removed_supplier_gid=self.supplier_gid,
+            removed_supplier_gids=self.removed_supplier_gids,
         )
 
     def import_visions(self) -> ImportStats:
@@ -146,7 +156,9 @@ class AbstractImporter(Service, abc.ABC):
 
         products = Product.where(Product.supplier_gid == self.supplier_gid).select(
             Product.gid,
+            Product.olid,
             Product.isbn,
+            Product.name,
             Product.image_url,
         )
         updated_images = False
@@ -162,13 +174,19 @@ class AbstractImporter(Service, abc.ABC):
 
             try:
                 stats.attempted += 1
-                upload_key = product.isbn or str(product.gid)
+                upload_key = product.isbn or product.gid
                 _, image_url = self.image_storage.upload_from_url(upload_key, product.image_url)
             except ImageStorageError as error:
                 stats.failed += 1
                 self._warn_import(
-                    warning_code="image_upload_failed",
+                    warning_code=ImportWarningCode.IMAGE_UPLOAD_FAILED,
                     message=f"Could not store image for product {product.gid}: {error}",
+                    product_name=product.name,
+                    reason=str(error),
+                    source_url=product.image_url,
+                    entity_type="product",
+                    entity_gid=product.gid,
+                    entity_olid=product.olid,
                 )
                 continue
 
@@ -176,7 +194,7 @@ class AbstractImporter(Service, abc.ABC):
 
             self.flow.insert_into_effdt_if_changed_for_prio(
                 Product,
-                str(product.gid),
+                product.gid,
                 {"image_url": image_url},
                 prio=self.priority,
                 last_saved_by=self.last_saved_by or self.source,
@@ -189,36 +207,13 @@ class AbstractImporter(Service, abc.ABC):
 
         return stats
 
-    @staticmethod
-    def _to_str(value: JsonValue) -> str:
-        return str(value or "").strip()
-
-    @staticmethod
-    def _to_float(value: JsonValue) -> float | None:
-        if value is None or value == "":
-            return None
-        try:
-            return float(value)  # type: ignore
-        except TypeError, ValueError:
-            return None
-
-    @staticmethod
-    def _to_bool(value: JsonValue) -> bool:
-        return bool(value)
-
-    @staticmethod
-    def _as_objects(values: JsonValue) -> list[JsonObject]:
-        if not isinstance(values, list):
-            return []
-        return [row for row in values if isinstance(row, dict)]
-
     def import_into_db(
         self,
         prio: int | ImportPriority | None = None,
         last_saved_by: str | None = None,
         mark_removed: bool | None = None,
     ) -> ImportStats:
-        """Run the standardized import flow for this importer."""
+        """Run lifecycle stages; production callers enter via locked try_import_into_db()."""
         resolved_prio = ImportPriority.normalize(prio if prio is not None else self.priority)
         resolved_last_saved_by = last_saved_by or self.last_saved_by or self.source
         resolved_mark_removed = self.mark_removed if mark_removed is None else mark_removed
@@ -230,8 +225,6 @@ class AbstractImporter(Service, abc.ABC):
             last_saved_by=resolved_last_saved_by,
             mark_removed=resolved_mark_removed,
         )
-        if self._warnings:
-            stats.warning_stats.extend(self._warnings)
         stats.suppliers = supplier_stats.suppliers
         self.after_methods_and_products_import(stats)
         vision_stats = self.import_visions()
@@ -240,18 +233,43 @@ class AbstractImporter(Service, abc.ABC):
 
         stats.visions = vision_stats.visions
         self.after_import(stats)
+        stats.warning_stats.extend(self._warnings)
         return stats
 
-    def _warn_import(self, warning_code: str, message: str) -> None:
-        # todo: StrEnum for warning_code
-        warning = ImportRunWarningStat(warning_code=warning_code, message=message)
+    def _warn_import(
+        self,
+        warning_code: ImportWarningCode,
+        message: str,
+        product_name: str | None = None,
+        reason: str | None = None,
+        source_url: str | None = None,
+        supplier_gid: str | None = None,
+        supplier_name: str | None = None,
+        entity_type: t.Literal["run", "supplier", "method", "product"] | None = None,
+        entity_gid: str | None = None,
+        entity_olid: str | None = None,
+    ) -> None:
+        if entity_type is None:
+            entity_type = "product" if product_name else "run"
+        warning = ImportRunWarningStat(
+            warning_code=warning_code,
+            message=message,
+            product_name=product_name,
+            reason=reason,
+            source_url=source_url,
+            supplier_gid=supplier_gid or self.supplier_gid,
+            supplier_name=supplier_name,
+            entity_type=entity_type,
+            entity_gid=entity_gid,
+            entity_olid=entity_olid,
+        )
         if warning not in self._warnings:
             self._warnings.append(warning)
 
     def _log_import_event(
         self,
         action: str,
-        supplier_gid: str,
+        supplier_gid: str | None,
         endpoint_type: str | None,
         job_key: str | None,
         started_at: dt.datetime,
@@ -285,14 +303,41 @@ class AbstractImporter(Service, abc.ABC):
         mark_removed: bool | None = None,
         **extras: t.Unpack[ImportRunExtras],
     ) -> ImportStats:
+        """Serialize the complete import, including image updates and reporting."""
+        # All runtime model rebuilds belong to this lifecycle. Lock before even
+        # reading supplier data, not only at rebuild_model() after taking locks.
+        with bulk_operation_context(self.db):
+            return self._try_import_into_db(
+                prio=prio,
+                last_saved_by=last_saved_by,
+                mark_removed=mark_removed,
+                **extras,
+            )
+
+    def _try_import_into_db(
+        self,
+        prio: int | ImportPriority | None = None,
+        last_saved_by: str | None = None,
+        mark_removed: bool | None = None,
+        **extras: t.Unpack[ImportRunExtras],
+    ) -> ImportStats:
         """Run the import flow and persist a durable finished-run record."""
         started_at = dt.datetime.now()
 
-        supplier_gid = extras["supplier_gid"]
+        supplier_gid = extras.get("supplier_gid")
         endpoint_type = extras.get("endpoint_type")
         job_key = extras.get("job_key")
 
         supplier_name = resolve_supplier_name(supplier_gid)
+        self.run_gid = start_importer_run(
+            self.db,
+            source=self.source,
+            endpoint_type=endpoint_type,
+            supplier_gid=supplier_gid,
+            supplier_name=supplier_name,
+            job_key=job_key,
+            started_at=started_at,
+        )
 
         self._log_import_event(
             action="scraper-import-started",
@@ -302,13 +347,14 @@ class AbstractImporter(Service, abc.ABC):
             started_at=started_at,
         )
 
+        stats: ImportStats | None = None
         try:
             stats = self.import_into_db(
                 prio=prio,
                 last_saved_by=last_saved_by,
                 mark_removed=mark_removed,
             )
-            record_importer_run(
+            run_gid = record_importer_run(
                 self.db,
                 source=self.source,
                 endpoint_type=endpoint_type,
@@ -320,8 +366,11 @@ class AbstractImporter(Service, abc.ABC):
                 success=True,
                 payload_json=dict(extras),
                 stats=stats,
-                warnings=self._warnings,
+                warnings=stats.warning_stats,
+                run_gid=self.run_gid,
+                prune_aggregate_runs=self.prune_aggregate_runs,
             )
+            self.after_run_logged(run_gid, stats)
             self._log_import_event(
                 action="scraper-import-finished",
                 supplier_gid=supplier_gid,
@@ -344,7 +393,7 @@ class AbstractImporter(Service, abc.ABC):
             )
             self.db.rollback()
             try:
-                record_importer_run(
+                run_gid = record_importer_run(
                     self.db,
                     source=self.source,
                     endpoint_type=endpoint_type,
@@ -356,8 +405,11 @@ class AbstractImporter(Service, abc.ABC):
                     success=False,
                     payload_json=dict(extras),
                     failure_message=failure_message,
-                    warnings=self._warnings,
+                    warnings=stats.warning_stats if stats is not None else self._warnings,
+                    run_gid=self.run_gid,
+                    prune_aggregate_runs=self.prune_aggregate_runs,
                 )
+                self.after_run_logged(run_gid, None)
             except Exception:
                 self.db.rollback()
 

@@ -20,9 +20,7 @@ def _make_auth_support_backend(db: TypeDAL) -> AuthSupportBackend:
         db=db,
         auth_adapter=auth_adapter,
         # manually overwrite mailer:
-        mailer=MockMailer.with_injected(
-            auth_adapter=auth_adapter
-        ),
+        mailer=MockMailer.with_injected(auth_adapter=auth_adapter),
     )
 
 
@@ -65,15 +63,16 @@ def test_lookup_invite_candidate_prefers_exact_user_and_falls_back_to_similar_id
     seeded_rbac.add_membership(similar_identity_gid, membership_gid)
     db_per_file.commit()
 
-    exact_result = backend.lookup_invite_candidate(str(exact_user.email), membership_gid)
+    exact_result = backend.lookup_invite_candidate(exact_user.email, membership_gid)
     assert exact_result["email"] == exact_user.email
     assert exact_result["similar_match"] is None
     assert exact_result["exact_match"] == {
-        "subject_id": str(exact_user.gid),
+        "subject_id": exact_user.gid,
         "email": exact_user.email,
         "full_name": "Exact User",
         "source": "user",
         "already_member": False,
+        "direct_member": False,
     }
 
     similar_result = backend.lookup_invite_candidate(f"invitesimilar{suffix}@example.test", membership_gid)
@@ -85,6 +84,7 @@ def test_lookup_invite_candidate_prefers_exact_user_and_falls_back_to_similar_id
         "full_name": "Similar Identity",
         "source": "identity",
         "already_member": True,
+        "direct_member": True,
     }
 
 
@@ -131,15 +131,15 @@ def test_auth_support_invite_lifecycle_and_membership_target_resolution(
         email_domains=[f"invite-supplier-{suffix}.example.test"],
     )
 
-    organisation_target = backend.resolve_membership_target(str(organisation.gid))
+    organisation_target = backend.resolve_membership_target(organisation.gid)
     assert organisation_target == {
-        "gid": str(organisation.gid),
+        "gid": organisation.gid,
         "label": f"Invite Organisation {suffix}",
     }
 
-    supplier_target = backend.resolve_membership_target(str(supplier.gid))
+    supplier_target = backend.resolve_membership_target(supplier.gid)
     assert supplier_target == {
-        "gid": str(supplier.gid),
+        "gid": supplier.gid,
         "label": f"Invite Supplier {suffix}",
     }
 
@@ -165,6 +165,7 @@ def test_auth_support_invite_lifecycle_and_membership_target_resolution(
     assert invited["full_name"] == "Invite Lifecycle"
     assert invited["source"] == "identity"
     assert invited["already_member"] is False
+    assert invited["direct_member"] is False
     assert invited["subject_id"]
 
     identity_row = (
@@ -195,15 +196,9 @@ def test_auth_support_invite_lifecycle_and_membership_target_resolution(
     )
 
     inbox_rows = [
-        json.loads(line)
-        for line in backend.mailer.inbox_path.read_text(encoding="utf-8").splitlines()
-        if line.strip()
+        json.loads(line) for line in backend.mailer.inbox_path.read_text(encoding="utf-8").splitlines() if line.strip()
     ]
-    matching_mails = [
-        row
-        for row in inbox_rows
-        if row.get("subject") == f"Uitnodiging voor Invite Lifecycle {suffix}"
-    ]
+    matching_mails = [row for row in inbox_rows if row.get("subject") == f"Uitnodiging voor Invite Lifecycle {suffix}"]
     assert len(matching_mails) == 1
     invite_mail = matching_mails[0]
     assert invite_mail["subject"] == f"Uitnodiging voor Invite Lifecycle {suffix}"

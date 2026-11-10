@@ -3,8 +3,9 @@
 import threading
 import typing as t
 
-from shared_code.infra.database import DatabaseContext, advisory_semaphore_context, database_context
+from shared_code.infra.database import DatabaseContext, advisory_semaphore_context
 from shared_code.infra.database.materialized_views import refresh_all_materialized_views
+from shared_code.modules.auth import AuthAdapter
 
 
 def test_all_materialized_views_can_refresh_concurrently(db_per_file: DatabaseContext) -> None:
@@ -14,7 +15,10 @@ def test_all_materialized_views_can_refresh_concurrently(db_per_file: DatabaseCo
         colnames=["mview"],
     )
 
-    assert not non_concurrent_views
+    assert not non_concurrent_views, (
+        "Materialized views without a unique index cannot refresh concurrently: "
+        f"{', '.join(row.mview for row in non_concurrent_views)}"
+    )
 
 
 def test_refresh_all_materialized_views_waits_for_its_semaphore() -> None:
@@ -25,21 +29,29 @@ def test_refresh_all_materialized_views_waits_for_its_semaphore() -> None:
     errors: list[BaseException] = []
 
     def hold_semaphore() -> None:
+        db = DatabaseContext.with_injected(
+            auth_adapter=AuthAdapter.for_service("pytest.materialized_views.semaphore_holder")
+        )
         try:
-            with database_context("pytest.materialized_views.semaphore_holder") as db:
-                with advisory_semaphore_context(db, semaphore="refresh_all_materialized_views"):
-                    semaphore_acquired.set()
-                    assert release_semaphore.wait(timeout=5)
+            with advisory_semaphore_context(db, semaphore="refresh_all_materialized_views"):
+                semaphore_acquired.set()
+                assert release_semaphore.wait(timeout=5)
         except BaseException as error:
             errors.append(error)
+        finally:
+            db.close()
 
     def refresh_views() -> None:
+        db = DatabaseContext.with_injected(
+            auth_adapter=AuthAdapter.for_service("pytest.materialized_views.semaphore_refresh")
+        )
         try:
-            with database_context("pytest.materialized_views.semaphore_refresh") as db:
-                refresh_all_materialized_views(db)
-                refresh_finished.set()
+            refresh_all_materialized_views(db)
+            refresh_finished.set()
         except BaseException as error:
             errors.append(error)
+        finally:
+            db.close()
 
     semaphore_thread = threading.Thread(target=hold_semaphore)
     refresh_thread = threading.Thread(target=refresh_views)

@@ -1,8 +1,26 @@
 <h3>Importvoorbeeld</h3>
-[[=preview]]
+[[if has_errors:]]
+<div class="alert alert-danger" role="alert">
+    <h4 class="alert-heading">Dit bestand kan niet worden geïmporteerd</h4>
+    <p>Het bestand <strong>[[=filename]]</strong> voldoet niet aan het verwachte importformaat. Er zijn geen gegevens opgeslagen.</p>
+    <ul>
+        [[for error in errors:]]
+        <li>[[=error]]</li>
+        [[pass]]
+    </ul>
+    <p class="mb-0">Download het template voor de juiste structuur en veldnamen. Pas het bestand aan en upload het opnieuw.</p>
+</div>
+[[else:]]
+<div class="table-responsive">
+    [[=preview]]
+</div>
+[[pass]]
 <div>
     <a href="[[=endpoint]]" class="btn btn-outline-secondary">Annuleren</a>
-    [[if not has_errors:]]
+    [[if has_errors:]]
+    <a href="[[=import_url]]" class="btn btn-primary ms-2">Ander bestand uploaden</a>
+    <a href="[[=template_url]]" class="btn btn-link">Template downloaden (JSON5)</a>
+    [[else:]]
     <form method="post" class="d-inline ms-2">
         <input type="hidden" name="payload_json" value="[[=payload_json]]">
         <input type="hidden" name="filename" value="[[=filename]]">

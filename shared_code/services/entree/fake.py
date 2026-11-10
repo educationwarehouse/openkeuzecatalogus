@@ -3,6 +3,7 @@
 import os
 import typing as t
 
+from ...data_model import AnyDict
 from .contracts import EntreeOAuthService
 
 MOCK_EMAIL_DOMAIN = os.environ.get("PYTEST_MOCK_EMAIL_DOMAIN", "")
@@ -13,8 +14,8 @@ class MockEntreeOAuthService(EntreeOAuthService):
 
     def __init__(
         self,
-        token_response: dict[str, t.Any] | None = None,
-        userinfo_response: dict[str, t.Any] | None = None,
+        token_response: AnyDict | None = None,
+        userinfo_response: AnyDict | None = None,
     ) -> None:
         """Initialize fake responses for token and userinfo endpoints."""
         super().__init__()
@@ -44,6 +45,6 @@ class MockEntreeOAuthService(EntreeOAuthService):
         """Return the configured access token from the fake token payload."""
         return t.cast(str | None, self.token_response.get("access_token"))
 
-    def fetch_userinfo(self, userinfo_url: str, token: str) -> dict[str, t.Any]:
+    def fetch_userinfo(self, userinfo_url: str, token: str) -> AnyDict:
         """Return a copy of the configured fake userinfo payload."""
         return dict(self.userinfo_response)

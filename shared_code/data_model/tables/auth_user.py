@@ -13,6 +13,7 @@ from typedal.web2py_py4web_shared import AuthUser as _AuthUser
 from shared_code.data_model.constants import ROLE_USER, SECTOREN
 from shared_code.data_model.mixins.search import SearchMixin
 from shared_code.data_model.tables.base import TableWithGid
+from shared_code.data_model.tables.rbac import Identity
 from shared_code.data_model.validators.is_existing_sso_account import (
     IS_EMPTY_ON_UPDATE,
     IS_NORMALIZED_EMAIL,
@@ -37,15 +38,25 @@ def _resolve_existing_identity_by_normalized_email(
         return existing
 
     normalized_email = normalize_email_for_lookup(email)
-    identity_query = (db.identity.object_type == "user") & build_normalized_email_match_query(
-        db.identity.email,
+    identity_query = (Identity.object_type == "user") & build_normalized_email_match_query(
+        Identity.email,
         normalized_email,
     )
-    identity_row = db(identity_query).select(db.identity.object_id, limitby=(0, 1)).first()
+    identity_row = Identity.where(identity_query).select(Identity.object_id, limitby=(0, 1)).first()
     if identity_row and (existing := rbac.get_user(identity_row.object_id)):
         return existing
 
     return None
+
+
+def _omit_empty_password(_selection: Set, changes: OpRow) -> bool:
+    """Omit an empty password field so it cannot clear the stored password."""
+    update_changes = t.cast(dict, changes)
+    if "password" not in update_changes or update_changes["password"] is not None:
+        return False
+
+    del update_changes["password"]
+    return not tuple(update_changes)
 
 
 class AuthUser(_AuthUser, TableWithGid, SearchMixin, search_fields=("email", "first_name", "last_name")):
@@ -65,19 +76,19 @@ class AuthUser(_AuthUser, TableWithGid, SearchMixin, search_fields=("email", "fi
     onderwijs_sector = TypedField(str, requires=IS_EMPTY_OR(IS_IN_SET(SECTOREN)))
 
     roles = relationship(
-        list["identity"],
+        list[Identity],
         on=lambda auth_user, identity: [
             # Create a PyDAL alias table for the join manually as alternative to TypedTable.unique_alias():
             membership := AuthUser._db.membership.with_alias("user_identity_membership"),  # type: ignore
             # Define how membership links the user to identities
-            membership.on(membership.subject == auth_user.gid),
+            membership.on(auth_user.gid == membership.subject),
             # Then link to the identity table
             identity.on(identity.object_id == membership.member_of),
         ],
-    )
+    )  # type: ignore
 
     @classmethod
-    def __on_define__(cls, db: DatabaseContext) -> None:
+    def __on_define__(cls, db: DatabaseContext) -> None:  # ty: ignore[invalid-method-override]
         """Configure validators and register table hooks after model definition."""
         super().__on_define__(db)
         auth = db.auth
@@ -156,23 +167,17 @@ class AuthUser(_AuthUser, TableWithGid, SearchMixin, search_fields=("email", "fi
 
         cls.after_insert(on_insert)
 
-        def on_before_update(_selection: Set, changes: OpRow) -> bool:
-            """Omit an empty password field so it cannot clear the stored password."""
-            update_changes = t.cast(dict, changes)
-            if "password" not in update_changes or update_changes["password"] is not None:
-                return False
-
-            del update_changes["password"]
-            return not tuple(update_changes)
-
-        cls.before_update(on_before_update)
+        cls.before_update(_omit_empty_password)
 
         def on_update(selection: Set, changes: OpRow) -> None:
-            users: list[AuthUser] = selection.select(
-                AuthUser.id,
-                AuthUser.first_name,
-                AuthUser.last_name,
-                AuthUser.gid,
+            users = t.cast(
+                list[AuthUser],
+                selection.select(
+                    AuthUser.id,
+                    AuthUser.first_name,
+                    AuthUser.last_name,
+                    AuthUser.gid,
+                ),
             )
             for user in users:
                 identity = rbac.get_user(user.gid)

@@ -4,13 +4,12 @@ import typing as t
 
 from pydal.helpers.classes import RecordOperator
 
-from shared_code.modules.auth import AuthContext
-
 from .helpers import model_to_ed, update_effectivedated
 from .table import EffdtTable
 
 if t.TYPE_CHECKING:
     from shared_code.infra.database import DatabaseContext
+    from shared_code.modules.auth import AuthContext
 
 
 class AuthRecordOperator(RecordOperator):

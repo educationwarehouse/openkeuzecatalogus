@@ -1,6 +1,5 @@
 import json
 import typing as t
-from pathlib import Path
 from uuid import UUID
 
 from common.controllers.error import FancyHTTP
@@ -12,7 +11,7 @@ from yatl.helpers import XML
 from py4web import URL, action, redirect, request, response
 from shared_code.data_model import AnyDict, Method, Product, TimelineEvent
 from shared_code.modules.catalog_filters import InvalidCatalogFilterValue, ResolvedCatalogFilters
-from shared_code.util.html import catalog_external_url
+from shared_code.util.html import catalog_external_url, markdown_to_text
 from shared_code.util.lists import uniq
 
 from ..fixtures import common
@@ -24,6 +23,7 @@ from ..models.catalog_presentation import (
     display_catalog_value,
     display_vision_properties,
 )
+from ..models.faq import faq_page_context, homepage_faq_preview
 from ..models.favorites import (
     FavoriteActionContext,
     FavoriteRowsContext,
@@ -45,11 +45,6 @@ method_favorite_settings = MethodFavoriteSettings()
 product_favorite_settings = ProductFavoriteSettings()
 
 
-def faq_answer_text(question: AnyDict) -> str:
-    """Flatten one structured FAQ answer for search and metadata."""
-    return "\n\n".join(block["text"] if block["type"] == "p" else "\n".join(block["items"]) for block in question["a"])
-
-
 class CatalogResultsContext(t.TypedDict):
     """Template values shared by full catalogue pages and HTMX result swaps."""
 
@@ -66,7 +61,11 @@ class CatalogResultsContext(t.TypedDict):
 def index() -> AnyDict:
     """Render the public Open Keuzecatalogus landing page."""
     events = TimelineEvent.all()
-    return {"timeline": timeline_context(events), "event_summary": event_summary}
+    return {
+        "timeline": timeline_context(events),
+        "event_summary": event_summary,
+        "faq_preview": homepage_faq_preview(),
+    }
 
 
 @action("privacyverklaring")
@@ -81,10 +80,7 @@ def privacyverklaring() -> AnyDict:
 @common("faq.html")
 def faq() -> AnyDict:
     """Render the public frequently asked questions page."""
-    faq_data = json.loads(Path("/data/seeding/faq.json").read_text(encoding="utf-8"))
-    questions = [question for category in faq_data["categories"] for question in category["questions"]]
-    for question in questions:
-        question["search_text"] = f"{question['q']} {faq_answer_text(question)}".lower()
+    page = faq_page_context()
     schema = {
         "@context": "https://schema.org",
         "@type": "FAQPage",
@@ -94,17 +90,17 @@ def faq() -> AnyDict:
         "mainEntity": [
             {
                 "@type": "Question",
-                "name": question["q"],
+                "name": item["row"].question,
                 "acceptedAnswer": {
                     "@type": "Answer",
-                    "text": faq_answer_text(question),
+                    "text": markdown_to_text(item["row"].answer or ""),
                 },
             }
-            for question in questions
+            for item in page["questions"]
         ],
     }
     return {
-        "faq_data": faq_data,
+        "faq_page": page,
         "faq_schema": XML(json.dumps(schema, ensure_ascii=False).replace("<", r"\u003c")),
     }
 
@@ -163,6 +159,7 @@ def product_detail(gid: str) -> AnyDict:
         "entity_kind": "product",
         "detail": detail,
         "similar_items": backend.similar_materials.for_product(detail["product"]),
+        "show_themes": backend.catalogus_settings.get_show_themes(),
         "catalog_fields": catalog_fields,
         "catalog_report_url": catalog_report_url,
         "display_catalog_value": display_catalog_value,
@@ -197,6 +194,7 @@ def method_detail(gid: str) -> AnyDict:
         "entity_kind": "method",
         "detail": detail,
         "similar_items": backend.similar_materials.for_method(detail["method"]),
+        "show_themes": backend.catalogus_settings.get_show_themes(),
         "catalog_fields": catalog_fields,
         "catalog_report_url": catalog_report_url,
         "display_catalog_value": display_catalog_value,
@@ -229,6 +227,7 @@ def compare(entity_kind: str, gids_path: str) -> AnyDict:
         "title": "Methodes vergelijken" if entity_kind == "method" else "Producten vergelijken",
         "entity_kind": entity_kind,
         "catalog_entity_kind": entity_kind,
+        "show_themes": backend.catalogus_settings.get_show_themes(),
         "display_catalog_value": display_catalog_value,
         "display_vision_properties": display_vision_properties,
         "comparison_link_label": comparison_link_label,

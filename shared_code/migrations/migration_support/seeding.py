@@ -21,7 +21,6 @@ def insert_relationship_v1(
     predicate: str,
     object_gid: str,
     seen_triples: set[tuple[str, str, str]],
-    *,
     last_saved_by: str = "insert_relationship_v1",
     comment: str = "",
     check: bool = True,
@@ -124,6 +123,24 @@ def fetch_seed_table_rows_v1(
     return payload
 
 
+def _prepare_seed_placeholders_v1(row: AnyDict, insertable_columns: list[str], column_types: dict[str, str]) -> AnyDict:
+    """Serialize JSON and list values for one seed insert."""
+    placeholders_map = {}
+    for col in insertable_columns:
+        value = row.get(col)
+        data_type = column_types.get(col)
+
+        if data_type in ("json", "jsonb") and value is not None:
+            value = json.dumps(value)
+
+        if data_type == "text" and isinstance(value, (set, list, tuple)):
+            value = "|".join(value)
+            value = f"|{value}|"
+
+        placeholders_map[col] = value
+    return placeholders_map
+
+
 def import_seed_table_v1(
     db: TypeDAL,
     base_url: str,
@@ -181,26 +198,9 @@ def import_seed_table_v1(
         VALUES ({placeholders})
         """  # noqa S608: all parameters are in our control so no SQL injection possible
 
-    def prepare_placeholders(row: dict[str, t.Any]) -> dict[str, t.Any]:
-        placeholders_map = {}
-        for col in insertable_columns:
-            value = row.get(col)
-            data_type = column_types.get(col)
-
-            if data_type in ("json", "jsonb") and value is not None:
-                value = json.dumps(value)
-
-            if data_type == "text" and isinstance(value, (set, list, tuple)):
-                value = "|".join(value)
-                value = f"|{value}|"
-
-            placeholders_map[col] = value
-
-        return placeholders_map
-
     for row in payload:
         try:
-            placeholders = prepare_placeholders(row)
+            placeholders = _prepare_seed_placeholders_v1(row, insertable_columns, column_types)
             db.executesql(query, placeholders=placeholders)
         except Exception as e:
             print("failed on", row)

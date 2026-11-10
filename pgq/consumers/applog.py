@@ -1,12 +1,10 @@
 """Consumer setup for application logging jobs."""
 
-import datetime as dt
-
-from pgqueuer.models import Schedule
-from pgskewer import ImprovedQueuer, unblock
+from pgqueuer.models import Job
+from pgskewer import unblock
 
 from pgq.backend import pgq_backend
-from pgq.consumers.health import mark_heartbeat
+from pgq.queue import WorkerQueuer
 from shared_code.services.applog.handler import process_applog_deque
 
 
@@ -22,27 +20,21 @@ def process_ticket_signal_queue_blocking() -> int:
         return backend.error_tickets.process_ticket_signal_queue()
 
 
-async def main() -> ImprovedQueuer:
-    """Build and return the applog queue with schedules registered."""
-    pgq = await ImprovedQueuer.from_env()
+async def main() -> WorkerQueuer:
+    """Build and return the applog queue with entrypoints and health checks registered."""
+    pgq = await WorkerQueuer.from_env()
 
-    @pgq.schedule("process_applog_deque_every_minute", "* * * * *")
-    async def process_applog_deque_every_minute(_: Schedule) -> None:
+    @pgq.entrypoint("process_applog_deque")
+    async def process_applog_deque(_: Job) -> None:
         processed_count = await unblock(process_applog_deque_blocking)
         if processed_count:
             print(f"[applog] processed deque batch: {processed_count}")
 
-    @pgq.schedule("process_ticket_signal_queue_every_minute", "* * * * *")
-    async def process_ticket_signal_queue_every_minute(_: Schedule) -> None:
+    @pgq.entrypoint("process_ticket_signal_queue")
+    async def process_ticket_signal_queue(_: Job) -> None:
         processed_count = await unblock(process_ticket_signal_queue_blocking)
         if processed_count:
             print(f"[error-signal] processed queue batch: {processed_count}")
 
-    @pgq.schedule("healthcheck_every_minute_applog", "* * * * *")
-    async def healthcheck_every_minute(_: Schedule) -> None:
-        mark_heartbeat()
-        print(f"[health] Ran at {dt.datetime.now():%H:%M:%S}")
-
     print("[pgq] ready:", pgq.channel)
-    mark_heartbeat()
     return pgq

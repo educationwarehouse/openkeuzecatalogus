@@ -2,6 +2,7 @@
 .toml
 __pycache__/
 .idea
+.DS_Store
 migrate/flags/
 migrate/data/*
 !migrate/data/seeding/
@@ -15,7 +16,6 @@ build/
 venv*
 *.pyc
 py4web/password.txt
-py4web/apps/*/static/*/bundled-latest*
-py4web/apps/*/static/*/admin-latest*
+py4web/apps/*/static/*/*-latest*
 py4web/apps/_dashboard/
 py4web/apps/.service/

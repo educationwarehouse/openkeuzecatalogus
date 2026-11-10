@@ -47,9 +47,9 @@ def test_json_import_dispatches_callbacks_for_each_change_type() -> None:
 
     changes: list[tuple[str, str]] = []
     importer = _json_import(
-        after_insert=[lambda row: changes.append(("insert", str(row.gid)))],
-        after_update=[lambda row: changes.append(("update", str(row.gid)))],
-        after_delete=[lambda row: changes.append(("delete", str(row.gid)))],
+        after_insert=[lambda row: changes.append(("insert", row.gid))],
+        after_update=[lambda row: changes.append(("update", row.gid))],
+        after_delete=[lambda row: changes.append(("delete", row.gid))],
     )
     importer.rows = [
         {"values": {"name": "New supplier", "olid": _unique_olid()}},
@@ -60,8 +60,8 @@ def test_json_import_dispatches_callbacks_for_each_change_type() -> None:
     importer.apply()
 
     assert [action for action, _ in changes] == ["insert", "update", "delete"]
-    assert changes[1][1] == str(existing.gid)
-    assert changes[2][1] == str(archived.gid)
+    assert changes[1][1] == existing.gid
+    assert changes[2][1] == archived.gid
 
 
 def test_json_import_rolls_back_all_rows_when_a_later_supplier_insert_fails() -> None:

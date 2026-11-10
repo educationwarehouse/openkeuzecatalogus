@@ -4,17 +4,18 @@ import os
 import shutil
 import sys
 import traceback
-import typing as t
 import uuid
 from pathlib import Path
 
 import configuraptor
 from endow import Service
 
-from shared_code.data_model import AnyDict
+from shared_code.data_model import AnyMapping
 from shared_code.infra.web import PY4WEB_URL
+from shared_code.services.applog import Applogger
 from shared_code.services.error_signals import ErrorSignal, ErrorSignalService
 from shared_code.util.time import utcnow
+from shared_code.util.types import MultiValue
 
 from .constants import ERROR_CACHE_PATH
 from .types import AuthInfo, ErrorTicket, ExceptionInfo, MetaInfo, RequestInfo, SnapshotDict, redact_request_info
@@ -23,6 +24,7 @@ from .types import AuthInfo, ErrorTicket, ExceptionInfo, MetaInfo, RequestInfo, 
 class ErrorTicketService(Service):
     """Persist and retrieve structured error tickets from the shared cache."""
 
+    applog: Applogger
     signals: ErrorSignalService
 
     @staticmethod
@@ -33,7 +35,7 @@ class ErrorTicketService(Service):
         return error_cache_path
 
     @staticmethod
-    def _gather_exc_info(context: AnyDict) -> tuple[str, str, str]:
+    def _gather_exc_info(context: AnyMapping) -> tuple[str, str, str]:
         """Capture the active exception, falling back to the supplied context."""
         exc_type_obj, exc_value, tb_obj = sys.exc_info()
         exc_type = exc_type_obj.__name__ if exc_type_obj else context.get("exception_type", "Unknown")
@@ -68,7 +70,7 @@ class ErrorTicketService(Service):
 
     def store(
         self,
-        context: AnyDict,
+        context: AnyMapping,
         project: str | None = None,
         snapshot: SnapshotDict | None = None,
     ) -> str:
@@ -92,7 +94,7 @@ class ErrorTicketService(Service):
             request=req_info,
             exception=ExceptionInfo(type=exc_type, message=exc_msg, traceback=tb_str),
             auth=auth_info or AuthInfo(),
-            context=context,
+            context=dict(context),
         )
         if req_info is None:
             del ticket.request
@@ -105,17 +107,42 @@ class ErrorTicketService(Service):
 
     def try_store(
         self,
-        context: AnyDict,
+        context: AnyMapping,
         project: str | None = None,
         snapshot: SnapshotDict | None = None,
+        applog: bool = False,
     ) -> str | None:
-        """Try to store an error ticket without letting storage failures escape."""
+        """Try to store an error ticket without letting storage failures escape.
+
+        Pass `applog=True` to also announce the ticket (or the failure to store it) as an
+        applog error event. Off by default so a caller that is reporting an applog failure
+        itself can keep it out of the loop.
+        """
+        # captured up front: inside the `except` below the active exception is the storage failure,
+        # no longer the error we are trying to report.
+        exc_type, exc_msg, _ = self._gather_exc_info(context)
+        ticket_id: str | None = None
+
         try:
-            return self.store(context, project=project, snapshot=snapshot)
+            ticket_id = self.store(context, project=project, snapshot=snapshot)
         except Exception as error:
             print(f"[error-ticket] failed with {type(error)}({error})")
             print("[error-ticket]", "".join(traceback.format_exception(error)))
-            return None
+
+        if applog:
+            self.applog.try_fire(
+                {
+                    "kind": "error",
+                    "action": "error-ticket-stored" if ticket_id else "error-ticket-store-failed",
+                    "details": {
+                        "application": context.get("application") or os.environ.get("APPLICATION_NAME", ""),
+                        "ticket_id": ticket_id,
+                        "exception_type": exc_type,
+                        "exception": exc_msg,
+                    },
+                },
+            )
+        return ticket_id
 
     def delete(self, ticket_id: str) -> None:
         """Delete a single stored error ticket."""
@@ -127,7 +154,7 @@ class ErrorTicketService(Service):
         shutil.rmtree(error_cache_path)
         error_cache_path.mkdir(exist_ok=True)
 
-    def list_tickets(self, limit: int = 0, ticket_ids: t.Collection[str] | None = None) -> list[ErrorTicket]:
+    def list_tickets(self, limit: int = 0, ticket_ids: MultiValue[str] | None = None) -> list[ErrorTicket]:
         """Return stored error tickets in descending file order, optionally by ID."""
         tickets: list[ErrorTicket] = []
         selected_ticket_ids = set(ticket_ids) if ticket_ids is not None else None

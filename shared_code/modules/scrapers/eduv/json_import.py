@@ -3,14 +3,16 @@
 import typing as t
 from dataclasses import dataclass
 
+from shared_code.data_model import AnyDict
 from shared_code.modules.scrapers.eduv import (
     BaseEduVImporter,
     EduVFileVersion,
     EduVImporter,
     InvalidEduVProductRow,
+    TrackedEduVProductV1_1,
+    TrackedEduVProductV2_0,
 )
-from shared_code.modules.scrapers.eduv.generated import catalogue_v1_1_0, catalogue_v2_0_0
-from shared_code.modules.scrapers.errors import ImportErrorCode
+from shared_code.modules.scrapers.errors import ImportWarningCode
 from shared_code.modules.scrapers.types import (
     ImportMethod,
     ImportPriority,
@@ -27,26 +29,27 @@ class EduVFileValidationError:
 
     index: int
     messages: list[str]
+    source_row: JsonObject
 
 
-class EduVFileImporter(BaseEduVImporter):
-    """Run the regular Edu-V normalization flow against an uploaded document."""
+class EduVPayloadImporter(BaseEduVImporter):
+    """Run the regular Edu-V normalization flow against an in-memory document."""
 
-    source = "edu-v-file-import"
+    source = "edu-v-payload-import"
     max_eduv_version = "2.0.0"
 
     def __init__(
         self,
-        payload: JsonValue,
+        payload: JsonValue | AnyDict,
         version: EduVFileVersion,
         supplier_gid: str,
         endpoint_publisher: str | None = None,
         **extras: t.Any,
     ) -> None:
-        """Initialize an importer for an uploaded Edu-V catalogue payload.
+        """Initialize an importer for an in-memory Edu-V catalogue payload.
 
         Args:
-            payload: JSON payload containing the products to validate and import.
+            payload: JSON payload containing products to validate and import.
             version: Edu-V schema version used to validate the payload.
             supplier_gid: Global identifier of the supplier owning the products.
             endpoint_publisher: Optional publisher value used to filter products.
@@ -72,7 +75,7 @@ class EduVFileImporter(BaseEduVImporter):
         supplier_gid: str,
         endpoint_publisher: str | None = None,
     ) -> t.Self:
-        """Build the importer from the uploaded document, not an endpoint URL."""
+        """Build the importer from a supplied document, not an endpoint URL."""
         return cls(
             payload=payload,
             version=version,
@@ -80,22 +83,43 @@ class EduVFileImporter(BaseEduVImporter):
             endpoint_publisher=endpoint_publisher,
         )
 
+    def _payload_rows(self) -> list[JsonValue]:
+        """Resolve and validate the product collection in an uploaded document."""
+        if isinstance(self.payload, list):
+            payload_rows = self.payload
+        elif isinstance(self.payload, dict):
+            missing = object()
+            payload_rows = next(
+                (self.payload[key] for key in ("products", "items", "results", "data") if key in self.payload),
+                missing,
+            )
+            if payload_rows is missing:
+                raise ValueError("Edu-V payload has no product collection")
+        else:
+            raise ValueError("Edu-V payload must be a product list or an object containing one")
+
+        if not isinstance(payload_rows, list):
+            raise ValueError("Edu-V product collection must be a list")
+        return payload_rows
+
     def _fetch_products_payload(self) -> list[JsonObject]:
         """Read product objects from the uploaded payload without fetching an endpoint."""
         if self._products_cache is not None:
             return self._products_cache
 
-        if isinstance(self.payload, list):
-            rows = self._as_objects(self.payload)
-        elif isinstance(self.payload, dict):
-            rows = (
-                self._as_objects(self.payload.get("products"))
-                or self._as_objects(self.payload.get("items"))
-                or self._as_objects(self.payload.get("results"))
-                or self._as_objects(self.payload.get("data"))
-            )
-        else:
-            rows = []
+        rows: list[JsonObject] = []
+        for index, row in enumerate(self._payload_rows(), start=1):
+            if isinstance(row, dict):
+                publisher = row.get("publisher")
+                if self.endpoint_publisher and (not isinstance(publisher, str) or not publisher.strip()):
+                    self._warn_import(
+                        warning_code=ImportWarningCode.EDUV_PRODUCT_ROW_SKIPPED,
+                        message=f"Skipped Edu-V product row {index}: publisher is missing or invalid.",
+                        reason=repr(row),
+                    )
+                rows.append(row)
+            else:
+                self._warn_nonobject_product_row(index, row)
 
         if self.endpoint_publisher:
             rows = [row for row in rows if self._matches_endpoint_publisher(row)]
@@ -112,22 +136,9 @@ class EduVFileImporter(BaseEduVImporter):
         if self._converted_products is not None:
             return self._converted_products
 
-        product_model = catalogue_v1_1_0.Product if self.version == "v1" else catalogue_v2_0_0.Product
-        validated_rows, invalid_rows = self._validate_products_payload(product_model)
+        product_model = TrackedEduVProductV1_1 if self.version == "v1" else TrackedEduVProductV2_0
+        products, invalid_rows = self._convert_products(product_model)
         self._validation_errors.extend(self._invalid_row_errors(invalid_rows))
-
-        products: list[ImportProduct] = []
-        for index, product in enumerate(validated_rows, start=1):
-            converted = self._convert_validated_product(product)
-            if errors := converted.get("_errors"):
-                self._validation_errors.append(
-                    EduVFileValidationError(
-                        index=index,
-                        messages=[ImportErrorCode(error).label_nl for error in errors],
-                    )
-                )
-                continue
-            products.append(converted)
         self._converted_products = products
         return products
 
@@ -155,7 +166,20 @@ class EduVFileImporter(BaseEduVImporter):
     @staticmethod
     def _invalid_row_errors(rows: list[InvalidEduVProductRow]) -> list[EduVFileValidationError]:
         """Translate Pydantic validation failures for the admin preview."""
-        return [EduVFileValidationError(index=row["_index"], messages=list(row["_validation_errors"])) for row in rows]
+        return [
+            EduVFileValidationError(
+                index=row["_index"],
+                messages=list(row["_validation_errors"]),
+                source_row=row["_row"],
+            )
+            for row in rows
+        ]
+
+
+class EduVFileImporter(EduVPayloadImporter):
+    """Run the in-memory Edu-V flow for an uploaded document."""
+
+    source = "edu-v-file-import"
 
 
 def default_eduv_file_version(endpoint_base_url: str | None) -> EduVFileVersion | None:
@@ -167,5 +191,6 @@ __all__ = [
     "EduVFileImporter",
     "EduVFileValidationError",
     "EduVFileVersion",
+    "EduVPayloadImporter",
     "default_eduv_file_version",
 ]

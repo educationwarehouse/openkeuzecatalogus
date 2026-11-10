@@ -45,6 +45,7 @@ Domain rows then get their own RBAC identities:
 
 - supplier rows create `<supplier gid>@supplier` groups
 - organisation rows create `<organisation gid>@organisation` groups
+- teaching-team rows create `<team gid>@team` groups below their location
 
 Those row-level groups also receive self-permissions so members can read and write their own entity.
 
@@ -64,6 +65,22 @@ Membership assignment is data-driven:
 
 - supplier membership comes from matching the user's email domain against `supplier.email_domains`
 - organisation membership comes from matching the user's email domain against `organisation.email_domains`
+
+## Membership Invitations
+
+Administrators can invite people to supplier, organisation, or teaching-team memberships. The
+shared invitation flow first normalizes the email address and looks for an exact or similar
+existing user or pending identity.
+
+- An existing identity receives a direct membership after confirmation. A user who already has
+  inherited access may still receive a direct membership, because this makes the membership
+  explicit in the target's member list.
+- A new person receives an invited identity, a direct membership, and an email with the login or
+  registration link. Registration or SSO with that email claims the pending identity.
+- Pending invitations can be retracted by removing that direct membership.
+
+The flow rejects duplicate direct memberships and rechecks the selected candidate before granting
+access, so a stale form submission cannot grant membership to a different identity.
 
 ## Policy Layer
 

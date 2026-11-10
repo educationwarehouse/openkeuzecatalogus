@@ -6,8 +6,10 @@ import typing as t
 from endow import Injectable
 from typedal import TypeDAL
 
-from shared_code.modules.auth import AuthContext
-from shared_code.services.applog import Applogger
+if t.TYPE_CHECKING:
+    from shared_code.modules.auth import AuthContext
+    from shared_code.services.applog import Applogger
+    from shared_code.services.caching import CacheService
 
 
 class DatabaseContext(TypeDAL, Injectable):
@@ -15,6 +17,10 @@ class DatabaseContext(TypeDAL, Injectable):
 
     auth: AuthContext
     applog: Applogger
+    caching: CacheService
+
+    # set by `AuthContext.raw_rbac` once edwh-rbac's tables are defined on this DAL (unannotated: not injected)
+    _rbac_model_defined = False
 
     @classmethod
     def from_env(cls) -> t.Self:

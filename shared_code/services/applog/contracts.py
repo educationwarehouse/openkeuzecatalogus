@@ -3,6 +3,7 @@
 import abc
 import datetime as dt
 import json
+import logging
 import typing as t
 from uuid import UUID
 
@@ -11,6 +12,7 @@ from typedal import PaginatedRows
 
 from shared_code.util.env import bool_from_env
 from shared_code.util.time import utcnow
+from shared_code.util.types import Ordered
 
 if t.TYPE_CHECKING:
     from shared_code.data_model import Method, Product
@@ -87,28 +89,42 @@ class Applogger(Service, abc.ABC):
                 event["timestamp"] = utcnow()
             if not event.get("session_gid"):
                 event["session_gid"] = self.auth.session_gid
-            return self.fire(event)
-        except Exception as e:
-            print(f"[applog] failed with {e}")
+
+            delivered = self.fire(event)
+            if not delivered:
+                logging.error("Audit event delivery rejected: %s", event.get("action") or event.get("kind"))
+
+            return delivered
+        except Exception:
+            logging.exception("Audit event delivery failed: %s", event.get("action") or event.get("kind"))
             return False
 
     def write_auth_event(self, event: AuthEvent) -> bool:
         """Backward-compatible auth-specific writer alias."""
         return self.try_fire(event)
 
-    def log_catalog_search(
+    def log_catalog_search[T: Product | Method](
         self,
         entity_kind: CatalogEntityKind,
         *,
-        rows: PaginatedRows[Product | Method],
+        rows: PaginatedRows[T],
+        cache_hit: bool,
         filters: ResolvedCatalogFilters | None,
+        dynamic_sort_ed_id: int | None,
+        search_type: t.Literal["catalog", "similar"] = "catalog",
+        source_gid: str | None = None,
+        suggestion_limit: int | None = None,
     ) -> bool:
         """Log one catalog-result page for anonymous search analysis."""
         # Avoid importing the data-model package while this core service is initialized.
+        from shared_code.data_model import SearchRankWeight
         from shared_code.data_model.mixins.search import parsed_search_terms
 
         active_definitions = filters.active_definitions if filters is not None else []
         active_filters = {definition.slug: value for definition, value in active_definitions}
+        active_filter_ed_ids = {
+            definition.slug: definition.metadata.dynamic_filter_ed_id for definition, _ in active_definitions
+        }
         search_query = next(
             (
                 t.cast(str, value)
@@ -118,11 +134,25 @@ class Applogger(Service, abc.ABC):
             None,
         )
         pagination = rows.pagination
+        if search_type == "similar":
+            search_rank_weight_ed_ids = []
+            score_field = "similarity_rank"
+            search_context = {
+                "search_type": search_type,
+                "source_gid": source_gid,
+                "suggestion_limit": suggestion_limit,
+            }
+        else:
+            search_rank_weight_ed_ids = SearchRankWeight.where(SearchRankWeight.entity_kind == entity_kind).column(
+                SearchRankWeight.id
+            )
+            score_field = "search_rank"
+            search_context = {}
 
         result_scores = [
             {
                 "id": row.id,
-                "score": selected_extra_field(row, "search_rank"),
+                "score": selected_extra_field(row, score_field),
             }
             for row in rows
         ]
@@ -131,8 +161,13 @@ class Applogger(Service, abc.ABC):
                 "kind": "event",
                 "action": "catalog_search",
                 "details": {
+                    **search_context,
                     "entity_kind": entity_kind,
+                    "cache_hit": cache_hit,
+                    "dynamic_sort_ed_id": dynamic_sort_ed_id,
                     "active_filters": active_filters,
+                    "active_filter_ed_ids": active_filter_ed_ids,
+                    "search_rank_weight_ed_ids": search_rank_weight_ed_ids,
                     "original_query": search_query,
                     "normalized_terms": [
                         {"term": term.part, "mode": term.mode.value} for term in parsed_search_terms(search_query or "")
@@ -152,7 +187,7 @@ class Applogger(Service, abc.ABC):
         self,
         entity_kind: CatalogEntityKind,
         *,
-        requested_gids: t.Sequence[str],
+        requested_gids: Ordered[str],
         rows: t.Iterable[t.Any],
         vision_ids: VisionIds,
     ) -> bool:
@@ -177,13 +212,21 @@ class Applogger(Service, abc.ABC):
         requested_gid: str,
         row: t.Any,
         vision_ids: t.Sequence[int | None],
+        referer: str | None = None,
+        from_similar: bool = False,
     ) -> bool:
         """Log one successfully resolved public catalogue detail view."""
+        context = {}
+        if referer:
+            context["referer"] = referer
+        if from_similar:
+            context["search_type"] = "similar"
         return self.try_fire(
             {
                 "kind": "event",
                 "action": "catalog_detail",
                 "details": {
+                    **context,
                     "entity_kind": entity_kind,
                     "requested_gid": requested_gid,
                     "result_ed_id": row.id,
@@ -222,7 +265,7 @@ class Applogger(Service, abc.ABC):
     @classmethod
     def from_env(cls) -> Applogger:
         """Instantiate the configured applogger from environment settings."""
-        if bool_from_env("APPLOG_FAKE", False):
+        if bool_from_env("APPLOG_FAKE", default=False):
             from .file import FileApplogger
 
             return FileApplogger.from_env()

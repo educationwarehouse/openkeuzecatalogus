@@ -7,7 +7,7 @@ import re
 import typing as t
 from pathlib import Path
 
-from endow import Injectable
+from endow import GraphBuilder, Injectable
 from ewok import Context, task
 
 NOQA_PATTERN = re.compile(r"#\s*noqa:\s*(?P<codes>.*)", re.IGNORECASE)
@@ -66,14 +66,40 @@ class SourceClass:
     node: ast.ClassDef
 
 
-def is_endow_injectable(reference: str) -> bool:
-    """Return whether an Endow symbol is an `Injectable` subclass."""
+@dataclasses.dataclass(frozen=True)
+class SourceFunction:
+    """A source function declaration that can be resolved from a call site."""
+
+    key: str
+    module: SourceModule
+    node: ast.FunctionDef | ast.AsyncFunctionDef
+    owner_class: str | None = None
+
+
+def resolve_endow_symbol(reference: str) -> type | None:
+    """Return the Endow class a dotted reference names, or None for anything else."""
     if not reference.startswith("endow."):
-        return False
+        return None
 
     module_name, _, name = reference.rpartition(".")
     candidate = getattr(importlib.import_module(module_name), name, None)
-    return isinstance(candidate, type) and issubclass(candidate, Injectable)
+    return candidate if isinstance(candidate, type) else None
+
+
+def is_endow_injectable(reference: str) -> bool:
+    """Return whether an Endow symbol is an `Injectable` subclass."""
+    candidate = resolve_endow_symbol(reference)
+    return candidate is not None and issubclass(candidate, Injectable)
+
+
+def is_endow_graph_handle(reference: str) -> bool:
+    """Return whether an Endow symbol is the handle Endow passes to a factory itself.
+
+    Asked of Endow rather than matched by name, so the rule follows the package
+    instead of restating it.
+    """
+    candidate = resolve_endow_symbol(reference)
+    return candidate is not None and issubclass(candidate, GraphBuilder)
 
 
 class EndowCallLinter(ast.NodeVisitor):
@@ -152,10 +178,21 @@ class EndowCallLinter(ast.NodeVisitor):
                 fields[node.target.id] = (source_class.module, node.annotation)
         return {name: annotation for name, annotation in fields.items() if not name.startswith("_")}
 
-    def _factory(self, source_class: SourceClass) -> ast.FunctionDef | ast.AsyncFunctionDef | None:
+    def _factory(self, source_class: SourceClass) -> SourceFunction | None:
+        """Return the `from_env` a class uses, inherited or its own.
+
+        Carries the module the factory was declared in, because an inherited one
+        resolves its annotations against that module's imports, not the
+        subclass's.
+        """
         for node in source_class.node.body:
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "from_env":
-                return node
+                return SourceFunction(
+                    key=f"{source_class.key}.from_env",
+                    module=source_class.module,
+                    node=node,
+                    owner_class=source_class.key,
+                )
         for base_key in self._bases(source_class):
             if base_key in self.classes:
                 factory = self._factory(self.classes[base_key])
@@ -163,18 +200,34 @@ class EndowCallLinter(ast.NodeVisitor):
                     return factory
         return None
 
-    @staticmethod
-    def _required_factory_arguments(factory: ast.FunctionDef | ast.AsyncFunctionDef) -> tuple[str, ...]:
-        positional = (*factory.args.posonlyargs, *factory.args.args)
+    def _is_graph_handle(self, argument: ast.arg, module: SourceModule) -> bool:
+        """Report whether a factory parameter is Endow's handle to the graph.
+
+        Such a parameter is not a runtime input: Endow supplies it to the
+        factory, so a call site has nothing to pass and must not be asked for it.
+        """
+        if argument.annotation is None:
+            return False
+
+        reference = self._resolve_expression(argument.annotation, module)
+        return reference is not None and is_endow_graph_handle(reference)
+
+    def _required_factory_arguments(self, factory: SourceFunction) -> tuple[str, ...]:
+        arguments = factory.node.args
+        positional = (*arguments.posonlyargs, *arguments.args)
         positional = positional[1:] if positional else ()
-        defaults = len(factory.args.defaults)
+        defaults = len(arguments.defaults)
         required_positional = positional[:-defaults] if defaults else positional
         required_keyword = tuple(
-            argument.arg
-            for argument, default in zip(factory.args.kwonlyargs, factory.args.kw_defaults, strict=True)
+            argument
+            for argument, default in zip(arguments.kwonlyargs, arguments.kw_defaults, strict=True)
             if default is None
         )
-        return tuple(argument.arg for argument in required_positional) + required_keyword
+        return tuple(
+            argument.arg
+            for argument in (*required_positional, *required_keyword)
+            if not self._is_graph_handle(argument, factory.module)
+        )
 
     def _bases(self, source_class: SourceClass) -> tuple[str, ...]:
         return tuple(
@@ -191,7 +244,7 @@ class EndowCallLinter(ast.NodeVisitor):
         seen = seen or set()
         if class_key in seen:
             return False
-        return any(self._is_injectable(base, seen | {class_key}) for base in self._bases(self.classes[class_key]))
+        return any(self._is_injectable(base, seen=seen | {class_key}) for base in self._bases(self.classes[class_key]))
 
     def _resolve_expression(self, expression: ast.expr, module: SourceModule) -> str | None:
         if isinstance(expression, ast.Constant) and isinstance(expression.value, str):
@@ -213,7 +266,7 @@ class EndowCallLinter(ast.NodeVisitor):
     def _resolve_reference(self, reference: str, seen: set[str] | None = None) -> str | None:
         if reference.startswith("common."):
             reference = f"py4web.{reference}"
-        if reference in self.classes or is_endow_injectable(reference):
+        if reference in self.classes or is_endow_injectable(reference) or is_endow_graph_handle(reference):
             return reference
         module_name, separator, symbol = reference.rpartition(".")
         if not separator or module_name not in self.modules:
@@ -222,7 +275,7 @@ class EndowCallLinter(ast.NodeVisitor):
         if reference in seen:
             return None
         target = self.modules[module_name].imports.get(symbol)
-        return self._resolve_reference(target, seen | {reference}) if target else None
+        return self._resolve_reference(target, seen=seen | {reference}) if target else None
 
     def _violate(self, node: ast.Call, code: str, message: str) -> None:
         self.violations.append(
@@ -273,7 +326,7 @@ class RuntimeRequirementCollector:
     def _add_factory_requirements(
         self,
         source_class: SourceClass,
-        factory: ast.FunctionDef | ast.AsyncFunctionDef | None,
+        factory: SourceFunction | None,
         path: tuple[str, ...],
     ) -> None:
         if factory is None:
@@ -317,6 +370,164 @@ def check_monkeypatch_setattr(path: Path, tree: ast.AST, code: str, message: str
     return violations
 
 
+def check_bare_star_default_arguments(
+    path: Path, tree: ast.AST, code: str, message: str
+) -> t.Sequence[CustomLintViolation]:
+    """Find defaulted keyword-only arguments introduced by a bare ``*``."""
+    violations: list[CustomLintViolation] = []
+
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) or node.args.vararg is not None:
+            continue
+        if not node.args.kwonlyargs or node.args.kw_defaults[0] is None:
+            continue
+        argument = node.args.kwonlyargs[0]
+        violations.append(
+            CustomLintViolation(
+                path=path,
+                line=argument.lineno,
+                column=argument.col_offset + 1,
+                code=code,
+                message=message,
+            )
+        )
+
+    return violations
+
+
+class DefaultArgumentCallLinter(ast.NodeVisitor):
+    """Find resolvable project calls that pass defaulted parameters positionally."""
+
+    def __init__(self, modules: dict[str, SourceModule], code: str, message: str) -> None:
+        """Index project function declarations for call-site inspection."""
+        self.modules = modules
+        self.code = code
+        self.message = message
+        self.classes = self._discover_classes()
+        self.functions = self._discover_functions()
+        self.class_keys: list[str] = []
+        self.module: SourceModule
+        self.violations: list[CustomLintViolation] = []
+
+    def _discover_classes(self) -> set[str]:
+        return {
+            f"{module.name}.{node.name}"
+            for module in self.modules.values()
+            for node in module.tree.body
+            if isinstance(node, ast.ClassDef)
+        }
+
+    def _discover_functions(self) -> dict[str, SourceFunction]:
+        functions: dict[str, SourceFunction] = {}
+        for module in self.modules.values():
+            for node in module.tree.body:
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    key = f"{module.name}.{node.name}"
+                    functions[key] = SourceFunction(key, module, node)
+                elif isinstance(node, ast.ClassDef):
+                    class_key = f"{module.name}.{node.name}"
+                    for member in node.body:
+                        if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                            key = f"{class_key}.{member.name}"
+                            functions[key] = SourceFunction(key, module, member, class_key)
+        return functions
+
+    def lint(self) -> list[CustomLintViolation]:
+        """Return violations from each resolvable project call."""
+        for module in self.modules.values():
+            self.module = module
+            self.class_keys = []
+            self.visit(module.tree)
+        return self.violations
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        """Track the source class for ``self`` and ``cls`` method calls."""
+        self.class_keys.append(f"{self.module.name}.{node.name}")
+        self.generic_visit(node)
+        self.class_keys.pop()
+
+    def visit_Call(self, node: ast.Call) -> None:
+        """Report positional arguments that map to defaulted source parameters."""
+        function = self._resolve_call(node.func)
+        if function is not None and not any(isinstance(argument, ast.Starred) for argument in node.args):
+            for position, parameter in self._defaulted_positional_parameters(function):
+                if position < len(node.args):
+                    argument = node.args[position]
+                    self.violations.append(
+                        CustomLintViolation(
+                            path=self.module.path,
+                            line=argument.lineno,
+                            column=argument.col_offset + 1,
+                            code=self.code,
+                            message=f"{self.message}: {parameter}",
+                        )
+                    )
+        self.generic_visit(node)
+
+    def _resolve_call(self, expression: ast.expr) -> SourceFunction | None:
+        reference = self._expression_reference(expression)
+        if reference is None:
+            return None
+        resolved = self._resolve_reference(reference)
+        if resolved in self.functions:
+            return self.functions[resolved]
+        if resolved in self.classes:
+            return self.functions.get(f"{resolved}.__init__")
+        return None
+
+    def _expression_reference(self, expression: ast.expr) -> str | None:
+        if isinstance(expression, ast.Name):
+            if expression.id in {"self", "cls"} and self.class_keys:
+                return self.class_keys[-1]
+            return self.module.imports.get(expression.id, f"{self.module.name}.{expression.id}")
+        if isinstance(expression, ast.Attribute):
+            base = self._expression_reference(expression.value)
+            return f"{base}.{expression.attr}" if base else None
+        return None
+
+    def _resolve_reference(self, reference: str, seen: set[str] | None = None) -> str | None:
+        if reference in self.functions or reference in self.classes:
+            return reference
+        module_name, separator, symbol = reference.rpartition(".")
+        if not separator or module_name not in self.modules:
+            return None
+        seen = seen or set()
+        if reference in seen:
+            return None
+        target = self.modules[module_name].imports.get(symbol)
+        return self._resolve_reference(target, seen=seen | {reference}) if target else None
+
+    def _defaulted_positional_parameters(self, function: SourceFunction) -> tuple[tuple[int, str], ...]:
+        arguments = function.node.args
+        declaration_line = function.module.source.splitlines()[function.node.lineno - 1]
+        if {"ALL", self.code} & noqa_codes(declaration_line):
+            return ()
+        positional = [*arguments.posonlyargs, *arguments.args]
+        defaults = [None] * (len(positional) - len(arguments.defaults)) + list(arguments.defaults)
+        receiver_count = int(
+            function.owner_class is not None and not DefaultArgumentCallLinter._is_staticmethod(function.node)
+        )
+        parameters: list[tuple[int, str]] = []
+        for index, (argument, default) in enumerate(zip(positional, defaults, strict=True)):
+            if index < receiver_count or argument not in arguments.args or default is None:
+                continue
+            parameters.append((index - receiver_count, argument.arg))
+        return tuple(parameters)
+
+    @staticmethod
+    def _is_staticmethod(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+        return any(
+            isinstance(decorator, ast.Name) and decorator.id == "staticmethod" for decorator in node.decorator_list
+        )
+
+
+def check_default_arguments_passed_positionally(
+    modules: dict[str, SourceModule], code: str, message: str
+) -> t.Sequence[CustomLintViolation]:
+    """Find project calls that pass defaulted parameters positionally."""
+    return DefaultArgumentCallLinter(modules, code, message).lint()
+
+
 def check_endow_from_env(modules: dict[str, SourceModule], code: str, message: str) -> t.Sequence[CustomLintViolation]:
     """Find direct `from_env` calls on source-defined Endow injectables."""
     return EndowCallLinter(modules, {code}).lint()
@@ -344,6 +555,16 @@ CUSTOM_LINT_RULES: tuple[CustomLintRule, ...] = (
         code="EW003",
         message="provide every Endow runtime input required by .with_injected(...)",
         project_checker=check_endow_runtime_inputs,
+    ),
+    CustomLintRule(
+        code="EW004",
+        message="do not use a bare * before a defaulted parameter",
+        checker=check_bare_star_default_arguments,
+    ),
+    CustomLintRule(
+        code="EW005",
+        message="pass defaulted parameters by keyword",
+        project_checker=check_default_arguments_passed_positionally,
     ),
 )
 
@@ -423,20 +644,26 @@ def is_suppressed(lines: t.Sequence[str], violation: CustomLintViolation) -> boo
     return "ALL" in codes or violation.code in codes
 
 
+def _module_lint_violations(module: SourceModule) -> list[CustomLintViolation]:
+    """Run per-module rules and filter locally suppressed violations."""
+    violations: list[CustomLintViolation] = []
+    lines = module.source.splitlines()
+    for rule in CUSTOM_LINT_RULES:
+        if rule.checker is None:
+            continue
+        for violation in rule.checker(module.path, module.tree, rule.code, rule.message):
+            if not is_suppressed(lines, violation):
+                violations.append(violation)
+    return violations
+
+
 def custom_lint_violations(ctx: Context) -> list[CustomLintViolation]:
     """Run all custom lint rules and return unsuppressed violations."""
     violations: list[CustomLintViolation] = []
     modules = source_modules(ctx)
 
     for module in modules.values():
-        lines = module.source.splitlines()
-
-        for rule in CUSTOM_LINT_RULES:
-            if rule.checker is None:
-                continue
-            for violation in rule.checker(module.path, module.tree, rule.code, rule.message):
-                if not is_suppressed(lines, violation):
-                    violations.append(violation)
+        violations.extend(_module_lint_violations(module))
 
     for rule in CUSTOM_LINT_RULES:
         if rule.project_checker is None:

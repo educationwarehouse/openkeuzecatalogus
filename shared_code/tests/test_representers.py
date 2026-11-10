@@ -1,11 +1,29 @@
 """Tests for date and list representer helpers."""
 
 import datetime as dt
+from decimal import Decimal
 
+import pytest
 import pytz
 
 from shared_code.data_model.representers.dates import dutch_date
 from shared_code.data_model.representers.lists import comma_separated
+from shared_code.data_model.representers.numbers import dutch_currency
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (0, "€\u00a00,00"),
+        (Decimal("1234.56"), "€\u00a01.234,56"),
+        ("-1234.56", "€\u00a0-1.234,56"),
+        ("Op aanvraag", "Op aanvraag"),
+        ("NaN", "NaN"),
+    ],
+)
+def test_dutch_currency_uses_dutch_locale(value: int | Decimal | str, expected: str) -> None:
+    """Currency formatting handles grouping, negative values and non-price text."""
+    assert dutch_currency(value) == expected
 
 
 def test_dutch_date_returns_empty_string_for_none() -> None:

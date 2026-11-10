@@ -11,11 +11,14 @@ from typedal import TypeDAL
 from typedal.types import Query, Row
 from yatl.helpers import TABLE, TBODY, TD, TH, THEAD, TR, XML
 
-from common.controllers.error import yatl_render
+from common.fixtures.uploads import read_upload
+from common.models.rendering import render_template
 from py4web import HTTP, URL, request, response
+from shared_code.data_model import AnyDict
 from shared_code.data_model.constants import JSON_IMPORT_EXCLUDED_FIELD_NAMES
 from shared_code.data_model.mixins.effdt import model_to_ed, update_effectivedated
 from shared_code.data_model.tables.base import TableWithGid
+from shared_code.data_model.validators import validate_fields
 from shared_code.util.strings import format_preview_value
 
 
@@ -24,15 +27,15 @@ class JsonImportConfig:
     """Describe a table that may be imported through an EddieGrid."""
 
     table_name: str
-    defaults: dict[str, t.Any] = field(default_factory=dict)
+    defaults: AnyDict = field(default_factory=dict)
 
 
 class ImportRow(t.TypedDict, total=False):
     """One parsed JSON row and its preview result."""
 
     index: int
-    values: dict[str, t.Any]
-    preview_values: dict[str, t.Any]
+    values: AnyDict
+    preview_values: AnyDict
     status: str
     errors: dict[str, str]
 
@@ -103,7 +106,7 @@ class JsonImport[T: TableWithGid]:
             raise HTTP(400, "Kies een JSON-bestand om te importeren.")
         self.filename = uploaded.filename or "import.json"
         try:
-            self.payload_json = uploaded.file.read().decode("utf-8")
+            self.payload_json = read_upload(uploaded.file).decode("utf-8")
         except UnicodeDecodeError as error:
             raise HTTP(400, "Het bestand moet UTF-8 JSON bevatten.") from error
         self.rows = self.validate_payload(self.payload_json)
@@ -124,8 +127,10 @@ class JsonImport[T: TableWithGid]:
         """Validate a JSON5 file and return one preview result per row."""
         try:
             rows = self._parse_rows(payload_json)
-        except pyjson5.Json5DecoderException as error:
-            return [{"index": 0, "status": "invalid", "errors": {"json": str(error)}}]
+        except pyjson5.Json5DecoderException:
+            return [
+                {"index": 0, "status": "invalid", "errors": {"json": "Het bestand bevat geen geldige JSON of JSON5."}}
+            ]
         except ValueError as error:
             return [{"index": 0, "status": "invalid", "errors": {"json": str(error)}}]
         return self._validate_rows(rows)
@@ -139,6 +144,8 @@ class JsonImport[T: TableWithGid]:
             payload = payload[self.config.table_name]
         if not isinstance(payload, list):
             raise ValueError("Verwacht een lijst met rijen.")
+        if not payload:
+            raise ValueError("Het bestand bevat geen rijen om te importeren.")
         return payload
 
     def _validate_rows(self, rows: list[t.Any]) -> list[ImportRow]:
@@ -162,9 +169,12 @@ class JsonImport[T: TableWithGid]:
             return {"index": index, "status": "invalid", "errors": {"row": "Rij moet een object zijn."}}
         values = dict(self.config.defaults, **raw_values)
         errors = {field: "Onbekend of niet importeerbaar veld." for field in values if field not in allowed_fields}
+        if errors:
+            return {"index": index, "status": "invalid", "errors": errors}
+
         self._validate_gid(values, incoming_gids, errors)
         business_values = {key: value for key, value in values.items() if key in allowed_fields and key != "gid"}
-        validation_errors, _ = self.table._validate_fields(business_values)  # type: ignore
+        validation_errors, _ = validate_fields(self.table, business_values)
         errors.update({str(key): str(value) for key, value in validation_errors.items()})
         return {
             "index": index,
@@ -174,7 +184,7 @@ class JsonImport[T: TableWithGid]:
             "errors": errors,
         }
 
-    def _validate_gid(self, values: dict[str, t.Any], incoming_gids: set[str], errors: dict[str, str]) -> None:
+    def _validate_gid(self, values: AnyDict, incoming_gids: set[str], errors: dict[str, str]) -> None:
         """Require update GIDs to be unique within the file and to exist."""
         gid = values.get("gid")
         if not gid:
@@ -190,7 +200,7 @@ class JsonImport[T: TableWithGid]:
         """Return an existing row only when it belongs to this grid's scope."""
         return self.table.where(self.query).where(self.table.gid == gid).first()
 
-    def _project_values(self, values: dict[str, t.Any]) -> dict[str, t.Any]:
+    def _project_values(self, values: AnyDict) -> AnyDict:
         """Build the effective-dated row that confirmation will write."""
         gid = values.get("gid")
         existing = self._existing_row(str(gid)) if gid else None
@@ -203,9 +213,9 @@ class JsonImport[T: TableWithGid]:
         projected.setdefault("prio", 0)
         return projected
 
-    def _default_values(self) -> dict[str, t.Any]:
+    def _default_values(self) -> AnyDict:
         """Evaluate static table defaults for a new-row preview."""
-        defaults: dict[str, t.Any] = {}
+        defaults: AnyDict = {}
         for table_field in self.table:
             if table_field.name in JSON_IMPORT_EXCLUDED_FIELD_NAMES or table_field.name == "gid":
                 continue
@@ -215,7 +225,7 @@ class JsonImport[T: TableWithGid]:
             defaults[table_field.name] = default
         return defaults
 
-    def _status(self, values: dict[str, t.Any]) -> str:
+    def _status(self, values: AnyDict) -> str:
         gid = values.get("gid")
         if not gid:
             return "nieuw"
@@ -250,7 +260,7 @@ class JsonImport[T: TableWithGid]:
                     self.db,
                     table_ed,
                     table_ed.gid == gid,
-                    None if effstatus is False else values | {"gid": gid},
+                    new_values=None if effstatus is False else values | {"gid": gid},
                     effdt=effdt,
                     last_saved_by=last_saved_by,
                     delete=effstatus is False,
@@ -282,22 +292,42 @@ class JsonImport[T: TableWithGid]:
 
     def _render_complete(self) -> XML:
         """Render the state after a confirmed import."""
-        return XML(yatl_render("json_import_complete.html", endpoint=self.endpoint))
+        return XML(render_template("json_import_complete.html", endpoint=self.endpoint))
 
     def _render_upload(self) -> XML:
         """Render the initial JSON5 upload form."""
-        return XML(yatl_render("json_import_upload.html", template_url=self.template_url))
+        return XML(render_template("json_import_upload.html", template_url=self.template_url))
+
+    def _preview_errors(self) -> list[str]:
+        """Summarize validation failures without flooding the page with uploaded data."""
+        messages = []
+        invalid_rows = [row for row in self.rows if row.get("errors")]
+        for row in invalid_rows[:10]:
+            index = row.get("index", 0)
+            label = f"Rij {index}" if index else "Bestand"
+            errors = row.get("errors", {})
+            details = [f"{name[:80]}: {message[:200]}" for name, message in list(errors.items())[:5]]
+            if len(errors) > 5:
+                details.append(f"en {len(errors) - 5} andere fouten")
+            messages.append(f"{label}: {'; '.join(details)}")
+
+        if len(invalid_rows) > 10:
+            messages.append(f"Nog {len(invalid_rows) - 10} rijen bevatten fouten.")
+        return messages
 
     def _render_preview_phase(self) -> XML:
         """Render the validated preview and its confirmation controls."""
         return XML(
-            yatl_render(
+            render_template(
                 "json_import_preview.html",
                 endpoint=self.endpoint,
                 filename=self.filename,
                 has_errors=self.has_errors,
+                errors=self._preview_errors(),
+                template_url=self.template_url,
+                import_url=self.import_url,
                 payload_json=self.payload_json,
-                preview=self._render_preview(),
+                preview=self._render_preview() if not self.has_errors else None,
             )
         )
 

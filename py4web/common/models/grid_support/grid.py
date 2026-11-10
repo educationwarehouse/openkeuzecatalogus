@@ -4,31 +4,32 @@ import functools
 import traceback
 import typing as t
 import warnings
+from collections.abc import Mapping
 from copy import deepcopy
 
 from py4web.utils.form import Form
 from py4web.utils.grid import parse_referrer
-from typedal import TypeDAL, TypedField, TypedRows, TypedTable
+from typedal import TypeDAL, TypedField, TypedRows
 from typedal.tables import TableMeta
 from typedal.types import Field, Query, Row
 from yatl import TAGGER as HTMLElement
-from yatl.helpers import DIV, SPAN, A, I
+from yatl.helpers import DIV
 
 from common.models import auth, backend
 from py4web import HTTP, URL, redirect, request
-from shared_code.data_model import update_effectivedated
-from shared_code.data_model.mixins.effdt import EffdtTable, ed_restore_by_id, latest_ed
+from shared_code.data_model import AnyDict, update_effectivedated
+from shared_code.data_model.mixins.effdt import EffdtTable, ed_restore_by_id, latest_ed, model_to_ed
 from shared_code.data_model.representers.uuid import short_uuid
 from shared_code.data_model.tables import BaseTable
 from shared_code.data_model.tables.base import TableWithGid
 from shared_code.data_model.validators.is_uuid import is_uuid
 from shared_code.util.class_utils import class_deepcopy
-from shared_code.util.exceptions import throw
 
-from .actions import BUTTON_CLASS, GridActionButton
+from .actions import BUTTON_CLASS, GridActionButton, GridHeaderButton
 from .archive import build_archive_table
 from .json_import import JsonImport, JsonImportConfig
 from .py4web_grid import (
+    AFTER_LAST_FIELD,
     ExtraFormHtml,
     ExtraFormHtmlItem,
     FormWithParam,
@@ -36,6 +37,7 @@ from .py4web_grid import (
     GridButtons,
     GridColumns,
     GridGroupBy,
+    GridHeaderFooterElement,
     GridHeaderFooterElements,
     GridLeft,
     GridOrderBy,
@@ -43,7 +45,7 @@ from .py4web_grid import (
     GridValidation,
 )
 from .search import EddieSearch, SearchField, T_Limit
-from .styles import EddieFormStyle, EddieFormStyleFactory, EddieGridStyle, prepare_effdt_form_insert
+from .styles import EddieFormStyle, EddieFormStyleFactory, EddieGridStyle
 
 T_Table = t.TypeVar("T_Table", bound=BaseTable)
 T_ColumnRow = t.TypeVar("T_ColumnRow", bound=BaseTable)
@@ -74,6 +76,22 @@ def after_change_applog(action: str, row: Row) -> None:
     )
 
 
+def prepare_effdt_form_insert(form: Form) -> None:
+    """Redirect an effective-dated form insert to the matching `_ed` table."""
+    if not form.table._rname.endswith("_model"):
+        # nothing to do
+        return
+
+    if table_ed := model_to_ed(form.table):
+        # make Form insert into _ed instead:
+        form.table = table_ed
+
+        if "last_saved_by" in table_ed.fields and "last_saved_by" not in form.vars:
+            user = auth.get_user()
+            if user and getattr(user, "email", None):
+                form.vars["last_saved_by"] = user.email
+
+
 class GridTranslator:
     """Translate the built-in grid strings used by this wrapper."""
 
@@ -92,6 +110,9 @@ class GridTranslator:
         return self.TRANSLATIONS.get(string, string)
 
 
+type HookCallable[T] = t.Callable[[Row], None] | t.Callable[[T], None]
+
+
 class SmartGrid[T: TableWithGid](Grid):
     """Grid wrapper that adds Eddie-specific search, archive, and action logic."""
 
@@ -104,14 +125,13 @@ class SmartGrid[T: TableWithGid](Grid):
         table: type[T],
         path: str,
         query: Query | bool | None = None,
-        *,
         archive_query: Query | bool | None = None,
-        widgets: dict[str, t.Any] | None = None,
+        widgets: AnyDict | None = None,
         # functions to make it easier to define callbacks that don't affect other places
         # (like `Model.after_insert()` would)
-        after_insert: t.Iterable[t.Callable[[Row], None]] = (),
-        after_update: t.Iterable[t.Callable[[Row], None]] = (),
-        after_delete: t.Iterable[t.Callable[[Row], None]] = (),
+        after_insert: t.Iterable[HookCallable[T]] = (),
+        after_update: t.Iterable[HookCallable[T]] = (),
+        after_delete: t.Iterable[HookCallable[T]] = (),
         archive: ArchiveMode | bool = "enabled",  # archive functionality (for effdt tables)
         buttons_left: bool = True,  # like web2py supported as `buttons_placement`, default to True for Mike :)
         with_applog: bool = True,
@@ -223,31 +243,9 @@ class SmartGrid[T: TableWithGid](Grid):
 
         self.parts = self.path.split("/")
 
-        if query and self.action in ("edit", "details", "delete"):
-            parts = path.split("/")  # edit / gid / ...
-            gid = parts[1]
-
-            # check if current gid matches query -> allowed to see:
-            # if not table.where(query).where(table.gid == parts[1]).exists():
-            if hasattr(table, "gid") and is_uuid(gid) and self.db(query & (table.gid == gid)).count() == 0:
-                raise HTTP(401, "Access Denied")
-
-        header_elements = list(header_elements or [])
-        footer_elements = list(footer_elements or [])
-        if self.json_import_config:
-            header_elements.append(
-                lambda: A(
-                    SPAN(
-                        I(_class="fas fa-file-import px-1"),
-                        "JSON import",
-                        **self.param.grid_class_style.get("grid-header-button"),
-                    ),
-                    _class="grid-new-button ms-3",
-                    _href=URL(self.endpoint, "import"),
-                )
-            )
-        if self.archive:
-            header_elements.append(lambda: self.archive_button("ms-3"))
+        header_elements, footer_elements = self.init_grid_buttons(
+            header_elements=header_elements, footer_elements=footer_elements
+        )
 
         param = {
             "header_elements": header_elements,
@@ -262,6 +260,35 @@ class SmartGrid[T: TableWithGid](Grid):
 
         if auto_process:
             self.process()
+
+    def init_grid_buttons(
+        self,
+        header_elements: GridHeaderFooterElements = None,
+        footer_elements: GridHeaderFooterElements = None,
+    ) -> tuple[list[GridHeaderFooterElement], list[GridHeaderFooterElement]]:
+        """Initializes grid header and footer buttons.
+
+        Adds relevant elements and binding parameters for all applicable buttons.
+        """
+        header_elements: list[GridHeaderFooterElement] = list(header_elements or [])
+        footer_elements: list[GridHeaderFooterElement] = list(footer_elements or [])
+        if self.json_import_config:
+            header_elements.append(
+                GridHeaderButton(
+                    text="JSON import",
+                    url=URL(self.endpoint, "import"),
+                    icon="fa-file-import",
+                ),
+            )
+        if self.archive:
+            header_elements.append(self.archive_button())
+
+        for elt in header_elements + footer_elements:
+            if not isinstance(elt, GridActionButton):
+                continue
+
+            elt.bind_param(self.param)
+        return header_elements, footer_elements
 
     @classmethod
     def normalize_archive_mode(cls, archive: ArchiveMode | bool) -> ArchiveMode:
@@ -281,7 +308,7 @@ class SmartGrid[T: TableWithGid](Grid):
         else:
             return archive
 
-    def _setup_widgets(self, widgets: dict[str, t.Any] | None, formstyle: EddieFormStyleFactory) -> None:
+    def _setup_widgets(self, widgets: AnyDict | None, formstyle: EddieFormStyleFactory) -> None:
         if not widgets:
             return
 
@@ -322,28 +349,36 @@ class SmartGrid[T: TableWithGid](Grid):
     ) -> dict[int, ExtraFormHtmlItem | list[ExtraFormHtmlItem]]:
         if value is None:
             return {}
-
-        if isinstance(value, dict):
+        elif isinstance(value, dict):
             return value
-
-        if isinstance(value, list):
+        elif isinstance(value, list):
             return dict(enumerate(value))
+        else:
+            return {AFTER_LAST_FIELD: value}
 
-        return {-4: value}
+    @staticmethod
+    def count_form_controls(form: Form) -> int:
+        """Count the children py4web appends below the last field: delete, submit, formname, formkey."""
+        return 1 + bool(form.deletable) + bool(form.form_name) + bool(form.formkey)
 
     def render_form(self, form: Form) -> DIV:
         """Render a form and inject any extra helper elements around it."""
         form_html = form.helper()["form"]
 
+        if database_error := form.errors.get("database"):
+            form_html.insert(0, DIV(database_error, _class="alert alert-danger"))
+
         if self.extra_form_html:
             for idx, elements in self.extra_form_html.items():
                 elements = [elements] if not isinstance(elements, list) else elements
-                elements = [elt(form) if callable(elt) else elt for elt in elements]  # type: ignore
+                elements = [elt(form) if callable(elt) else elt for elt in elements]
+
+                if idx == AFTER_LAST_FIELD:
+                    idx = -self.count_form_controls(form)
 
                 if idx < 0:
                     # temporarily remove last elements so we can put them back at the end afterwards:
                     last_elements = reversed([form_html.children.pop() for _ in range(abs(idx))])
-                    # check to delete, submit button, form name, form key
 
                     form_html.children.extend(elements)
                     form_html.children.extend(last_elements)
@@ -353,7 +388,8 @@ class SmartGrid[T: TableWithGid](Grid):
                     form_html.children[idx:idx] = elements
 
         return DIV(
-            self.archive_button() if self.archive else "",
+            # a record that does not exist yet has no earlier versions to browse
+            self.archive_button() if self.archive and form.record else "",
             form_html,
         )
 
@@ -374,7 +410,9 @@ class SmartGrid[T: TableWithGid](Grid):
         if table_or_form is None:
             raise HTTP(400, f"Unexpected action '{self.action}'")
 
-        if isinstance(table_or_form, Form) and table_or_form.record:
+        # `extra_form_html` also has to reach the create form, which has no record; before that
+        # was added here, anything passed to it was silently dropped on `new`
+        if isinstance(table_or_form, Form) and (table_or_form.record or self.extra_form_html):
             return self.render_form(table_or_form)
 
         return table_or_form
@@ -384,12 +422,16 @@ class SmartGrid[T: TableWithGid](Grid):
         table = self.table_ed
         assert table and table.effdt
 
+        archive_scope = self.archive_query
+        if archive_scope is None:
+            archive_scope = table.gid.belongs(self.db(self.query)._select(self.table.gid))
+
         if self.parts[-1] in ("archive", "select"):
             archive_endpoint = request.fullpath.removesuffix("/select")
             grid = SmartGrid(
                 table,
                 path="select/archive",
-                query=self.archive_query,
+                query=archive_scope,
                 create=False,
                 editable=False,
                 deletable=False,
@@ -422,6 +464,9 @@ class SmartGrid[T: TableWithGid](Grid):
             if not self.archive_restorable:
                 raise HTTP(403, "You do not have access to restore an archived version.")
 
+            if not self.db(archive_scope & (table.id == row_id)).count():
+                raise HTTP(403, "Access Denied")
+
             user = self.auth_user
             assert user, "can't use grid without logging in"
 
@@ -442,7 +487,7 @@ class SmartGrid[T: TableWithGid](Grid):
             # for specific gid:
             # note: gid has been converted to 'id' at this point:
             latest_id = self.parts[-1]
-            if self.archive_query and self.db(self.archive_query & (table.id == latest_id)).count() == 0:
+            if self.db(archive_scope & (table.id == latest_id)).count() == 0:
                 raise HTTP(401, "Access Denied")
 
             return build_archive_table(
@@ -462,7 +507,7 @@ class SmartGrid[T: TableWithGid](Grid):
                 ),
             )
 
-    def archive_button(self, *classes: str) -> HTMLElement:
+    def archive_button(self, *classes: str) -> GridHeaderButton | None:
         """Build the archive navigation button for the current request path."""
         if "/edit/" in request.path:
             url = request.path.replace("/edit/", "/archive/")
@@ -471,21 +516,18 @@ class SmartGrid[T: TableWithGid](Grid):
         elif "/select" in request.path:
             url = request.path.replace("/select", "/archive")
         else:
-            return SPAN()
+            return None
 
-        return A(
-            SPAN(
-                I(_class="fas fa-archive px-1"),
-                "Archief",
-                **self.param.grid_class_style.get("grid-header-button"),
-            ),
-            _class="grid-new-button " + " ".join(classes),
-            _href=URL(url, vars=dict(request.query)),
+        return GridHeaderButton(
+            "Archief",
+            URL(url, vars=dict(request.query)),
+            "fa-archive",
+            override_classes=" ".join(classes),
         )
 
     # todo: we had a custom _make_table_pager; do we still need that?
 
-    def process_callbacks(self, row: Row | None, action: str) -> dict[str, t.Any]:
+    def process_callbacks(self, row: T | None, action: str) -> AnyDict:
         """Run post-action callbacks and return flash data for the result."""
         if not row:
             return {}
@@ -507,7 +549,19 @@ class SmartGrid[T: TableWithGid](Grid):
 
         return flash
 
-    def post_process(self, old_row: Row | None = None) -> None:
+    def _accepted_form_callbacks(self, form: Form) -> AnyDict:
+        """Run callbacks for an accepted edit or insertion."""
+        assert self.table, "Grid used without table"
+        if "edit" in self.parts and "gid" in form.vars:
+            row = self.table(gid=form.vars["gid"])
+            return self.process_callbacks(row, "update")
+        elif "new" in self.parts and "id" in form.vars:
+            row = self.table(id=form.vars["id"])
+            return self.process_callbacks(row, "insert")
+        else:
+            return {"message": "Gelukt!", "status": "success"}
+
+    def post_process(self, old_row: T | None = None) -> None:
         """Apply callback side effects and flash messages after processing."""
         assert self.table, "Grid used without table"
 
@@ -523,25 +577,24 @@ class SmartGrid[T: TableWithGid](Grid):
                 # this will probably not work in an after delete but we can still try:
                 row = self.table(int(row_id))
 
-            to_flash = self.process_callbacks(t.cast(Row, row or old_row), "delete")
+            to_flash = self.process_callbacks(t.cast(T | None, row or old_row), "delete")
 
         elif request.method == "POST" and (form := self.form):
             if form.accepted:
-                if "edit" in self.parts and "gid" in form.vars:
-                    row = t.cast(Row | None, self.table(gid=form.vars["gid"]))
-                    to_flash = self.process_callbacks(row, "update")
-                elif "new" in self.parts and "id" in form.vars:
-                    row = t.cast(Row | None, self.table(id=form.vars["id"]))
-                    to_flash = self.process_callbacks(row, "insert")
-                else:
-                    to_flash = {"message": "Gelukt!", "status": "success"}
+                to_flash = self._accepted_form_callbacks(form)
             elif form.errors:
-                to_flash = {"message": str(form.errors), "status": "danger"}
+                message = (
+                    " ".join(str(error) for error in form.errors.values())
+                    if isinstance(form.errors, Mapping)
+                    else str(form.errors)
+                )
+
+                to_flash = {"message": message, "status": "danger"}
 
         if to_flash:
             auth.send_flash(**to_flash)
 
-    def gid_to_row(self, gid: str) -> TypedTable | None:
+    def gid_to_row(self, gid: str) -> T | None:
         """Resolve a gid path segment to the backing row id."""
         if not is_uuid(gid):
             return None
@@ -551,15 +604,41 @@ class SmartGrid[T: TableWithGid](Grid):
 
         if self.is_effdt:
             table_ed = self.table_ed
-            return latest_ed(self.db, table_ed, table_ed.gid == gid)
+            row = latest_ed(self.db, table_ed, table_ed.gid == gid)
+            return t.cast(T | None, row)
 
         return table(gid=gid)
+
+    def _resolve_request_row(self) -> T | None:
+        """Resolve the path's record and translate a GID to the grid's integer ID."""
+        table = self.table
+        assert table, "grid used without table?"
+        parts = self.parts
+        if len(parts) <= 1:
+            return None
+        if row := self.gid_to_row(parts[1]):
+            parts[1] = str(row.id)
+            self.path = "/".join(parts)
+            self.record_id = row.id
+            return row
+        else:
+            return table(parts[1])
+
+    def _check_record_scope(self, row: T | None) -> None:
+        """Authorize the resolved record before any edit, detail or delete action."""
+        table = self.table
+        assert table, "grid used without table?"
+        if not row:
+            raise HTTP(403, "Access Denied")
+
+        record_query = table.gid == row.gid if hasattr(table, "gid") else table.id == row.id
+        if not self.db(self.query & record_query).count():
+            raise HTTP(403, "Access Denied")
 
     def process(self) -> None:
         """Dispatch the current request path to the correct grid action."""
         table = self.table
         assert table, "grid used without table?"
-        row = None
         parts = self.parts
         action = parts[0] if parts else "select"
         self.action = action
@@ -580,14 +659,10 @@ class SmartGrid[T: TableWithGid](Grid):
             )
             return self.json_import.process(is_template=len(parts) > 1 and parts[1] == "template")
 
-        # Grid loves integer ids so let's convert it
-        if parts and len(parts) > 1:
-            if row := self.gid_to_row(parts[1]):
-                parts[1] = str(row.id)
-                self.path = "/".join(parts)
-                self.record_id = row.id
-            else:
-                row = table(parts[1])
+        row = self._resolve_request_row()
+
+        if action in ("edit", "details", "delete"):
+            self._check_record_scope(row)
 
         if self.is_effdt:
             if action == "new" and request.method == "POST":
@@ -596,13 +671,13 @@ class SmartGrid[T: TableWithGid](Grid):
                 # edit is handled by `update_record`
                 pass
             elif action == "delete" and row:
-                return self.effdt_delete(t.cast(Row, row))
+                return self.effdt_delete(row)
             elif action == "archive":
-                return self.process_archive(t.cast(Row | None, row))
+                return self.process_archive(old_row=row)
 
-        return self.process_custom(t.cast(Row | None, row))
+        return self.process_custom(old_row=row)
 
-    def process_archive(self, old_row: Row | None = None) -> None:
+    def process_archive(self, old_row: T | None = None) -> None:
         """Run base grid setup for archive routes without record lookup on the model table."""
         original_path = self.path
         original_action = self.action
@@ -613,13 +688,13 @@ class SmartGrid[T: TableWithGid](Grid):
         self.record_id = None
 
         try:
-            self.process_custom(old_row)
+            self.process_custom(old_row=old_row)
         finally:
             self.path = original_path
             self.action = original_action
             self.record_id = original_record_id
 
-    def process_custom(self, old_row: Row | None = None) -> None:
+    def process_custom(self, old_row: T | None = None) -> None:
         """Run the base grid processor and then apply custom post-processing."""
         if self.param.columns:
             # strip out None columns
@@ -635,19 +710,27 @@ class SmartGrid[T: TableWithGid](Grid):
             # redirect, errors etc.
             raise http
         finally:
-            self.post_process(old_row)
+            self.post_process(old_row=old_row)
 
     def effdt_new(self) -> None:
         """Create a new effective-dated record using the custom form setup."""
         if not self.is_creatable():
             raise HTTP(403, "Kan dit element niet aanmaken.")
 
-        self.param.validation = prepare_effdt_form_insert
+        custom_validation = self.param.validation
+
+        def validate_form(form: Form) -> None:
+            """Prepare the effective-dated insert before running model-specific validation."""
+            prepare_effdt_form_insert(form)
+            if custom_validation:
+                custom_validation(form)
+
+        self.param.validation = validate_form
         return self.process_custom()
 
-    def effdt_delete(self, record: Row) -> t.Any:
+    def effdt_delete(self, record: T) -> t.Any:
         """Delete an effective-dated record by closing it out and redirecting."""
-        if not self.is_deletable(record):
+        if not self.is_deletable(t.cast(Row, record)):
             raise HTTP(403, "Kan dit element niet verwijderen.")
         user = self.auth_user
         assert user, "can't use grid without user"
@@ -664,7 +747,7 @@ class SmartGrid[T: TableWithGid](Grid):
         if url and url.query:
             self.endpoint += f"?{url.query}"
 
-        self.post_process(record)
+        self.post_process(old_row=record)
         return redirect(self.endpoint)
 
     @property
@@ -674,9 +757,13 @@ class SmartGrid[T: TableWithGid](Grid):
 
         table_model = str(self.table._rname)
         table_ed: str = table_model.removesuffix("_model") + "_ed"
-        return self.db.find_model(table_ed) or throw(
-            KeyError(f"Could not find editable table for {self.table} (Model {table_ed} not found)"),
-        )
+
+        cls_ed = self.db.find_model(table_ed)
+
+        if not cls_ed:
+            raise KeyError(f"Could not find editable table for {self.table} (Model {table_ed} not found)")
+
+        return t.cast(type[EffdtTable], cls_ed)
 
     def move_buttons_column_left(self) -> None:
         """Move the action buttons column to the first visible position."""

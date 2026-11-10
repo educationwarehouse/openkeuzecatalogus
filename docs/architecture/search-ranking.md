@@ -55,9 +55,21 @@ phrases stay together, and a leading `-` marks an exclude term. Exclude terms fi
 never contribute to the score.
 
 Trigram matching requires the `pg_trgm` extension, enabled both at database init
-(`postgres/extensions.sql`) and by migration `enable_pg_trgm_20260721_001`. The similarity
+(`postgres/extensions.sql`) and by migration `enable_pg_trgm_and_unaccent_20060000_001`. The similarity
 threshold is a fixed `0.30` in `direct_search_rank_rule()` and is **not** configurable through the
 admin page.
+
+## Global Admin Search
+
+The administrator-only global search, available at `admin/search` and through its navigation
+search control (`Ctrl/Cmd+K`), uses the shared `SearchMixin` matching behaviour rather than the
+configurable catalogue-ranking rules above. It searches fixed admin tiles, the Logs cards, and Kennisnet
+catalogue tabs by title or an explicit alias such as `users` for Gebruikersbeheer. Screen results reuse
+their labels, icons, and destinations in the preview and full search page. It also searches boards, schools, locations,
+teaching teams, suppliers, methods, products, and visions, then links each row to its relevant admin grid.
+
+Product, method, and supplier search models have GIN trigram indexes on `name` and `olid` for
+this search. The other entity types remain in scope and use their normal configured search fields.
 
 ## Admin Page
 

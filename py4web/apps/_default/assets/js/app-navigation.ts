@@ -10,6 +10,7 @@ interface HtmxDetail {
     isError?: boolean;
     serverResponse?: string;
     swapOverride?: string;
+    selectOverride?: string;
     requestConfig?: {
         boosted?: boolean;
         verb?: string;
@@ -51,6 +52,7 @@ const saves = new Set<Promise<unknown>>();
 const save_requests = new WeakMap<XMLHttpRequest, (successful: boolean) => void>();
 const positions = new Map<string, number>();
 const partial_loaders = new Map<XMLHttpRequest, number>();
+const error_pages = new WeakMap<XMLHttpRequest, string>();
 let last_input = 0;
 let failed_save = false;
 let previous_url = location.href;
@@ -455,10 +457,28 @@ document.addEventListener("htmx:beforeRequest", (event) => {
 });
 document.addEventListener("htmx:beforeSwap", (event) => {
     const detail = (event as CustomEvent<HtmxDetail>).detail;
-    if (!detail.requestConfig?.boosted) {
+    const response = new DOMParser().parseFromString(detail.serverResponse || "", "text/html");
+    const full_page_error = detail.xhr.status >= 400 && response.querySelector("main .error-page");
+    if (!detail.requestConfig?.boosted && !full_page_error) {
         return;
     }
-    const response = new DOMParser().parseFromString(detail.serverResponse || "", "text/html");
+
+    if (full_page_error) {
+        // A complete error document must escape partial targets and inherited selectors.
+        detail.target = document.body;
+        detail.selectOverride = "unset";
+        detail.shouldSwap = true;
+        detail.isError = true;
+        if (!detail.requestConfig?.boosted) {
+            positions.set(location.href, scrollY);
+            previous_url = location.href;
+            navigation_hash = "";
+            catalog_switch_scroll = undefined;
+            restoring_catalog = false;
+            navigation = true;
+            error_pages.set(detail.xhr, detail.xhr.responseURL);
+        }
+    }
     if (!detail.shouldSwap && detail.xhr.status >= 400) {
         // htmx skips 4xx/5xx swaps, which would leave the previous page on screen. Show the
         // error page (and its ticket) as a full page load would.
@@ -497,6 +517,16 @@ document.addEventListener("htmx:beforeSwap", (event) => {
     }
     detail.swapOverride = preference.matches ? "innerHTML show:none" : "innerHTML transition:true show:none";
     cleanup_page();
+});
+document.addEventListener("htmx:afterSwap", (event) => {
+    const detail = (event as CustomEvent<HtmxDetail>).detail;
+    const error_url = error_pages.get(detail.xhr);
+    if (error_url) {
+        if (location.href !== error_url) {
+            history.pushState({ htmx: true }, "", error_url);
+        }
+        error_pages.delete(detail.xhr);
+    }
 });
 document.addEventListener("htmx:beforeTransition", (event) => {
     if (preference.matches) {

@@ -6,6 +6,7 @@ from endow import Domain
 from typedal import TypedRows
 
 from shared_code.data_model import SearchRankWeight
+from shared_code.data_model.mixins.effdt import validate_and_update_effectivedated
 from shared_code.data_model.tables.search_rank_weight import SEARCH_RANK_SCORE_NAMES, SEARCH_RANK_SECTION_TITLES
 from shared_code.modules.auth import AuthContext
 from shared_code.services.applog.contracts import selected_extra_field
@@ -78,7 +79,7 @@ class SearchRelevance(Domain):
                 }
                 if not scores:
                     continue
-                _, errors = SearchRankWeight.validate_and_update(SearchRankWeight.id == rule.id, **scores)
+                _, errors = validate_and_update_effectivedated(SearchRankWeight, rule, **scores)
                 if errors:
                     raise ValueError(next(iter(errors.values())))
         except ValueError as e:

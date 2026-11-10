@@ -16,12 +16,13 @@ psycopg2-binary
 pyjwt[crypto]
 redis
 requests>=2.32
-TypeDAL>=4.9.12
+TypeDAL >= 6.0, <7
 yayarl
 plumbum < 2
 
 # === Parsing / Content / Metadata ===
 b2sdk<3
+babel>=2,<3
 beautifulsoup4
 html5lib
 is-isbn
@@ -37,6 +38,7 @@ tabulate < 0.10
 # === Tooling / Test ===
 pytest
 pytest-cov
+pytest-timeout
 
 #########################################
 # PINNED VERSIONS FOR SECURITY REASONS: #

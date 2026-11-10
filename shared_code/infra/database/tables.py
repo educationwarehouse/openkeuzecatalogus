@@ -1,6 +1,13 @@
-"""Database table metadata helpers."""
+"""Database table metadata and maintenance helpers."""
+
+import typing as t
 
 from typedal import TypeDAL
+
+if t.TYPE_CHECKING:
+    from shared_code.services.caching import CacheService
+
+    from .context import DatabaseContext
 
 
 def is_readonly_table(db: TypeDAL, table_name: str) -> bool:
@@ -31,3 +38,14 @@ def is_readonly_table(db: TypeDAL, table_name: str) -> bool:
         },
     )
     return bool(rows)
+
+
+type MaterializedModel = t.Literal["method", "organisation", "product", "supplier", "tagged", "vision"]
+
+
+def rebuild_model(db: DatabaseContext, table: MaterializedModel, caching: CacheService | None = None) -> None:
+    """Rebuild the materialized model table of one effective-dated table."""
+    from shared_code.services.caching.writes import invalidate_cache
+
+    db.executesql(f"select rebuild_{table}_model()")
+    invalidate_cache(db, table, caching=caching)

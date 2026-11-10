@@ -1,6 +1,14 @@
 """HTML rendering helpers shared by widgets and filter definitions."""
 
+import html
+import re
 from urllib.parse import urlsplit
+
+from markdown2 import Markdown
+
+_MARKDOWN = Markdown()
+_TAG_PATTERN = re.compile(r"<[^>]+>")
+_WHITESPACE_PATTERN = re.compile(r"\s+")
 
 
 def catalog_external_url(value: object) -> str | None:
@@ -24,3 +32,14 @@ def convert_attrs[V](attrs: dict[str, V]) -> dict[str, V]:
     dict through here. Already-prefixed keys are left alone.
     """
     return {(key if key.startswith("_") else f"_{key}"): value for key, value in attrs.items()}
+
+
+def markdown_to_text(markdown: str) -> str:
+    """Render markdown to HTML, then strip tags for plain-text contexts like search.
+
+    Raw HTML is escaped before conversion, mirroring `MarkdownMixin`, so the result
+    matches the text a visitor actually sees.
+    """
+    rendered = _MARKDOWN.convert(html.escape(markdown))
+    text = _TAG_PATTERN.sub(" ", rendered)
+    return _WHITESPACE_PATTERN.sub(" ", html.unescape(text)).strip()

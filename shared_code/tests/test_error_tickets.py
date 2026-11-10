@@ -5,6 +5,7 @@ from pathlib import Path
 
 from pytest import MonkeyPatch
 
+from shared_code.modules.auth import AuthAdapter
 from shared_code.services.error_tickets import (
     AuthInfo,
     ErrorTicketService,
@@ -16,7 +17,7 @@ from shared_code.services.error_tickets import (
 
 def _raise_and_store_ticket(
     error_tickets: ErrorTicketService,
-    context: dict[str, t.Any],
+    context: AnyDict,
     snapshot: SnapshotDict | None = None,
 ) -> str:
     """Store a ticket while an exception is active so traceback capture is real."""
@@ -37,7 +38,7 @@ def _ticket_env(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
 def test_store_and_load_ticket_round_trips_real_data(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
     """A stored ticket should be readable back into the same dataclasses."""
     _ticket_env(monkeypatch, tmp_path)
-    error_tickets = ErrorTicketService.with_injected()
+    error_tickets = ErrorTicketService.with_injected(auth_adapter=AuthAdapter.for_service("pytest.error_tickets"))
 
     context = {"application": "ticket-tests", "details": {"nested": ["a", "b"]}}
     snapshot = {
@@ -102,7 +103,7 @@ def test_store_and_load_ticket_round_trips_real_data(monkeypatch: MonkeyPatch, t
 def test_ticket_lifecycle_uses_real_files(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
     """Count, list, delete and delete-all should operate on the stored files."""
     _ticket_env(monkeypatch, tmp_path)
-    error_tickets = ErrorTicketService.with_injected()
+    error_tickets = ErrorTicketService.with_injected(auth_adapter=AuthAdapter.for_service("pytest.error_tickets"))
 
     first = _raise_and_store_ticket(error_tickets, {"application": "ticket-tests", "seq": 1})
     second = _raise_and_store_ticket(error_tickets, {"application": "ticket-tests", "seq": 2})
@@ -126,7 +127,7 @@ def test_ticket_lifecycle_uses_real_files(monkeypatch: MonkeyPatch, tmp_path: Pa
 def test_load_ticket_returns_none_for_invalid_toml(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
     """Malformed ticket files should be ignored rather than crashing."""
     _ticket_env(monkeypatch, tmp_path)
-    error_tickets = ErrorTicketService.with_injected()
+    error_tickets = ErrorTicketService.with_injected(auth_adapter=AuthAdapter.for_service("pytest.error_tickets"))
 
     bad_ticket_id = "BROKEN-0001"
     bad_path = tmp_path / "errors" / f"{bad_ticket_id}.toml"

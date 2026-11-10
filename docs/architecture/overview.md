@@ -8,9 +8,11 @@ This repository uses Docker Compose to run the web app, background workers, and 
   - `migrate`: one-shot migration/bootstrap job.
   - `py4web`: web runtime.
 - Async workers:
+  - `pgq-scheduler`: single-replica scheduler for recurring queue work.
   - `pgq-scrapers`: queue consumer for scraper jobs.
   - `pgq-applog`: queue consumer for applog deque processing.
   - `pgq-maintenance`: queue consumer for utility jobs and scheduled maintenance.
+  - `pgq-pdf`: queue consumer for asynchronous vision-PDF rendering.
 - Data services:
   - `pg-0`: PostgreSQL database.
   - `redis-master`: primary Redis.
@@ -27,12 +29,18 @@ This repository uses Docker Compose to run the web app, background workers, and 
 - `pgq-scrapers` service
   - Entrypoint: `pgq run pgq.consumers.scrapers:main --batch-size 1`
   - Responsibility: process scraper import jobs (`start_importer_edu-v`).
+- `pgq-scheduler` service
+  - Entrypoint: `pgq run pgq.consumers.scheduler:main --batch-size 1`
+  - Responsibility: queue recurring work, including the nightly Kennisnet catalogue import.
 - `pgq-applog` service
   - Entrypoint: `pgq run pgq.consumers.applog:main --batch-size 5`
   - Responsibility: process the applog deque and queued error-ticket signals every minute.
 - `pgq-maintenance` service
   - Entrypoint: `pgq run pgq.consumers.maintenance:main --batch-size 1`
   - Responsibility: deliver queued email and refresh materialized views hourly.
+- `pgq-pdf` service
+  - Entrypoint: `pgq run pgq.consumers.pdf:main --batch-size 1`
+  - Responsibility: render staged keuzecanvas vision HTML to PDFs with WeasyPrint.
 - `playwright` service
   - Responsibility: run browser tests against the running `py4web` service.
 
@@ -49,7 +57,7 @@ This repository uses Docker Compose to run the web app, background workers, and 
    - `pg-0` healthcheck succeeds, and
    - `migrate` has completed successfully, and
    - `pgq-applog` and `pgq-maintenance` report healthy.
-4. `pgq-scrapers`, `pgq-applog`, and `pgq-maintenance` start after the `pg-0`
+4. `pgq-scheduler`, `pgq-scrapers`, `pgq-applog`, `pgq-maintenance`, and `pgq-pdf` start after the `pg-0`
    healthcheck succeeds and `migrate` completes successfully.
 5. `redis-slave` starts after `redis-master` and replicates from it.
 
@@ -60,12 +68,14 @@ This repository uses Docker Compose to run the web app, background workers, and 
 - Shared bind-mounted state:
   - `./shared_code` mounted read-only in runtime containers.
   - `./shared_cache`, `./shared_applog`, `./shared_keys`.
-  - `./shared_user_storage` (mounted by `py4web`).
+  - `./shared_user_storage` (shared read-write by `py4web` and `pgq-pdf` for staged vision PDFs).
   - `./migrate/flags` (migration/runtime coordination).
 
 ## Scaling Model
 
 - `py4web` replicas via `PY4WEB_REPLICAS` (default `3`).
 - `pgq-scrapers` replicas via `PGQ_WORKERS` (default `3`).
+- `pgq-scheduler` runs with one replica and does not process queued jobs.
+- `pgq-pdf` replicas via `PDF_WORKERS` (default `2`).
 - `pgq-applog` runs with one replica.
 - `pgq-maintenance` runs with one replica.

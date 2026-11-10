@@ -1,6 +1,7 @@
 """Tests for the method backend."""
 
 import json
+import re
 import typing as t
 from pathlib import Path
 
@@ -20,6 +21,8 @@ def _make_backend(auth: AuthAdapter, db: TypeDAL) -> MethodBackend:
         db=db,
         auth_adapter=auth,
     )
+
+
 def test_method_backend_resolve_public_filters_uses_method_sort_options(
     migrated_db_per_file: None,
     db_per_file: TypeDAL,
@@ -107,6 +110,17 @@ def test_method_backend_list_public_methods_excludes_removed_and_applies_sorting
     assert rows.pagination["total_items"] == 2
 
 
+def test_public_method_product_filter_uses_joined_alias(db_per_file: TypeDAL) -> None:
+    """Product availability must not introduce an unaliased product cross join."""
+    query = MethodBackend._with_public_relations(Method.where(Method.available != "verwijderd").select(Method.gid))
+
+    sql = query.to_sql()
+
+    assert "CROSS JOIN" not in sql
+    assert not re.search(r"FROM product_model(?:\s|,)", sql)
+    assert re.search(r'"products_[^"]+"\."available" <> ', sql)
+
+
 def test_method_search_is_exported_to_catalog_search_report(
     monkeypatch: MonkeyPatch,
     tmp_path: Path,
@@ -124,25 +138,27 @@ def test_method_search_is_exported_to_catalog_search_report(
     monkeypatch.setenv("APPLOG_FAKE", "0")
     monkeypatch.setenv("APPLOG_DEQUE_DIR", str(deque_dir))
 
-    supplier = supplier_factory(name="Method Search Report Supplier", email_domains=["method-search-report.example.test"])
+    supplier = supplier_factory(
+        name="Method Search Report Supplier", email_domains=["method-search-report.example.test"]
+    )
     first_method = method_factory(
-        supplier_gid=str(supplier.gid),
+        supplier_gid=supplier.gid,
         olid="method-search-report-001",
         name="Rekenen Basis",
     )
     second_method = method_factory(
-        supplier_gid=str(supplier.gid),
+        supplier_gid=supplier.gid,
         olid="method-search-report-002",
         name="Rekenen Plus",
     )
     product_factory(
-        supplier_gid=str(supplier.gid),
+        supplier_gid=supplier.gid,
         method_gid=first_method.gid,
         olid="method-search-report-product-001",
         name="Rekenen Basis Product",
     )
     product_factory(
-        supplier_gid=str(supplier.gid),
+        supplier_gid=supplier.gid,
         method_gid=second_method.gid,
         olid="method-search-report-product-002",
         name="Rekenen Plus Product",
@@ -218,15 +234,15 @@ def test_method_backend_list_my_methods_returns_only_member_rows(
 
     rows = backend.list_my_methods().collect()
 
-    assert {str(row.gid) for row in rows} == {str(visible_method.gid)}
-    assert str(hidden_method.gid) not in {str(row.gid) for row in rows}
+    assert {row.gid for row in rows} == {visible_method.gid}
+    assert hidden_method.gid not in {row.gid for row in rows}
 
     Method.where(Method.gid == visible_method.gid).first_or_fail().delete_record()
     db_per_file.commit()
 
     archived_rows = backend.list_my_methods(with_deleted=True).collect()
 
-    assert {str(row.gid) for row in archived_rows} == {str(visible_method.gid)}
+    assert {row.gid for row in archived_rows} == {visible_method.gid}
     assert {row.effstatus for row in archived_rows} == {True, False}
 
 
@@ -241,7 +257,9 @@ def test_method_backend_list_my_methods_with_deleted_returns_all_rows_for_admin(
     assert migrated_db_per_file is None
 
     first_supplier = supplier_factory(name="Admin Method Supplier One", email_domains=["admin-method-one.example.test"])
-    second_supplier = supplier_factory(name="Admin Method Supplier Two", email_domains=["admin-method-two.example.test"])
+    second_supplier = supplier_factory(
+        name="Admin Method Supplier Two", email_domains=["admin-method-two.example.test"]
+    )
     first_method = method_factory(
         supplier_gid=first_supplier.gid,
         olid="admin-method-001",
@@ -258,7 +276,7 @@ def test_method_backend_list_my_methods_with_deleted_returns_all_rows_for_admin(
 
     backend = _make_backend(education_warehouse_admin_adapter, db_per_file)
     rows = backend.list_my_methods(with_deleted=True).collect()
-    row_gids = {str(row.gid) for row in rows}
+    row_gids = {row.gid for row in rows}
 
-    assert {str(first_method.gid), str(second_method.gid)}.issubset(row_gids)
-    assert any(str(row.gid) == str(first_method.gid) and row.effstatus is False for row in rows)
+    assert {first_method.gid, second_method.gid}.issubset(row_gids)
+    assert any(row.gid == first_method.gid and row.effstatus is False for row in rows)

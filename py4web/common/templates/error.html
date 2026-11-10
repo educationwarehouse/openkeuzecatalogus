@@ -1,161 +1,12 @@
 [[extend 'layout.html']]
-[[block page_head]]<!-- individual pages can customize header here -->
-<style>
-    .message-body {
-        padding: 0;
-        border-width: 0;
-    }
-
-    .error-page {
-        max-width: 900px;
-        margin: 60px auto;
-        padding: 0 20px;
-    }
-
-    .error-card {
-        background: #fff;
-        border-radius: 16px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        overflow: hidden;
-    }
-
-    .error-header {
-        text-align: center;
-        padding: 50px 30px 40px;
-        border-bottom: 1px solid #e9ecef;
-    }
-
-    .error-code {
-        font-size: 120px;
-        font-weight: bold;
-        line-height: 1;
-        margin-bottom: 20px;
-        color: #dc3545;
-    }
-
-    .error-title {
-        font-size: 28px;
-        font-weight: bold;
-        margin-bottom: 10px;
-        color: #212529;
-    }
-
-    .error-subtitle {
-        font-size: 18px;
-        color: #6c757d;
-        margin-bottom: 0;
-        font-weight: normal;
-    }
-
-    .error-content {
-        padding: 30px;
-    }
-
-    .ticket-container {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 30px;
-        border-bottom: 1px solid #e9ecef;
-    }
-
-    .ticket-container a {
-        transition: all 0.2s ease;
-        border-radius: 8px;
-    }
-
-    .ticket-container a:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
-    }
-
-    .support-section {
-        padding: 30px;
-        border-bottom: 1px solid #e9ecef;
-    }
-
-    .support-section .alert {
-        margin: 0;
-        border-radius: 8px;
-    }
-
-    .debug-section {
-        padding: 30px;
-    }
-
-    .debug-section .alert {
-        margin: 0;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: background 0.2s ease;
-    }
-
-    .debug-section .alert:hover {
-        filter: brightness(0.98);
-    }
-
-    .debug-content {
-        background: var(--bs-body-bg);
-        padding: 16px 24px;
-        border-radius: 8px;
-        color: #212529;
-    }
-
-    .debug-content pre {
-        background: var(--bs-gray-200);
-        border-radius: 6px;
-        padding: 8px 12px;
-        margin: 0;
-        overflow-x: auto;
-    }
-
-    .debug-content code {
-        color: #212529;
-        font-family: 'Courier New', monospace;
-        font-size: 0.85em;
-    }
-
-    .unselectable {
-        -webkit-touch-callout: none;
-        -webkit-user-select: none;
-        -moz-user-select: none;
-        -ms-user-select: none;
-        user-select: none;
-    }
-
-    .message-body .hero {
-        display: flex;
-        flex-direction: row;
-    }
-
-    article {
-        color: #5f5f5f;
-        width: fit-content;
-        margin-top: 10px;
-        padding: 10px;
-        z-index: 1;
-        position: relative;
-    }
-
-    .hero {
-        pointer-events: initial;
-    }
-</style>
-
-<script>
-    function toggle_expand() {
-        const $element = document.getElementById("error-log");
-        const $icon = document.getElementById("icon");
-        if ($element.classList.contains("d-none")) {
-            $icon.innerHTML = "▶&#xFE0E;";
-        } else {
-            $icon.innerHTML = "▼&#xFE0E;";
-        }
-    }
-</script>
+[[block page_head]]
+[[if not globals().get('is_admin', False):]]
+<link rel="stylesheet" href="[[=STATIC('css', 'error-game-latest.css', app_name='_default')]]">
+<script defer src="[[=STATIC('js', 'error-game-latest.js', app_name='_default')]]"></script>
+[[pass]]
 [[end]]
 
-<div class="message-body">
+<div class="message-body okl-app">
     <div class="error-page">
         <div class="error-card">
             <!-- Error Header -->
@@ -163,6 +14,10 @@
                 <h1 class="error-code">[[=error_code]]</h1>
                 <h2 class="error-title">[[=text]]</h2>
                 <h3 class="error-subtitle">[[=subtext]]</h3>
+                <nav class="error-actions" aria-label="Verder vanaf deze foutpagina">
+                    <a class="okl-button okl-button--primary" href="[[=URL('index', use_appname=False)]]">Naar de startpagina</a>
+                    <a class="okl-button okl-button--secondary" href="[[=URL('producten', use_appname=False)]]">Bekijk de catalogus</a>
+                </nav>
             </div>
 
             <!-- Ticket Section -->
@@ -207,17 +62,70 @@
                 </div>
             </div>
 
-            <!-- Debug Section -->
-            [[if output:]]
-            <div class="debug-section">
-                <div class="alert alert-warning">
-                    <p class="unselectable mb-0" style="cursor: pointer"
-                       _="on click toggle .d-none on #error-log then call toggle_expand()">show more <span
-                            id="icon">▶&#xFE0E;</span></p>
+            [[if not globals().get('is_admin', False):]]
+            <section class="error-game" aria-labelledby="error-game-title">
+                <div class="game-card">
+                    <div class="game-copy">
+                        <p class="step">Voor tijdens het wachten</p>
+                        <h2 id="error-game-title">Vang de Leervonk</h2>
+                        <ol class="game-rules">
+                            <li><span class="rule-icon rule-icon--good" aria-hidden="true">🌈</span><p><strong>Vang kleurrijke items</strong><br>Ideeën en ontdekkingen leveren punten op.</p></li>
+                            <li><span class="rule-icon rule-icon--bonus" aria-hidden="true">❤️</span><p><strong>Pak de extra's</strong><br>Sterren, schilden en hartjes helpen je verder.</p></li>
+                            <li><span class="rule-icon rule-icon--hazard" aria-hidden="true">🚧</span><p><strong>Ontwijk obstakels</strong><br>Grijze wolken en beren kosten een hartje.</p></li>
+                            <li class="game-rule--mission"><span class="rule-icon rule-icon--mission" aria-hidden="true">∞</span><p><strong>Geen tijdslimiet</strong><br>Elk level wordt iets sneller.</p></li>
+                            <li class="game-rule--movement"><span class="rule-icon rule-icon--movement" aria-hidden="true">↔</span><p><strong>Bewegen</strong><br>Beweeg met ← →, A/D, je muis of de knoppen onder het spel.</p></li>
+                            <li class="game-rule--sound"><span class="rule-icon rule-icon--sound" aria-hidden="true"><span class="sound-icon is-muted">🔇</span></span>
+                                <div>
+                                    <p><strong>Speel met geluid?</strong></p>
+                                    <button class="sound-toggle" type="button" role="switch" aria-label="Geluid" aria-checked="false">
+                                        <span class="sound-toggle__track" aria-hidden="true"></span>
+                                        <span class="sound-toggle__state" aria-hidden="true">Uit</span>
+                                    </button>
+                                </div>
+                            </li>
+                        </ol>
+                    </div>
+                    <div class="game-wrap">
+                        <div class="scoreboard" aria-label="Spelstatus">
+                            <span>Score <strong class="game-score">0</strong></span>
+                            <span>Level <strong class="game-level">1</strong></span>
+                            <span>Combo <strong class="game-combo">×1</strong></span>
+                            <span>Hartjes <strong class="game-lives" aria-label="3 levens">♥ ♥ ♥</strong></span>
+                        </div>
+                        <div class="game-board" tabindex="0" aria-label="Speelveld. Start het spel en beweeg daarna naar links en rechts.">
+                            <div class="board-message">
+                                <span class="message-emoji" aria-hidden="true">😊</span>
+                                <strong class="message-title">Klaar voor de eerste vonk?</strong>
+                                <span class="board-message__copy">Pak de smiley en sleep hem. Vang de kleurrijke items en ontwijk obstakels.</span>
+                                <button class="start-button" type="button"><span class="game-start-label">Kom maar op!</span><span aria-hidden="true">→</span></button>
+                            </div>
+                            <div class="horizon" aria-hidden="true">
+                                <span class="book-stack book-stack--left"><i></i><i></i><i></i></span>
+                                <span class="horizon-glow"></span>
+                                <span class="book-stack book-stack--right"><i></i><i></i><i></i></span>
+                            </div>
+                            <div class="level-toast" hidden aria-hidden="true">Level 2!</div>
+                            <div class="catch-feedback" aria-hidden="true"></div>
+                            <div class="catcher" aria-hidden="true"><span class="catcher__face">😊</span><span class="catcher__shield">🛡️</span><span class="catcher__basket">PAK &amp; SLEEP MIJ</span></div>
+                        </div>
+                        <div class="touch-controls" aria-label="Beweegknoppen">
+                            <button type="button" class="move-button" data-move="left" aria-label="Beweeg naar links">←</button>
+                            <p><strong class="play-status">Blijf vangen!</strong><br><span class="high-score">Nog geen record</span></p>
+                            <button type="button" class="move-button" data-move="right" aria-label="Beweeg naar rechts">→</button>
+                        </div>
+                    </div>
+                    <p class="visually-hidden game-live" aria-live="polite" aria-atomic="true"></p>
                 </div>
+            </section>
+            [[pass]]
+
+            <!-- Debug Section -->
+            [[if globals().get('is_admin', False) and output:]]
+            <details class="debug-section">
+                <summary class="alert alert-warning">Technische details</summary>
 
                 <!-- Debug Content -->
-                <div id="error-log" class="debug-content d-none mt-2">
+                <div class="debug-content mt-2">
                     [[if soort:]]
                     Er kon geen [[=soort]] met deze filter(s) gevonden worden.
                     [[elif output:]]
@@ -237,7 +145,7 @@
                     Er kon niks gevonden worden.
                     [[pass]]
                 </div>
-            </div>
+            </details>
             [[pass]]
         </div>
     </div>

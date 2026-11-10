@@ -1,65 +1,105 @@
 """TypeDAL table definitions for durable importer-run reporting."""
 
 import typing as t
-import uuid
 from datetime import datetime
+from enum import StrEnum
 
-from typedal import TypedTable, relationship
-from typedal.fields import TypedField, UUIDField
+from pydal.validators import IS_IN_SET
+from typedal import relationship
+from typedal.fields import TypedField
+
+from shared_code.data_model.fields import OptionalUUIDField, UUIDReferenceField
+from shared_code.data_model.tables.base import TableWithGid
 
 # todo: docs about these tables + fields
 
 
-class ImporterRun(TypedTable):
-    """One finished importer run."""
+class KennisnetCoverageStatus(StrEnum):
+    """How a Kennisnet publisher is covered by the local catalogue."""
 
-    gid = UUIDField(default=uuid.uuid4, writable=False, filter_out=str)
+    IMPORTED = "imported"
+    OWN_ENDPOINT = "own_endpoint"
+    UNCONFIGURED = "unconfigured"
+    UNKNOWN = "unknown"
+
+
+KENNISNET_COVERAGE_STATUS_LABELS = {
+    KennisnetCoverageStatus.IMPORTED: "Geïmporteerd via Kennisnet",
+    KennisnetCoverageStatus.OWN_ENDPOINT: "Eigen Edu-V endpoint",
+    KennisnetCoverageStatus.UNCONFIGURED: "Bekend, endpoint niet ingesteld",
+    KennisnetCoverageStatus.UNKNOWN: "Onbekende leverancier",
+}
+
+type ImporterRunPhase = t.Literal["queued", "importing", "images", "completed", "failed"]
+IMPORTER_RUN_PHASES = t.get_args(ImporterRunPhase)
+
+
+class ImporterRun(TableWithGid):
+    """One importer run, from start through its final outcome."""
+
     source = TypedField(str, required=True, length=80)
     endpoint_type = TypedField(str, length=40)
-    supplier_gid = UUIDField(filter_out=str)
+    supplier_gid = OptionalUUIDField()
     supplier_name = TypedField(str, length=255)
     job_key = TypedField(str, unique=True, length=255)
     started_at = TypedField(datetime, required=True)
-    finished_at = TypedField(datetime, required=True)
+    finished_at = TypedField(datetime)
     duration_ms = TypedField(int, default=0)
-    success = TypedField(bool, required=True, default=True)
+    success = TypedField(bool)
+    phase = TypedField(
+        str,
+        required=True,
+        default="completed",
+        length=40,
+        requires=IS_IN_SET(IMPORTER_RUN_PHASES),
+    )
     failure_message = TypedField(str)
-    payload_json = TypedField(dict[str, t.Any], type="json")
-    warnings_json = TypedField(list[dict[str, str]], type="json")
-    error_stats = relationship(
-        list["ImporterRunErrorStat"],
-        condition=lambda run, error_stat: error_stat.run_gid == run.gid,
+    payload_json = TypedField(dict[str, object], type="json")
+
+    events = relationship(
+        list["ImporterRunEvent"],
+        condition=lambda run, event: event.run_gid == run.gid,
         join="left",
     )
+    warnings = relationship(
+        list["ImporterRunEvent"],
+        condition=lambda run, event: (event.run_gid == run.gid) & (event.event_type == "warning"),
+        join="left",
+        lazy="allow",
+    )
+
+    @property
+    def warnings_json(self) -> list[dict[str, object]]:
+        """Render warning events, using the joined relationship when preloaded."""
+        return [
+            (warning.details or {})
+            | {
+                "warning_code": warning.metric,
+                "product_name": (warning.details or {}).get("product_name") or warning.entity_name,
+                "supplier_gid": warning.supplier_gid,
+                "supplier_name": warning.supplier_name,
+                "entity_type": warning.entity_type,
+                "entity_gid": warning.entity_gid,
+                "entity_olid": warning.entity_olid,
+            }
+            for warning in sorted(self.warnings, key=lambda event: event.id)
+        ]
 
 
-class ImporterRunCountStat(TypedTable):
-    """Generic per-run count facts for reporting."""
+class ImporterRunEvent(TableWithGid):
+    """One durable importer-run reporting event."""
 
-    gid = UUIDField(default=uuid.uuid4, writable=False, filter_out=str)
-    run_gid = UUIDField(filter_out=str, required=True)
-    supplier_gid = UUIDField(filter_out=str)
+    run_gid = UUIDReferenceField(required=True)
+    supplier_gid = OptionalUUIDField()
     supplier_name = TypedField(str, length=255)
-    count_type = TypedField(str, required=True, length=40)
-    count_key = TypedField(str, required=True, length=255)
-    count_label = TypedField(str, length=255)
-    metric = TypedField(str, required=True, length=40)
-    value = TypedField(int, required=True, default=0)
-
-
-class ImporterRunErrorStat(TypedTable):
-    """Per-run row-level importer error facts."""
-
-    gid = UUIDField(default=uuid.uuid4, writable=False, filter_out=str)
-    run_gid = UUIDField(filter_out=str, required=True)
-    supplier_gid = UUIDField(filter_out=str)
-    supplier_name = TypedField(str, length=255)
+    event_type = TypedField(str, required=True, length=40)
+    scope_type = TypedField(str, length=40)
+    scope_key = TypedField(str, length=255)
+    scope_label = TypedField(str, length=255)
+    metric = TypedField(str, required=True, length=80)
     entity_type = TypedField(str, required=True, length=20)
-    entity_gid = UUIDField(filter_out=str)
+    entity_gid = OptionalUUIDField()
     entity_olid = TypedField(str, length=255)
     entity_name = TypedField(str, length=255)
-    method_gid = UUIDField(filter_out=str)
-    method_name = TypedField(str, length=255)
-    error_code = TypedField(str, required=True, length=80)
-    validation_failed = TypedField(bool, required=True, default=False)
-    error_details = TypedField(dict[str, t.Any], type="json")
+    value = TypedField(int)
+    details = TypedField(dict[str, object], type="json")

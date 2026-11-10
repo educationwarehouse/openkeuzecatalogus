@@ -1,4 +1,5 @@
 """Tests for the supplier backend policy seam."""
+
 import typing as t
 
 from edwh_auth_rbac import AuthRbac
@@ -6,8 +7,7 @@ from typedal import TypeDAL
 
 from shared_code.data_model import AuthUser, Supplier
 from shared_code.data_model.constants import ROLE_ADMIN
-from shared_code.modules.auth import AuthAdapter
-from shared_code.modules.auth import AuthContext
+from shared_code.modules.auth import AuthAdapter, AuthContext
 from shared_code.modules.suppliers import SupplierBackend
 from shared_code.modules.suppliers.policy import SupplierPolicy
 
@@ -24,14 +24,17 @@ def test_auth_context_for_service_builds_service_actor() -> None:
     """Service-scoped auth should expose the expected actor details."""
     ctx = AuthContext.for_service("supplier-sync")
 
-    assert ctx.is_service()
-    assert not ctx.is_user()
-    assert not ctx.is_anonymous()
-    assert ctx.id == "service:supplier-sync"
-    assert ctx.get_email() == "supplier-sync@internal"
-    assert ctx.actor.name == "supplier-sync"
-    assert ctx.roles == []
-    assert ctx.permissions == []
+    try:
+        assert ctx.is_service()
+        assert not ctx.is_user()
+        assert not ctx.is_anonymous()
+        assert ctx.id == "service:supplier-sync"
+        assert ctx.get_email() == "supplier-sync@internal"
+        assert ctx.actor.name == "supplier-sync"
+        assert ctx.roles == []
+        assert ctx.permissions == []
+    finally:
+        ctx.db.close()
 
 
 def test_supplier_policy_can_access_supplier_checks_admin_and_membership(
@@ -50,7 +53,7 @@ def test_supplier_policy_can_access_supplier_checks_admin_and_membership(
         auth_adapter=auth_adapter_factory(admin_user, roles=[ROLE_ADMIN]),
     )
     member_user = auth_user_factory(prefix="member", domain="policy.example.test")
-    seeded_rbac.add_membership(str(member_user.gid), str(supplier.gid))
+    seeded_rbac.add_membership(member_user.gid, supplier.gid)
     member_policy = SupplierPolicy.with_injected(
         db=db_psql,
         auth_adapter=auth_adapter_factory(member_user),
@@ -61,9 +64,9 @@ def test_supplier_policy_can_access_supplier_checks_admin_and_membership(
         auth_adapter=auth_adapter_factory(outsider_user),
     )
 
-    assert admin_policy.can_access_supplier(str(supplier.gid))
-    assert member_policy.can_access_supplier(str(supplier.gid))
-    assert not outsider_policy.can_access_supplier(str(supplier.gid))
+    assert admin_policy.can_access_supplier(supplier.gid)
+    assert member_policy.can_access_supplier(supplier.gid)
+    assert not outsider_policy.can_access_supplier(supplier.gid)
 
 
 def test_supplier_backend_grant_memberships_adds_matching_supplier_membership(
@@ -82,7 +85,7 @@ def test_supplier_backend_grant_memberships_adds_matching_supplier_membership(
     backend.grant_memberships(education_warehouse_supplier_user)
     db_per_file.commit()
 
-    assert seeded_rbac.has_membership(str(education_warehouse_supplier_user.gid), str(education_warehouse_supplier.gid))
+    assert seeded_rbac.has_membership(education_warehouse_supplier_user.gid, education_warehouse_supplier.gid)
 
 
 def test_education_warehouse_user_inherits_admin_via_supplier(
@@ -91,8 +94,8 @@ def test_education_warehouse_user_inherits_admin_via_supplier(
     seeded_rbac: AuthRbac,
 ) -> None:
     """Education Warehouse users should inherit admin from the supplier RBAC chain."""
-    assert seeded_rbac.has_membership(str(education_warehouse_admin_user.gid), str(education_warehouse_supplier.gid))
-    assert seeded_rbac.has_membership(str(education_warehouse_admin_user.gid), ROLE_ADMIN)
+    assert seeded_rbac.has_membership(education_warehouse_admin_user.gid, education_warehouse_supplier.gid)
+    assert seeded_rbac.has_membership(education_warehouse_admin_user.gid, ROLE_ADMIN)
 
 
 def test_supplier_backend_list_suppliers_returns_only_visible_rows_for_member(
@@ -117,10 +120,10 @@ def test_supplier_backend_list_suppliers_returns_only_visible_rows_for_member(
     db_per_file.commit()
 
     rows = backend.list_my_suppliers().collect()
-    row_gids = {str(row.gid) for row in rows}
+    row_gids = {row.gid for row in rows}
 
-    assert row_gids == {str(visible_supplier.gid)}
-    assert str(hidden_supplier.gid) not in row_gids
+    assert row_gids == {visible_supplier.gid}
+    assert hidden_supplier.gid not in row_gids
 
 
 def test_supplier_member_has_read_write_access_to_own_supplier(
@@ -142,9 +145,9 @@ def test_supplier_member_has_read_write_access_to_own_supplier(
     backend.grant_memberships(user)
     db_per_file.commit()
 
-    assert seeded_rbac.has_membership(str(user.gid), str(supplier.gid))
-    assert seeded_rbac.has_permission(str(user.gid), str(supplier.gid), "read")
-    assert seeded_rbac.has_permission(str(user.gid), str(supplier.gid), "write")
+    assert seeded_rbac.has_membership(user.gid, supplier.gid)
+    assert seeded_rbac.has_permission(user.gid, supplier.gid, "read")
+    assert seeded_rbac.has_permission(user.gid, supplier.gid, "write")
 
 
 def test_supplier_backend_list_suppliers_returns_all_rows_for_admin(
@@ -164,10 +167,10 @@ def test_supplier_backend_list_suppliers_returns_all_rows_for_admin(
 
     backend = _make_backend(education_warehouse_admin_adapter, db_per_file)
 
-    assert seeded_rbac.has_membership(str(education_warehouse_admin_user.gid), str(education_warehouse_supplier.gid))
-    assert seeded_rbac.has_membership(str(education_warehouse_admin_user.gid), ROLE_ADMIN)
+    assert seeded_rbac.has_membership(education_warehouse_admin_user.gid, education_warehouse_supplier.gid)
+    assert seeded_rbac.has_membership(education_warehouse_admin_user.gid, ROLE_ADMIN)
 
     rows = backend.list_my_suppliers().collect()
-    row_gids = {str(row.gid) for row in rows}
+    row_gids = {row.gid for row in rows}
 
-    assert {str(first_supplier.gid), str(second_supplier.gid)}.issubset(row_gids), "missing expected supplier"
+    assert {first_supplier.gid, second_supplier.gid}.issubset(row_gids), "missing expected supplier"

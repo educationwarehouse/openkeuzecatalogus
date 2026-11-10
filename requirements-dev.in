@@ -10,8 +10,10 @@
 -r shared_code/requirements.txt
 -r py4web/requirements.in
 -r pgq/requirements.in
+-r pgq/pdf-requirements.txt
 -r migrate/requirements.in
 -r playwright/requirements.in
 
 # Repo-level tooling.
 edwh[pip,bundler,files,uptime,devdb]>=1.12.0
+locust==2.46.6

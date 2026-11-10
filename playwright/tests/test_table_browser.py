@@ -5,8 +5,8 @@ from urllib.parse import urlparse
 
 from playwright.sync_api import Page, expect
 
-from .conftest import BASE_URL
-from .test_admin_suppliers_auth import _login_as_user, _register_and_verify_user
+from .auth_helpers import _login_as_user, _register_and_verify_user
+from .settings import BASE_URL
 
 
 def test_table_browser_deletes_table_without_editable_companion(page: Page) -> None:

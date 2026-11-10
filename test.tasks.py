@@ -9,11 +9,17 @@ import re
 import shlex
 import shutil
 import sys
+import tempfile
+import threading
+import traceback
 import typing as t
-from contextlib import contextmanager
+import uuid
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from copy import copy
+from datetime import UTC, datetime
 from pathlib import Path
 from textwrap import dedent
+from urllib.parse import urlsplit
 
 import edwh.tasks
 import termcolor._types
@@ -33,6 +39,7 @@ type AnyDict = dict[str, t.Any]
 CACHE_DIR = Path("/shared_cache/pytest")
 HOST_CACHE_BASE_DIR = Path("shared_cache")
 HOST_CACHE_DIR = HOST_CACHE_BASE_DIR / "pytest"
+HOST_AXE_REPORT_PATH = HOST_CACHE_DIR / "axe-report.md"
 HOST_SHARED_COVERAGE_CONFIG = "shared_code/coverage.toml"
 CONTAINER_SHARED_COVERAGE_CONFIG = "/pythonpath/shared_code/coverage.toml"
 CONTAINER_PY4WEB_COVERAGE_CONFIG = "/p4w/coverage.py4web.toml"
@@ -40,17 +47,87 @@ CONTAINER_PY4WEB_RUNTIME_COVERAGE_FILE = str(CACHE_DIR / ".coverage.py4web.runti
 TEST_RUN_LOCK_FILE = HOST_CACHE_BASE_DIR / "pytest.run.lock"
 MOCK_INBOX_PATH = HOST_CACHE_BASE_DIR / "mail/mock_inbox.jsonl"
 TEST_MIGRATE_SEED_BASE_URL = "file:///data/seeding"
+LOAD_TEST_DURATION_PATTERN = re.compile(r"(?:\d+|(?:\d+h)?(?:\d+m)?(?:\d+s)?)")
+LOAD_TEST_DURATION_VALUES_PATTERN = re.compile(r"\d+")
 
 load_dotenv()
+
+DEFAULT_EXITFIRST = os.getenv("STATE_OF_DEVELOPMENT", "").upper() == "ONT"
+
+
+class TestRunOutput:
+    """Keep live terminal output while saving a flushed copy for diagnosis."""
+
+    def __init__(self, terminal: t.TextIO, log: t.TextIO, lock: threading.Lock) -> None:
+        """Connect one terminal stream to the shared run log."""
+        self.terminal = terminal
+        self.log = log
+        self.lock = lock
+
+    def write(self, text: str) -> int:
+        """Serialize writes from Invoke's stdout and stderr reader threads."""
+        with self.lock:
+            self.log.write(text)
+            self.log.flush()
+            return self.terminal.write(text)
+
+    def flush(self) -> None:
+        """Flush both destinations."""
+        with self.lock:
+            self.log.flush()
+            self.terminal.flush()
+
+    def isatty(self) -> bool:
+        """Preserve terminal-aware formatting."""
+        return self.terminal.isatty()
+
+    def fileno(self) -> int:
+        """Expose the terminal descriptor used by Invoke's PTY setup."""
+        return self.terminal.fileno()
+
+
+@contextmanager
+def record_test_run(c: Context) -> t.Generator[Path]:
+    """Retain run output outside the report directory cleared by the next run."""
+    run_gid = str(uuid.uuid4())
+    log_dir = Path(tempfile.mkdtemp(prefix=f"edwh-test-{run_gid}-"))
+    metadata = {
+        "gid": run_gid,
+        "started_at": datetime.now(UTC).isoformat(),
+        "cwd": str(Path.cwd()),
+        "argv": sys.argv,
+        "status": "running",
+    }
+    metadata_path = log_dir / "run.json"
+    metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+    try:
+        with (log_dir / "output.log").open("w", encoding="utf-8") as log:
+            lock = threading.Lock()
+            # Invoke resolves its default streams to sys.stdout/sys.stderr per run, so redirecting them here
+            # tees command output without setting run.out_stream, which would make Invoke ignore hide=True.
+            stdout = TestRunOutput(sys.stdout, log, lock)
+            stderr = TestRunOutput(sys.stderr, log, lock)
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                print(f"Test run {run_gid}: {log_dir}")
+                try:
+                    yield log_dir
+                except BaseException as error:
+                    metadata["status"] = "failed"
+                    metadata["error"] = str(error)
+                    traceback.print_exc()
+                    raise
+                else:
+                    metadata["status"] = "ok"
+    finally:
+        metadata["finished_at"] = datetime.now(UTC).isoformat()
+        metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+        print(f"Test run {run_gid} ({metadata['status']}): {log_dir}")
 
 
 def docker_compose(c: Context, args: str) -> Result:
     """Run a docker compose command after enforcing non-production safety."""
     deny_in_productie()
-    try:
-        return c.run(f"{DOCKER_COMPOSE} {args}", pty=True)
-    except UnexpectedExit as err:
-        raise RuntimeError(f"docker compose {args} failed") from err
+    return c.run(f"{DOCKER_COMPOSE} {args}", pty=True)
 
 
 def docker_compose_run(
@@ -69,6 +146,26 @@ def docker_compose_run(
     # Construct the docker-compose command with COVERAGE_FILE and additional env variables.
     cmd = f"run {no_deps_flag} {environment_str} -w {workdir} --rm {container} {inner_cmd}"
     return docker_compose(c, cmd)
+
+
+def remove_database_containers(c: Context) -> None:
+    """Remove PostgreSQL and its transitive dependents from the Compose graph."""
+    deny_in_productie()
+    result = c.run(f"{DOCKER_COMPOSE} config --format json", hide=True)
+    services = json.loads(result.stdout)["services"]
+    affected = {"pg-0"}
+    pending = affected.copy()
+
+    while pending:
+        dependents = {
+            name
+            for name, service in services.items()
+            if name not in affected and pending.intersection(service.get("depends_on", {}))
+        }
+        affected |= dependents
+        pending = dependents
+
+    docker_compose(c, f"rm -fsv {shlex.join(sorted(affected))}")
 
 
 def report_priority(report_path: Path, regex: re.Pattern[str] = re.compile(r"^cov\.(\d+)_")) -> int:
@@ -129,6 +226,78 @@ def require_virtualenv(_: Context) -> None:
         raise SystemExit(1)
 
 
+@task()
+def require_non_productie(_: Context) -> None:
+    """Abort before any test-run pre-task can alter a production environment."""
+    deny_in_productie()
+
+
+def _prepare_load_report_directory() -> None:
+    """Create shared load-report storage and check that existing reports are writable."""
+    report_dir = HOST_CACHE_BASE_DIR / "load"
+    create_report_dir = not report_dir.exists()
+    report_dir.mkdir(parents=True, exist_ok=True)
+    if create_report_dir:
+        os.chown(report_dir, -1, 1050)
+        report_dir.chmod(0o2770)
+    report_paths = [report_dir, *report_dir.glob("locust*.csv"), report_dir / "locust.html"]
+    for path in report_paths:
+        if path.exists() and not os.access(path, os.W_OK):
+            raise PermissionError(f"Load-test reports are not writable: {path}. Check ownership and group permissions.")
+
+
+@task(pre=[require_non_productie])
+def load(
+    c: Context,
+    host: str = "http://py4web:8000",
+    users: int = 100,
+    spawn_rate: float = 10.0,
+    run_time: str = "1m",
+    web: bool = False,
+    port: int = 8089,
+) -> Result:
+    """Run opt-in public catalogue load journeys, separately from test.run."""
+    deny_in_productie()
+    target = urlsplit(host)
+    if target.scheme not in {"http", "https"} or not target.netloc:
+        raise ValueError("host must be an absolute HTTP(S) URL.")
+    if users < 1 or spawn_rate <= 0 or not 1 <= port <= 65535:
+        raise ValueError("users and spawn-rate must be positive; port must be between 1 and 65535.")
+    duration = LOAD_TEST_DURATION_PATTERN.fullmatch(run_time)
+    if not duration or not any(int(value) > 0 for value in LOAD_TEST_DURATION_VALUES_PATTERN.findall(run_time)):
+        raise ValueError("run-time must be a Locust duration, for example 60, 1m or 1m30s.")
+
+    _prepare_load_report_directory()
+
+    args = ["run", "--rm"]
+    if host.rstrip("/") != "http://py4web:8000":
+        args.append("--no-deps")
+    if web:
+        args.extend(("--publish", f"127.0.0.1:{port}:8089"))
+        cprint(f"Locust UI: http://localhost:{port}", "cyan")
+    args.extend(
+        (
+            "load",
+            "-f",
+            "/mnt/locust/locustfile.py",
+            "--host",
+            host,
+            "--users",
+            str(users),
+            "--spawn-rate",
+            str(spawn_rate),
+            "--csv",
+            "/reports/locust",
+            "--csv-full-history",
+            "--html",
+            "/reports/locust.html",
+        )
+    )
+    if not web:
+        args.extend(("--headless", "--run-time", run_time))
+    return docker_compose(c, shlex.join(args))
+
+
 def status_color(status: str) -> termcolor._types.Color:
     """Map status values to termcolor color names."""
     options: dict[str, termcolor._types.Color] = {
@@ -144,14 +313,28 @@ def status_color(status: str) -> termcolor._types.Color:
 def go(
     c: Context,
     container: str,
-    tests_path: str,
+    tests_paths: t.Iterable[str],
     environment: AnyDict | None = None,
     pytest_args: t.Iterable[str] = (),
 ) -> Result | None:
-    """Run pytest in a specific compose service and test path."""
+    """Run pytest in a specific compose service and one or more test paths."""
     # Build -e flags from the environment dict, if any.
-    cmd = f"pytest {' '.join(pytest_args)} {tests_path}"
+    cmd = shlex.join(("pytest", *pytest_args, *tests_paths))
     return docker_compose_run(c, container, cmd, environment=environment or {})
+
+
+def coverage_html_command(
+    coverage_data_file: str,
+    suite_name: str,
+    rcfile: str = CONTAINER_SHARED_COVERAGE_CONFIG,
+    include: str | None = None,
+) -> str:
+    """Build the HTML export command for standalone or batched reporting."""
+    include_arg = f" --include={shlex.quote(include)}" if include else ""
+    return (
+        f"coverage html --keep-combined --rcfile={rcfile} -i --data-file={coverage_data_file}{include_arg} "
+        f"-d {CACHE_DIR}/htmlcov/{suite_name}"
+    )
 
 
 def write_coverage_html(
@@ -161,12 +344,44 @@ def write_coverage_html(
     coverage_data_file: str,
     suite_name: str,
     rcfile: str = CONTAINER_SHARED_COVERAGE_CONFIG,
+    include: str | None = None,
 ) -> None:
-    """Generate an HTML coverage report for one suite inside a container."""
-    html_cmd = (
-        f"coverage html --rcfile={rcfile} -i --data-file={coverage_data_file} -d {CACHE_DIR}/htmlcov/{suite_name}"
+    """Generate an HTML coverage report without starting service dependencies."""
+    html_cmd = coverage_html_command(coverage_data_file, suite_name, rcfile=rcfile, include=include)
+    docker_compose_run(
+        c,
+        container=container,
+        inner_cmd=f"sh -lc {shlex.quote(html_cmd)}",
+        environment=environment,
+        with_dependencies=False,
     )
-    docker_compose_run(c, container=container, inner_cmd=f"sh -lc {shlex.quote(html_cmd)}", environment=environment)
+
+
+def write_coverage_json(
+    c: Context,
+    container: str,
+    environment: AnyDict,
+    coverage_data_file: str,
+    output_file: str,
+    include: str,
+    rcfile: str = CONTAINER_SHARED_COVERAGE_CONFIG,
+    suite_name: str | None = None,
+) -> None:
+    """Export filtered JSON and optional HTML in one dependency-free container."""
+    json_cmd = (
+        f"coverage json --keep-combined --rcfile={rcfile} --data-file={coverage_data_file} "
+        f"--include={shlex.quote(include)} -o {output_file}"
+    )
+    if suite_name:
+        html_cmd = coverage_html_command(coverage_data_file, suite_name, rcfile=rcfile, include=include)
+        json_cmd = f"{json_cmd} && {html_cmd}"
+    docker_compose_run(
+        c,
+        container=container,
+        inner_cmd=f"sh -lc {shlex.quote(json_cmd)}",
+        environment=environment,
+        with_dependencies=False,
+    )
 
 
 def clear_mock_inbox(c: Context) -> None:
@@ -221,7 +436,7 @@ def go_shared_code(
         result = go.body(
             c,
             container="migrate",
-            tests_path="shared_code",
+            tests_paths=("shared_code",),
             pytest_args=updated_pytest_args,
             environment=environment,
         )
@@ -247,14 +462,14 @@ def go_py4web(
 
     if coverage:
         environment["COVERAGE_FILE"] = CACHE_DIR / ".coverage.py4web.pytest"
-        updated_pytest_args.extend(coverage_args("apps", "01_py4web", CONTAINER_PY4WEB_COVERAGE_CONFIG))
+        updated_pytest_args.extend(coverage_args("apps", "01_py4web", cov_config=CONTAINER_PY4WEB_COVERAGE_CONFIG))
         updated_pytest_args.append("--cov=common")
 
     with isolated_test_database(c):
         result = go.body(
             c,
             container="py4web",
-            tests_path="tests",
+            tests_paths=("tests", "apps"),
             pytest_args=updated_pytest_args,
             environment=environment,
         )
@@ -272,7 +487,7 @@ def go_py4web(
 
 @task()
 def py4web_runtime_coverage_report(c: Context) -> None:
-    """Merge runtime web coverage into the main py4web coverage artifacts."""
+    """Merge stopped web processes' coverage into the main py4web artifacts."""
     coverage_data_file = f"{CACHE_DIR}/.coverage.py4web"
     runtime_json = f"{CACHE_DIR}/cov.01_py4web.json"
 
@@ -286,19 +501,18 @@ def py4web_runtime_coverage_report(c: Context) -> None:
               inputs="{CACHE_DIR}/.coverage.py4web.pytest $inputs"
             fi
             coverage combine --keep --data-file={coverage_data_file} $inputs
-            coverage json --rcfile={CONTAINER_PY4WEB_COVERAGE_CONFIG} --data-file={coverage_data_file} -o {runtime_json}
+            coverage json --keep-combined --rcfile={CONTAINER_PY4WEB_COVERAGE_CONFIG} \
+                --data-file={coverage_data_file} -o {runtime_json}
+            {coverage_html_command(coverage_data_file, "py4web", rcfile=CONTAINER_PY4WEB_COVERAGE_CONFIG)}
             """
         ).strip()
     )
-    docker_compose(c, f"exec -T py4web sh -lc {export_cmd}")
-
-    write_coverage_html(
+    docker_compose_run(
         c,
         container="py4web",
-        environment={"WORKDIR": "/p4w"},
-        coverage_data_file=coverage_data_file,
-        suite_name="py4web",
-        rcfile=CONTAINER_PY4WEB_COVERAGE_CONFIG,
+        inner_cmd=f"sh -lc {export_cmd}",
+        environment={"WORKDIR": "/p4w", "COVERAGE_PROCESS_START": ""},
+        with_dependencies=False,
     )
 
 
@@ -344,6 +558,7 @@ def go_web(
     environment: AnyDict | None = None,
     coverage: bool = True,
     keyword_search: str = "",
+    marker_expression: str = "not accessibility",
 ) -> Result | None:
     """Run browser-driven Playwright tests against the running py4web service."""
     migration_environment = default_testing_env() | {"MIGRATE_SEED_CATALOG_CONFIGURATION": "1"}
@@ -375,6 +590,7 @@ def go_web(
         updated_pytest_args = list(pytest_args) or default_pytest_args()
         if keyword_search:
             updated_pytest_args.extend(("-k", keyword_search))
+        updated_pytest_args.extend(("-m", marker_expression))
         environment = copy(environment or default_testing_env())
         environment["WORKDIR"] = "/work"
 
@@ -382,7 +598,7 @@ def go_web(
         result = docker_compose_run(
             c,
             container="playwright",
-            inner_cmd=f"pytest {' '.join(updated_pytest_args)} tests",
+            inner_cmd=shlex.join(("pytest", *updated_pytest_args, "tests")),
             environment=environment,
             with_dependencies=False,
         )
@@ -402,9 +618,33 @@ def go_web(
                 with_dependencies=False,
             )
             restart_py4web(c)
+            edwh.tasks.wait_until_healthy(c, ["py4web"])
+            # Retain the startup paths, then freeze every replica before merging.
+            docker_compose(c, "stop py4web")
             py4web_runtime_coverage_report(c)
 
     return result
+
+
+def print_accessibility_report(report_path: Path = HOST_AXE_REPORT_PATH) -> None:
+    """Print the compact axe-core report for its dedicated CI route."""
+    if not report_path.is_file():
+        return
+
+    report = report_path.read_text(encoding="utf-8").strip()
+    if report:
+        print(report)
+
+
+@task(pre=[edwh.tasks.setup])
+def axe_core(c: Context) -> Result | None:
+    """Run axe-core browser scans outside the standard test suite."""
+    try:
+        return go_web.body(c, coverage=False, marker_expression="accessibility")
+    finally:
+        print("--- START AXE REPORTING ---")
+        print_accessibility_report()
+        print("--- END AXE REPORTING ---")
 
 
 @task(flags={"keyword_search": ("keyword-search", "k")}, iterable=("pytest_args",), pre=[edwh.tasks.setup])
@@ -436,16 +676,18 @@ def go_pgq(
         result = go.body(
             c,
             container="pgq-applog",
-            tests_path="pgq",
+            tests_paths=("pgq",),
             pytest_args=updated_pytest_args,
             environment=environment,
         )
         if coverage:
-            write_coverage_html(
+            write_coverage_json(
                 c,
                 container="pgq-applog",
                 environment=environment,
                 coverage_data_file=f"{CACHE_DIR}/.coverage.pgq",
+                output_file=f"{CACHE_DIR}/cov.01_pgq.json",
+                include="pgq/*",
                 suite_name="pgq",
             )
     return result
@@ -497,7 +739,7 @@ def go_tasks(
         )
 
     tests_path = (project_root / "tests").resolve()
-    cmd = f"{pytest_cmd} {' '.join(updated_pytest_args)} {shlex.quote(str(tests_path))}"
+    cmd = f"{pytest_cmd} {shlex.join((*updated_pytest_args, str(tests_path)))}"
     run_env = copy(default_testing_env())
     if coverage:
         run_env["COVERAGE_FILE"] = str(coverage_file)
@@ -533,7 +775,7 @@ def go_migrate(
 
     c.run("rm -f migrate/flags/migrate-*.complete", pty=True)
 
-    docker_compose(c, "rm -fsv pg-0")
+    remove_database_containers(c)
     if os.environ.get("TEST_DATABASE_ISOLATED") == "1" and (volume_name := os.environ.get("POSTGRES_DATA_NAME")):
         c.run(f"docker volume rm -f {shlex.quote(volume_name)}", pty=True)
 
@@ -549,7 +791,10 @@ def go_migrate(
     if coverage:
         migrate_cmd = (
             f"coverage run --rcfile={CONTAINER_SHARED_COVERAGE_CONFIG} --branch /opt/venv/bin/migrate && "
-            f"coverage json --rcfile={CONTAINER_SHARED_COVERAGE_CONFIG} "
+            f"coverage combine --keep --data-file={CACHE_DIR}/.coverage.migrate "
+            f"{CACHE_DIR}/.coverage.migrate.* && "
+            f"coverage json --keep-combined --rcfile={CONTAINER_SHARED_COVERAGE_CONFIG} "
+            f"--data-file={CACHE_DIR}/.coverage.migrate "
             f"--include='/pythonpath/shared_code/migrations/*' -o {migrate_report}"
         )
 
@@ -577,21 +822,25 @@ def coverage_args(
 
 
 @contextmanager
-def restore_database_after_tests(c: Context) -> t.Iterator[None]:
+def restore_database_after_tests(c: Context) -> t.Generator[None]:
     """Run tests against a disposable postgres volume and remove it afterwards."""
     volume_name = f"{os.environ['PROJECT']}_postgres_data_test_run"
     os.environ["POSTGRES_DATA_NAME"] = volume_name
     try:
         yield
     finally:
-        docker_compose(c, "rm -fsv pg-0")
+        remove_database_containers(c)
         c.run(f"docker volume rm -f {shlex.quote(volume_name)}", pty=True)
         os.environ.pop("POSTGRES_DATA_NAME", None)
 
 
 @contextmanager
-def isolated_test_database(c: Context, migration_environment: AnyDict | None = None) -> t.Iterator[None]:
-    """Provide a migrated disposable test database unless one is already active."""
+def isolated_test_database(
+    c: Context,
+    migration_environment: AnyDict | None = None,
+    initialize: bool = True,
+) -> t.Generator[None]:
+    """Provide a disposable database, optionally initialized by the migration suite."""
     if os.environ.get("TEST_DATABASE_ISOLATED") == "1":
         yield
         return
@@ -599,14 +848,15 @@ def isolated_test_database(c: Context, migration_environment: AnyDict | None = N
     os.environ["TEST_DATABASE_ISOLATED"] = "1"
     try:
         with restore_database_after_tests(c):
-            go_migrate(c, coverage=False, environment=migration_environment)
+            if initialize:
+                go_migrate(c, coverage=False, environment=migration_environment)
             yield
     finally:
         os.environ.pop("TEST_DATABASE_ISOLATED", None)
 
 
 @contextmanager
-def lock_test_run(lock_file: Path = TEST_RUN_LOCK_FILE, wait: bool = True, verbose: bool = False) -> t.Iterator[bool]:
+def lock_test_run(lock_file: Path = TEST_RUN_LOCK_FILE, wait: bool = True, verbose: bool = False) -> t.Generator[bool]:
     """Ensure only one test.run process executes at a time."""
     lock_file.parent.mkdir(parents=True, exist_ok=True)
     with lock_file.open("w") as lock_handle:
@@ -628,7 +878,7 @@ def lock_test_run(lock_file: Path = TEST_RUN_LOCK_FILE, wait: bool = True, verbo
             fcntl.flock(lock_handle.fileno(), fcntl.LOCK_UN)
 
 
-def default_testing_env() -> dict[str, t.Any]:
+def default_testing_env() -> AnyDict:
     """Return baseline environment variables for test commands."""
     return {
         "STATE_OF_DEVELOPMENT": "test",
@@ -638,9 +888,14 @@ def default_testing_env() -> dict[str, t.Any]:
         "IMAGE_STORAGE_FAKE": "1",
         "APPLOG_FAKE": "1",
         "ERROR_SIGNAL_BACKEND": "mock",
+        # names postgres so the gated cache-table migration registers and runs
+        "CACHE_BACKEND": "postgres",
         "ENTREE_FAKE": "1",
         "ENTREE_CLIENT_ENDPOINT": "http://py4web:8000/auth/entree_mock_authorize",
         "PYTEST_MOCK_EMAIL_DOMAIN": "pytest-mock.local",
+        "AI_PROVIDER": "disabled",  # once feature actually available: "mock"
+        "AUTO_APPROVE_AND_LOGIN_AFTER_REGISTRATION": "0",
+        "KENNISNET_CATALOGUE_BASE_URL": "https://kennisnet.invalid",  # prevent spamming real api by accident
     }
 
 
@@ -651,10 +906,10 @@ def _build_full_suite_pytest_options(
     keyword_search: str = "",
     extra: str = "",
 ) -> list[str]:
-    pytest_options = [f"-o cache_dir={CACHE_DIR}"]
+    pytest_options = ["-o", f"cache_dir={CACHE_DIR}", *default_pytest_args()]
 
     if extra:
-        pytest_options.append(extra)
+        pytest_options.extend(shlex.split(extra))
     if show_output:
         pytest_options.append("-s")
     if verbose:
@@ -662,10 +917,7 @@ def _build_full_suite_pytest_options(
     if exitfirst:
         pytest_options.append("-x")
     if keyword_search:
-        pytest_options.append(f"-k {keyword_search}")
-
-    if len(pytest_options) == 1:
-        pytest_options.extend(default_pytest_args())
+        pytest_options.extend(("-k", keyword_search))
 
     return pytest_options
 
@@ -693,25 +945,27 @@ def collect_shared_code_coverage(c: Context, environment: AnyDict, container: st
     # uses pgq- container because that has access to both shared code (used by importer) and pgq paths
     collect_cmd = dedent(
         f"""
+        set -e
         inputs=""
         for f in "{CACHE_DIR}/.coverage.shared_code" "{CACHE_DIR}/.coverage.migrate" "{CACHE_DIR}/.coverage.pgq"; do
             [ -f "$f" ] && inputs="$inputs $f"
         done
         coverage combine --keep --data-file={CACHE_DIR}/.coverage.shared_code.merged $inputs
-        coverage json \
+        coverage json --keep-combined \
             --rcfile={CONTAINER_SHARED_COVERAGE_CONFIG} \
             --data-file={CACHE_DIR}/.coverage.shared_code.merged \
+            --include='shared_code/*' \
             -o {CACHE_DIR}/cov.01_shared_code.json
+        {coverage_html_command(f"{CACHE_DIR}/.coverage.shared_code.merged", "shared_code", include="shared_code/*")}
         """
     ).strip()
     env = environment | {"WORKDIR": "/pythonpath"}
-    docker_compose_run(c, container=container, inner_cmd=f"sh -lc {shlex.quote(collect_cmd)}", environment=env)
-    write_coverage_html(
+    docker_compose_run(
         c,
         container=container,
+        inner_cmd=f"sh -lc {shlex.quote(collect_cmd)}",
         environment=env,
-        coverage_data_file=f"{CACHE_DIR}/.coverage.shared_code.merged",
-        suite_name="shared_code",
+        with_dependencies=False,
     )
 
 
@@ -727,8 +981,8 @@ def run_suite_task(
         edwh.tasks.set_permissions(
             c,
             "shared_cache",
-            filepermissions=666,
-            directorypermissions=777,
+            filepermissions=660,
+            directorypermissions=2770,
         )
 
         result = test.body(c, copy(pytest_options), copy(environment), coverage)
@@ -737,20 +991,37 @@ def run_suite_task(
 
         return "ok" if is_ok else "err"
 
+    except UnexpectedExit as error:
+        print(f"Suite command failed (exit {error.result.exited}): {error.result.command}", file=sys.stderr)
+        for line in (error.result.stdout + error.result.stderr).splitlines():
+            if line.startswith(("FAILED ", "ERROR ", "E   ")):
+                print(line, file=sys.stderr)
+        return "err"
     except Exception as e:
+        traceback.print_exc()
         return f"fatal {e}"
+
+
+def _report_suite_results(results: dict[str, str], mode: OutputMode) -> None:
+    """Print the aggregate suite results in the requested output mode."""
+    if mode == "json":
+        print(json.dumps(results))
+    else:
+        for test_name, status in results.items():
+            edwh.tasks._print_lint_status(f"{test_name}: {status}", ok=status == "ok", output=mode)
 
 
 def run_full_suite(
     c: Context,
     show_output: bool = False,
     verbose: bool = False,
-    exitfirst: bool = False,
+    exitfirst: bool = DEFAULT_EXITFIRST,
     keyword_search: str = "",
     coverage: bool = True,
     extra: str = "",
     apps: t.Iterable[str] | None = None,
     mode: OutputMode = "cli",
+    log_dir: Path | None = None,
 ) -> None:
     """Once `run` acquires a lock to ensure only one test suite runs at a time, run each test and aggregate results."""
     c.sudo(f"rm -rf {HOST_CACHE_DIR}")
@@ -772,8 +1043,10 @@ def run_full_suite(
 
     results: dict[str, str] = {}
 
-    with isolated_test_database(c):
+    # The migration suite already initializes the database before containerized tests.
+    with isolated_test_database(c, initialize="migrate" not in tests):
         for test_name, test in tests.items():
+            print(f"Starting suite: {test_name}", flush=True)
             results[test_name] = run_suite_task(
                 c,
                 test,
@@ -781,6 +1054,9 @@ def run_full_suite(
                 environment=environment,
                 coverage=coverage,
             )
+            print(f"Finished suite: {test_name}: {results[test_name]}", flush=True)
+            if log_dir is not None:
+                (log_dir / "suites.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
 
             if exitfirst and results[test_name] != "ok":
                 break
@@ -796,16 +1072,12 @@ def run_full_suite(
         # report prints and returns boolean for threshold ok
         all_ok = False
 
-    if mode == "json":
-        print(json.dumps(results))
-    else:
-        for test_name, status in results.items():
-            edwh.tasks._print_lint_status(f"{test_name}: {status}", ok=status == "ok", output=mode)
+    _report_suite_results(results, mode)
 
     print("--- END REPORTING ---")
 
     if not all_ok:
-        exit(1)
+        raise SystemExit(1)
     # else: exit ok
 
 
@@ -815,13 +1087,13 @@ def run_full_suite(
         "no_wait_for_lock": ("no-wait-for-lock",),
     },
     iterable=("apps",),
-    pre=[require_virtualenv, edwh.tasks.setup, edwh.tasks.stop],
+    pre=[require_non_productie, require_virtualenv, edwh.tasks.setup, edwh.tasks.stop],
 )
 def run(
     c: Context,
     show_output: bool = False,  # -s
     verbose: bool = False,  # -v
-    exitfirst: bool = False,  # -x
+    exitfirst: bool = DEFAULT_EXITFIRST,  # -x; --no-exitfirst disables the ONT default
     no_wait_for_lock: bool = False,
     keyword_search: str = "",  # -k
     apps: t.Iterable[str] | None = None,  # -a x -a y
@@ -837,17 +1109,22 @@ def run(
             cprint(f"test.run is already active (lock: {TEST_RUN_LOCK_FILE})", "yellow")
             raise SystemExit(1)
 
-        return run_full_suite(
-            c,
-            show_output=show_output,
-            verbose=verbose,
-            exitfirst=exitfirst,
-            keyword_search=keyword_search,
-            coverage=coverage,
-            extra=extra,
-            apps=apps or None,
-            mode=output,
-        )
+        with record_test_run(c) as log_dir:
+            try:
+                return run_full_suite(
+                    c,
+                    show_output=show_output,
+                    verbose=verbose,
+                    exitfirst=exitfirst,
+                    keyword_search=keyword_search,
+                    coverage=coverage,
+                    extra=extra,
+                    apps=apps or None,
+                    mode=output,
+                    log_dir=log_dir,
+                )
+            finally:
+                docker_compose(c, "--profile '*' stop")
 
 
 class CoverageRow(t.TypedDict):

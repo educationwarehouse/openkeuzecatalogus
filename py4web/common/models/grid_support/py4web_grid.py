@@ -5,6 +5,7 @@ import contextlib
 import datetime as dt
 import typing as t
 
+from psycopg2 import IntegrityError
 from py4web.utils.form import FormStyleFactory
 from py4web.utils.grid import (
     Column,
@@ -21,18 +22,18 @@ from py4web.utils.grid import (
     title,
 )
 from py4web.utils.grid import parse_referrer as parse_referer
-from pydal.objects import Field as PydalField
 from typedal import TypeDAL
-from typedal.types import Field as TypedalField
-from typedal.types import GroupBy, OrderBy, Query, Row, Rows
+from typedal.types import Field, GroupBy, OrderBy, Query, Row, Rows, Table
 from yatl import CAT, DIV, FORM, INPUT, OPTION, SELECT, SPAN, TABLE, TBODY, TD, TH, THEAD, TR, XML, A, I
 from yatl import TAGGER as HTMLElement
+from yatl.helpers import BUTTON
 
+from common.models import backend
 from py4web import HTTP, URL, redirect, request
+from shared_code.data_model import AnyDict
+from shared_code.util.html import convert_attrs
 
-from .actions import GridActionButton
-
-Field = TypedalField | PydalField
+from .actions import GridActionButton, post_action_form
 
 
 def clean_sc[T](**kwargs: T) -> dict[str, T]:
@@ -48,18 +49,18 @@ class AttributesPlugin:
         self.target_element = target_element
         self.default_attrs = {}
 
-    def form(self, url: str) -> dict[str, t.Any]:
+    def form(self, url: str) -> AnyDict:
         """Return default form attributes for a grid form."""
         attrs = copy.copy(self.default_attrs)
         return attrs
 
-    def link(self, url: str) -> dict[str, t.Any]:
+    def link(self, url: str) -> AnyDict:
         """Return default link attributes with the supplied target URL."""
         attrs = copy.copy(self.default_attrs)
         attrs["_href"] = url
         return attrs
 
-    def confirm(self, message: str) -> dict[str, t.Any]:
+    def confirm(self, message: str) -> AnyDict:
         """Return link attributes that prompt for confirmation."""
         attrs = copy.copy(self.default_attrs)
         attrs["_onclick"] = f"if(!confirm({message!r})) return false;"
@@ -81,23 +82,39 @@ type GridOrderBy = OrderBy | t.Sequence[OrderBy] | None
 type GridGroupBy = GroupBy | t.Sequence[GroupBy] | None
 type GridLeft = Expression | t.Sequence[Expression] | None
 type GridValidation = t.Callable[[Form], None] | None
-type GridButton = GridActionButton | HTMLElement | dict[str, t.Any] | str
-type GridButtonFactory = t.Callable[[Row], GridButton | None]
-type TypedGridButtonFactory[T] = t.Callable[[T], GridButton | None]
+type GridButton = GridActionButton | HTMLElement | AnyDict | str
 
-type GridButtons[T] = t.Sequence[GridButton | GridButtonFactory | TypedGridButtonFactory[T]] | None
-type GridHeaderFooterElement = GridActionButton | HTMLElement | str | t.Callable[[], HTMLElement | str]
+type GridButtonFactory[T] = t.Callable[[T], GridButton | None]
+type GridButtons[T] = t.Sequence[GridButton | GridButtonFactory[T]] | None
+
+type GridHeaderFooterElement = GridActionButton | HTMLElement | str | t.Callable[[], HTMLElement | str] | None
 type GridHeaderFooterElements = t.Sequence[GridHeaderFooterElement] | None
 type ExtraFormHtmlItem = HTMLElement | str | t.Callable[[Form], HTMLElement | str]
 type ExtraFormHtml = (
     dict[int, ExtraFormHtmlItem | list[ExtraFormHtmlItem]] | ExtraFormHtmlItem | list[ExtraFormHtmlItem]
 )
 
+# `extra_form_html` key meaning "below the last field", resolved per form by `SmartGrid.render_form`
+AFTER_LAST_FIELD = -9999
+
 
 class FormWithParam(Form):
     """Form subclass that carries the grid parameter bag."""
 
     param: TypedParam
+
+    def update_or_insert(self, validated_vars: AnyDict) -> None:
+        """Keep integrity errors inside the form instead of returning a server error page."""
+        # lookup BEFORE update_or_insert in case it aborts the transaction:
+        is_admin = backend.auth_context.is_admin()
+
+        try:
+            super().update_or_insert(validated_vars)
+        except IntegrityError as error:
+            if db := self.table._db:
+                db.rollback()
+            self.accepted = False
+            self.errors["database"] = str(error) if is_admin else "De gegevens konden niet worden opgeslagen."
 
 
 class Grid:
@@ -365,6 +382,10 @@ class Grid:
         if not any(col.name == table._id.name for col in self.needed_fields):
             self.needed_fields.insert(0, table._id)
 
+        # and neither is `gid`, which every action-button lambda keys on to build its URL.
+        if "gid" in table.fields and not any(col.name == "gid" for col in self.needed_fields):
+            self.needed_fields.append(table.gid)
+
         self.referrer = None
 
         if not self.tablename:
@@ -375,9 +396,10 @@ class Grid:
 
         record: Row | None
         if self.record_id:
-            record = table(self.record_id)
+            record = db(self.param.query & (table._id == self.record_id)).select(table.ALL).first()
+
             if not record:
-                redirect(self.endpoint)
+                return redirect(self.endpoint)
         else:
             record = None
 
@@ -457,7 +479,11 @@ class Grid:
             pt = db[self.tablename]
             key_is_missing = True
             for field in self.param.columns:
-                if isinstance(field, Field) and field.table._tablename == pt._tablename and field.name == pt._id.name:
+                if (
+                    isinstance(field, Field)
+                    and t.cast(Table, field.table)._tablename == pt._tablename
+                    and field.name == pt._id.name
+                ):
                     key_is_missing = False
             if key_is_missing:
                 #  primary key wasn't included, add it and set show_id to False so it doesn't display
@@ -567,6 +593,7 @@ class Grid:
         name: str = "grid-button",
         row: Row | None = None,
         ignore_attribute_plugin: bool = False,
+        method: t.Literal["GET", "POST"] = "GET",
         **attrs: t.Any,
     ) -> HTMLElement:
         if row_id and isinstance(url, str):
@@ -598,23 +625,34 @@ class Grid:
 
         url_resolved: str = url(row) if callable(url) else url  # type: ignore
 
-        if ignore_attribute_plugin:
+        if method == "POST":
+            attrs.update(convert_attrs({"type": "submit"}))
+        elif ignore_attribute_plugin:
             attrs.update({"_href": url_resolved})
         else:
             attrs.update(self.attributes_plugin.link(url=url_resolved))
 
-        link = A(
-            I(_class=f"fa {icon}"),
-            _role="button",
-            _message=message,
-            _title=button_text,
-            **clean_sc(_class=classes, _style=styles),
-            **attrs,
-        )
-        if self.param.include_action_button_text:
-            link.append(SPAN(XML("&nbsp;"), button_text, _class="grid-action-button-text"))
+        attrs.setdefault("_title", button_text)
+        attrs.setdefault("_message", message)
+        attrs.setdefault("_role", "button")
 
-        return link
+        element = BUTTON if method == "POST" else A
+
+        link = element(
+            # fa-fw keeps every icon in the same fixed-width box, so the labels line up
+            # across buttons regardless of glyph width.
+            I(_class=f"fa fa-fw {icon}"),
+            **(clean_sc(_class=classes, _style=styles) | attrs),
+        )
+
+        if self.param.include_action_button_text:
+            # the gap between icon and label is CSS (flex gap), not a hard space
+            link.append(SPAN(button_text, _class="grid-action-button-text"))
+
+        if method == "POST":
+            return post_action_form(link, url_resolved, message=self.T(message) if message else "")
+        else:
+            return link
 
     def _make_default_form(self) -> HTMLElement:
         search_type = safe_int(request.query.get("search_type", 0), default=0)
@@ -824,6 +862,24 @@ class Grid:
 
         return td
 
+    def _append_row_columns(self, tr: HTMLElement, row: Row) -> None:
+        """Render readable fields and custom columns into a table row."""
+        for index, column in enumerate(self.param.columns):
+            if isinstance(column, (Field, FieldVirtual)):
+                field = column
+                if field.readable and (field.type != "id" or self.param.show_id):
+                    tr.append(self._make_field(row, field, index))
+            elif isinstance(column, Column):
+                classes = self.param.grid_class_style.classes.get(
+                    column.td_class_style,
+                    self.param.grid_class_style.classes.get("grid-td"),
+                )
+                style = self.param.grid_class_style.styles.get(
+                    column.td_class_style,
+                    self.param.grid_class_style.styles.get("grid-td"),
+                )
+                tr.append(TD(column.represent(row), **clean_sc(_class=classes, _style=style)))
+
     def _make_table_body(self) -> HTMLElement:
         tbody = TBODY()
         if not self.rows:
@@ -848,27 +904,7 @@ class Grid:
                     _style=join_styles([self.param.grid_class_style.styles.get("grid-tr"), extra_style]),
                 ),
             )
-            #  add all the fields to the row
-            for index, column in enumerate(self.param.columns):
-                if isinstance(column, (Field, FieldVirtual)):
-                    field = column
-                    if field.readable and (field.type != "id" or self.param.show_id):
-                        tr.append(self._make_field(row, field, index))
-                elif isinstance(column, Column):
-                    classes = self.param.grid_class_style.classes.get(
-                        column.td_class_style,
-                        self.param.grid_class_style.classes.get("grid-td"),
-                    )
-                    style = self.param.grid_class_style.styles.get(
-                        column.td_class_style,
-                        self.param.grid_class_style.styles.get("grid-td"),
-                    )
-                    tr.append(
-                        TD(
-                            column.represent(row),
-                            **clean_sc(_class=classes, _style=style),
-                        )
-                    )
+            self._append_row_columns(tr, row)
 
             tbody.append(tr)
 
@@ -905,6 +941,7 @@ class Grid:
                         override_classes=btn.__dict__.get("override_classes"),
                         override_styles=btn.__dict__.get("override_styles"),
                         message=btn.message,
+                        method=btn.method,
                         row_id=row_id if btn.append_id else None,
                         name=btn.__dict__.get("name"),
                         row=row,
@@ -981,6 +1018,7 @@ class Grid:
                         override_classes=btn.__dict__.get("override_classes"),
                         override_styles=btn.__dict__.get("override_styles"),
                         message=btn.message,
+                        method=btn.method,
                         row_id=row_id if btn.append_id else None,
                         name=btn.__dict__.get("name"),
                         row=row,
@@ -1039,6 +1077,9 @@ class Grid:
             )
         if self.param.header_elements and len(self.param.header_elements) > 0:
             for element in self.param.header_elements:
+                if not element:
+                    continue
+
                 if isinstance(element, str):
                     html.append(XML(element))
                 elif callable(element):
@@ -1067,6 +1108,7 @@ class Grid:
                             override_classes=override_classes,
                             override_styles=override_styles,
                             message=element.message,
+                            method=element.method,
                             name=element.__dict__.get("name"),
                             ignore_attribute_plugin=element.ignore_attribute_plugin,
                             **element.__dict__.get("attrs", {}),
@@ -1146,6 +1188,7 @@ class Grid:
                             override_classes=override_classes,
                             override_styles=override_styles,
                             message=element.message,
+                            method=element.method,
                             name=element.__dict__.get("name"),
                             ignore_attribute_plugin=element.ignore_attribute_plugin,
                             **element.__dict__.get("attrs", {}),

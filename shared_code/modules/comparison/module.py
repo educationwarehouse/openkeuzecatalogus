@@ -7,7 +7,7 @@ from endow import Domain
 from typedal.tables import TypedRow
 
 from shared_code.data_model import Method, Product, Supplier
-from shared_code.data_model.constants import THEMES
+from shared_code.data_model.constants import get_themes
 from shared_code.data_model.fields import is_public_readable_field
 from shared_code.modules.catalog_filters import CatalogEntityKind
 from shared_code.modules.comparison.types import (
@@ -22,6 +22,7 @@ from shared_code.modules.methods import MethodBackend
 from shared_code.modules.products import ProductBackend
 from shared_code.modules.visions import VisionBackend
 from shared_code.services import Applogger
+from shared_code.util.types import Ordered
 
 
 class ComparisonBackend(Domain):
@@ -32,7 +33,7 @@ class ComparisonBackend(Domain):
     applog: Applogger
     visions: VisionBackend
 
-    def load_public_comparison(self, entity_kind: CatalogEntityKind, gids: t.Sequence[str]) -> ComparisonPage:
+    def load_public_comparison(self, entity_kind: CatalogEntityKind, gids: Ordered[str]) -> ComparisonPage:
         """Return selected public records in URL order with their comparison payload."""
         rows = (
             self.methods.list_public_methods_for_comparison(gids)
@@ -108,7 +109,9 @@ class ComparisonBackend(Domain):
     def _comparison_record(cls, row: TypedRow) -> ComparisonRecord:
         """Convert a public ORM row into a comparison column heading."""
         return {
-            "name": str(row.get("name") or row["gid"]),
+            "gid": row["gid"],
+            "name": row.get("name") or row["gid"],
+            "image_url": row.get("image_url") or "",
         }
 
     @classmethod
@@ -164,5 +167,5 @@ class ComparisonBackend(Domain):
                 "values": [visions_by_gid[row.gid][index] for row in rows],
                 "different": len({tuple(visions_by_gid[row.gid][index].values()) for row in rows}) > 1,
             }
-            for index, title in enumerate(THEMES.values())
+            for index, title in enumerate(get_themes().values())
         ]

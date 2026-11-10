@@ -1,5 +1,44 @@
 # CHANGELOG
 
+## 10-11-2026
+
+### Features
+
+#### Publieke website en beheer
+
+- FAQ-vragen en categorieën ondergebracht in persistente gegevensmodellen, met instelbare volgorde en selectie voor de homepage
+- Tonen en verbergen van de twaalf visiethema’s configureerbaar gemaakt voor detail- en vergelijkpagina’s
+- Paginatitels, canonical-URL’s en metadata voor zoekmachines en sociale media centraal ingericht
+- Zoekfilters in beheergrids verbeterd met behoud van ingevulde waarden
+- Foutpagina vernieuwd met duidelijkere meldingen en het spel ‘Vang de Leervonk’
+
+#### Catalogus en importverwerking
+
+- Productdetailgegevens uitgebreid met andere producten binnen dezelfde methode
+- Edu-V-import uitgebreid met koppelingen naar opvolgers, gerelateerde producten en pakketonderdelen
+- Uitsluitend op primair onderwijs gericht aanbod uitgesloten van imports; PO-gegevens verwijderd uit gemengd aanbod
+- Importrapportage uitgebreid met gegroepeerde validatiefouten en duidelijkere wachtrijstatussen
+
+### Internals
+
+#### Betrouwbaarheid en beveiliging
+
+- Catalogusimports geserialiseerd met een gedeeld databaseslot om conflicten bij gelijktijdige verwerking te voorkomen
+- Sessies voorzien van inactiviteits- en absolute vervaltermijnen, met intrekking van oude sessie-ID’s bij uitloggen en opnieuw inloggen
+- Redis-authenticatie en geheugenlimieten toegevoegd
+- Entree-callbackvalidatie en controles op uploadgrootte en ongeldige formuliergegevens aangescherpt
+- Applog-verwerking geïsoleerd per bericht, met afzonderlijke opslag van mislukte berichten en ondersteuning voor service-identiteiten
+- Serverfouten voorzien van een ticketreferentie zonder interne foutdetails in JSON-responses
+
+#### Performance en ontwikkeltooling
+
+- Caching uitgebreid voor catalogusoverzichten, sortering en detailgegevens
+- HTML-verwerking voor bewerkbare pagina’s versneld met een HTML5-parser
+- Testuitvoering en coverageverwerking geoptimaliseerd
+- JavaScript- en TypeScript-formattering en TypeScript-controles toegevoegd aan de ontwikkeltooling
+- Dependencybestanden voorzien van hashes en tooling toegevoegd voor het bijwerken zonder verplichte versie-upgrades
+- Installatie-, beveiligings-, import- en beheerdocumentatie uitgebreid
+
 ## 09-11-2026
 
 ### Features

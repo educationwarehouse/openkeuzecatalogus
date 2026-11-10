@@ -68,6 +68,7 @@
                     [[pass]]
                 </section>
 
+                [[if show_themes:]]
                 <section class="comparison-section comparison-visions-section" aria-labelledby="comparison-visions">
                     <div class="comparison-grid comparison-section-title">
                         <div id="comparison-visions" class="comparison-label comparison-section-label">Visies per thema</div>
@@ -91,6 +92,7 @@
                     </div>
                     [[pass]]
                 </section>
+                [[pass]]
                 [[for field in fields:]]
                 [[if field['name'] != 'more_information': continue]]
                 <div class="comparison-grid comparison-row">

@@ -3,12 +3,12 @@
 import io
 import os
 import traceback
-from urllib.parse import quote, urlparse
+from urllib.parse import quote, unquote, urlparse
 
 from minio import Minio
 from minio.error import MinioException
 
-from .contracts import ImageStorage, ImageUpload, ImageUploadError
+from .contracts import ImageDownload, ImageDownloadError, ImageStorage, ImageUpload, ImageUploadError
 
 
 class MinioImageStorage(ImageStorage):
@@ -71,3 +71,24 @@ class MinioImageStorage(ImageStorage):
     def is_file_url(self, url: str) -> bool:
         """Return whether a URL belongs to this storage bucket's public base URL."""
         return url.startswith(f"{self.public_base_url}/")
+
+    def download_url(self, url: str) -> ImageDownload:
+        """Read one image from this storage bucket by its public URL."""
+        if not self.is_file_url(url):
+            raise ImageDownloadError(f"Image URL is not served by this storage backend: {url!r}")
+
+        filename = unquote(url.removeprefix(f"{self.public_base_url}/"))
+        if not filename or "/" in filename:
+            raise ImageDownloadError(f"Invalid image URL: {url!r}")
+
+        try:
+            response = self.client.get_object(self.bucket, filename)
+            try:
+                content = response.read()
+                content_type = response.headers.get("Content-Type") or self._guess_content_type(filename)
+                return content, content_type
+            finally:
+                response.close()
+                response.release_conn()
+        except MinioException as error:
+            raise ImageDownloadError(f"Unable to read image from {url!r}") from error

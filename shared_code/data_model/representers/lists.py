@@ -1,7 +1,6 @@
 """List representer helpers."""
 
 import json
-import typing as t
 
 
 def json_load[T](value: str, default: T) -> T:
@@ -15,6 +14,6 @@ def json_load[T](value: str, default: T) -> T:
 def comma_separated(lst: list[str] | str, _: object) -> str:
     """Render a list (or JSON string list) as comma-separated text."""
     if isinstance(lst, str):
-        lst = json_load(lst, t.cast(list[str], []))
+        lst = json_load(lst, [])
 
     return ", ".join(lst) if lst else ""

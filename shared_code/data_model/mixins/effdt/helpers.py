@@ -34,7 +34,8 @@ def ed_restore_by_id(
         does not exist.
 
     """
-    db: DAL = table._db
+    db = table._db
+    assert db, "can't continue without db"
 
     if not (row := table(row_id)):
         return None
@@ -48,7 +49,7 @@ def ed_restore_by_id(
         db,
         table,
         table.gid == values_to_restore["gid"],
-        values_to_restore,
+        new_values=values_to_restore,
         effdt=effdt,
         last_saved_by=last_saved_by,
         allow_deleted_update=True,
@@ -64,11 +65,13 @@ def ed_restore_by_id(
 
 def model_to_ed(model: Table | type[TypedTable]) -> type[EffdtTable] | None:
     """Return the matching `_ed` table for a model table, if it exists."""
-    db: DAL = model._db
+    db = model._db
+    assert db, "can't continue without db"
+
     ed_name = str(model._rname).removesuffix("_model") + "_ed"
 
     # try to find typedal cls, fallback to pydal table:
-    return db.find_model(ed_name) or db.get(ed_name, None)
+    return db.find_model(ed_name) or db.get(ed_name, None)  # type: ignore
 
 
 def latest_ed(
@@ -107,8 +110,8 @@ def _normalize_prio(prio: int | bool) -> int | bool:
     return prio
 
 
-def _build_update_record(row: EffdtTable | None, effdt: dt.datetime, last_saved_by: str) -> dict[str, t.Any]:
-    record: dict[str, t.Any] = {}
+def _build_update_record(row: EffdtTable | None, effdt: dt.datetime, last_saved_by: str) -> AnyDict:
+    record: AnyDict = {}
     if row:
         record.update(row.as_dict())
         # don't overwrite the primary key, this auto-increments
@@ -121,7 +124,7 @@ def _build_update_record(row: EffdtTable | None, effdt: dt.datetime, last_saved_
 
 
 def _apply_effstatus_update(
-    record: dict[str, t.Any],
+    record: AnyDict,
     values: AnyDict,
     delete: bool,
     allow_deleted_update: bool,
@@ -217,4 +220,16 @@ def update_effectivedated(
     latest = table.insert(**record_to_insert)
 
     # type of 'latest' depends on typedal/pydal usage.
-    return t.cast(int, latest if isinstance(latest, int) else latest.id)
+    return latest if isinstance(latest, int) else latest.id
+
+
+def validate_and_update_effectivedated[T: TypedTable](
+    table: type[T], record: T, **fields: t.Any
+) -> tuple[T, None] | tuple[None, dict[str, str]]:
+    """Validate fields and persist them through an effective-dated record update."""
+    pydal_table = table._ensure_table_defined()
+    errors, validated_fields = pydal_table._validate_fields(fields, record=record)
+    if errors:
+        return None, errors
+
+    return record.update_record(**validated_fields), None

@@ -4,6 +4,7 @@ from edwh_migrate import ViewMigrationManager
 
 from shared_code.migrations.migration_support import (
     create_effdted_model_view_with_prio_v4,
+    create_trigram_index_v1,
     drop_table_or_mv,
     upsert_index_v1,
 )
@@ -34,6 +35,8 @@ class SupplierModelWithPrio_V1(ViewMigrationManager):
             include=["name", "gid"],
             unique=True,
         )
+        create_trigram_index_v1(self.db, "supplier_model", "name")
+        create_trigram_index_v1(self.db, "supplier_model", "olid")
 
     def down(self) -> None:
         """Drop view/index objects for the supplier model."""

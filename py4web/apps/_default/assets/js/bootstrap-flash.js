@@ -1,5 +1,4 @@
 function show_flash() {
-    const $previous = document.querySelector("[data-okl-flash]");
     const $flash_template = document.getElementById("py4web-flash");
     if (!$flash_template || !$flash_template.content) {
         return;
@@ -8,10 +7,23 @@ function show_flash() {
     if (!$flash_source) {
         return;
     }
+    $flash_template.remove();
+    render_flash($flash_source);
+}
+
+function show_flash_message(message, style = "alert-info", delay = 0) {
+    const $flash_source = document.createElement("div");
+    $flash_source.className = `alert ${style}`;
+    $flash_source.setAttribute("role", "alert");
+    $flash_source.textContent = message;
+    render_flash($flash_source, delay);
+}
+
+function render_flash($flash_source, delay = 0) {
+    const $previous = document.querySelector("[data-okl-flash]");
     $previous?.remove();
     const $flash_host = document.createElement("div");
     $flash_host.dataset.oklFlash = "true";
-    $flash_template.remove();
     $flash_host.className = "position-fixed top-0 end-0 p-3";
     $flash_host.style.zIndex = "1085";
     $flash_host.style.width = "min(24rem, calc(100vw - 1.5rem))";
@@ -34,6 +46,14 @@ function show_flash() {
     });
     $flash_host.appendChild($flash);
     document.body.appendChild($flash_host);
+    if (delay > 0) {
+        const timeout = window.setTimeout(() => {
+            bootstrap.Alert.getOrCreateInstance($flash).close();
+        }, delay);
+        $flash.addEventListener("closed.bs.alert", () => {
+            window.clearTimeout(timeout);
+        }, {once: true});
+    }
 }
 window.on_okl_ready(show_flash);
 document.addEventListener("htmx:afterSettle", show_flash);

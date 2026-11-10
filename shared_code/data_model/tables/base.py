@@ -4,6 +4,7 @@ from typedal import TypeDAL, TypedTable
 from typedal.mixins import TimestampsMixin
 
 from shared_code.data_model.fields import InternalUUIDField
+from shared_code.data_model.mixins.effdt.mixin import EffdtFields
 from shared_code.data_model.mixins.markdown import MarkdownMixin
 from shared_code.data_model.representers import dutch_date
 
@@ -11,7 +12,7 @@ from shared_code.data_model.representers import dutch_date
 class TableWithGid(TypedTable):
     """Base table for almost all tables in the platform, simply adds a gid field."""
 
-    gid = InternalUUIDField(label="Unieke Identifier")
+    gid = InternalUUIDField(label="Unieke Identifier", public=True)
 
 
 class BaseTable(TableWithGid, TimestampsMixin, MarkdownMixin):
@@ -28,3 +29,7 @@ class BaseTable(TableWithGid, TimestampsMixin, MarkdownMixin):
         # otherwise py4web will represent it with a `document.write()` in US format which is ugly and also breaks htmx
         cls.created_at.represent = dutch_date
         cls.updated_at.represent = dutch_date
+
+
+class EffdtTable(EffdtFields, BaseTable):
+    """Concrete base table for effective-dated source models."""

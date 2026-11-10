@@ -4,26 +4,10 @@ import uuid
 
 from playwright.sync_api import Page, expect
 
-from .conftest import BASE_URL, MOCK_EMAIL_DOMAIN
-from .test_admin_suppliers_auth import _login_as_user, _register_and_verify_user
+from .auth_helpers import _create_verified_user, _login_as_user
+from .settings import BASE_URL
 
 INTRODUCTION_REGION = "method_overview#method-overview-introduction"
-
-
-def _create_verified_user(page: Page, *, prefix: str, admin: bool) -> tuple[str, str]:
-    """Register a user that is either a regular user or an Education Warehouse admin."""
-    suffix = uuid.uuid4().hex[:10]
-    domain = "educationwarehouse.nl" if admin else MOCK_EMAIL_DOMAIN
-    email = f"{prefix}-{suffix}@{domain}"
-    password = f"ContentEdit!{suffix}123"
-
-    _register_and_verify_user(
-        page,
-        email=email,
-        password=password,
-        last_name="Admin" if admin else "User",
-    )
-    return email, password
 
 
 def test_content_editor_initializes_only_for_admins(page: Page) -> None:
@@ -69,6 +53,23 @@ def test_content_editor_save_api_rejects_non_admins(page: Page) -> None:
         max_redirects=0,
     )
     assert not regular_response.ok
+
+
+def test_content_editor_survives_boosted_navigation(page: Page) -> None:
+    """Each view gets one editor with the current user's existing permissions."""
+    email, password = _create_verified_user(page, prefix="content-navigation", admin=True)
+    _login_as_user(page, email=email, password=password)
+    page.goto(f"{BASE_URL}/methodes")
+    # A full navigation creates a new Window; an HTMX swap keeps this sentinel alive.
+    page.evaluate("window.htmxDocumentSentinel = true")
+    for _ in range(2):
+        expect(page.locator(".ct-ignition")).to_have_count(1)
+        page.get_by_role("navigation", name="Hoofdnavigatie").get_by_role("link", name="Home", exact=True).click()
+        expect(page.locator("main h1")).to_contain_text("Vind leermiddelen")
+        page.get_by_role("navigation", name="Hoofdnavigatie").get_by_role("link", name="Catalogus", exact=True).click()
+        expect(page.locator("main h1")).to_have_text("Methodes & Producten")
+        expect(page.locator(".ct-ignition")).to_have_count(1)
+        assert page.evaluate("window.htmxDocumentSentinel") is True
 
 
 def test_content_editor_reports_failed_save_after_logout(page: Page) -> None:

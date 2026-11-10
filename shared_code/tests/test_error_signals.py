@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from shared_code.modules.auth import AuthAdapter
 from shared_code.services.error_signals import ErrorSignalService, MockErrorSignalService
 from shared_code.services.error_tickets import (
     AuthInfo,
@@ -58,7 +59,7 @@ def test_ticket_signals_are_delivered_in_configured_batches(
 ) -> None:
     """Queued tickets should produce safe mock payloads and direct admin links."""
     mock_path = _configure_signal_paths(monkeypatch, tmp_path)
-    error_tickets = ErrorTicketService.with_injected()
+    error_tickets = ErrorTicketService.with_injected(auth_adapter=AuthAdapter.for_service("pytest.error_signals"))
     error_tickets.enqueue_ticket_signal(_ticket("OPEN-CATALOG-1"))
     error_tickets.enqueue_ticket_signal(_ticket("OPEN-CATALOG-2"))
 
@@ -82,7 +83,7 @@ def test_queued_signal_uses_the_injected_backend(
 ) -> None:
     """Queue processing should keep using the backend injected into the ticket service."""
     _configure_signal_paths(monkeypatch, tmp_path)
-    error_tickets = ErrorTicketService.with_injected()
+    error_tickets = ErrorTicketService.with_injected(auth_adapter=AuthAdapter.for_service("pytest.error_signals"))
     error_tickets.enqueue_ticket_signal(_ticket("OPEN-CATALOG-3"))
     monkeypatch.setenv("ERROR_SIGNAL_BACKEND", "unsupported")
 

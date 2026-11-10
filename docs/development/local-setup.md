@@ -9,15 +9,10 @@
 
 ### Install and Verify `edwh`
 
-Server install options:
+Create and activate a virtual environment, then install this project:
 
-- `uvenv install edwh[server-plugins]`
-- `pipx install 'edwh[server-plugins]'`
-
-Local development:
-
-1. Create/activate a virtual environment.
-2. Install with `uv pip install 'edwh[server-plugins]'`. `server-plugins` is a subset of our commonly used plugins. You can also choose `edwh[plugins]` to get the full set.
+- Server host, for tasks such as `edwh setup` and `edwh up`: `uv pip install .`
+- Local development, including all service and test dependencies: `uv pip install .[dev]`
 
 Verify installation:
 
@@ -74,13 +69,12 @@ Bootstrap URL behavior:
 
 1. Run `edwh setup`.
 2. Review/update `.env` values if needed.
-3. Build images with `edwh build`.
-4. Start the stack with `edwh up`.
+3. Start the stack with `edwh up` (which builds images automatically).
 
 ## Day-to-Day Flow
 
 - Config or env changed: rerun `edwh setup`.
-- Dockerfile/dependency changes: rerun `edwh build`.
+- Dockerfile/dependency changes: `edwh up` rebuilds images. Use `edwh build` when you also need its explicit pull or requirements compilation workflow.
 - Normal start: `edwh up`.
 - Normal stop: `edwh down`.
 

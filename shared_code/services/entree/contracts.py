@@ -7,6 +7,7 @@ import typing as t
 from endow import Service
 from pydal.validators import CRYPT
 
+from shared_code.data_model import AnyDict
 from shared_code.services.applog import Applogger
 from shared_code.util.env import bool_from_env
 
@@ -29,11 +30,11 @@ class EntreeOAuthService(Service, abc.ABC):
         ...
 
     @abc.abstractmethod
-    def fetch_userinfo(self, userinfo_url: str, token: str) -> dict[str, t.Any]:
+    def fetch_userinfo(self, userinfo_url: str, token: str) -> AnyDict:
         """Fetch user profile payload from Entree userinfo endpoint."""
         ...
 
-    def fetch_normalized_userinfo(self, userinfo_url: str, token: str) -> dict[str, t.Any] | None:
+    def fetch_normalized_userinfo(self, userinfo_url: str, token: str) -> AnyDict | None:
         """Fetch Entree user info and return normalized auth-plugin user fields."""
         user_info = self.fetch_userinfo(userinfo_url=userinfo_url, token=token)
         return self.normalize_userinfo(user_info)
@@ -41,7 +42,7 @@ class EntreeOAuthService(Service, abc.ABC):
     @classmethod
     def from_env(cls) -> EntreeOAuthService:
         """Instantiate the configured Entree OAuth service from environment variables."""
-        if bool_from_env("ENTREE_FAKE", False):
+        if bool_from_env("ENTREE_FAKE", default=False):
             from .fake import MockEntreeOAuthService
 
             return MockEntreeOAuthService.from_env()
@@ -50,7 +51,7 @@ class EntreeOAuthService(Service, abc.ABC):
 
             return RequestsEntreeOAuthService.from_env()
 
-    def normalize_userinfo(self, user_info: dict[str, t.Any]) -> dict[str, t.Any] | None:
+    def normalize_userinfo(self, user_info: AnyDict) -> AnyDict | None:
         """Map Entree user info to auth plugin user fields."""
         user_info = dict(user_info)
 
@@ -64,13 +65,6 @@ class EntreeOAuthService(Service, abc.ABC):
         if not email:
             return None
         user_info["email"] = f"kennisnet:{email}"
-
-        # Emit an explicit Entree login marker when identity normalization succeeds.
-        self.applog.log_auth_action(
-            action="login",
-            success=True,
-            email=user_info["email"],
-        )
 
         password = secrets.token_urlsafe(32)
         user_info["password"] = CRYPT()(password)[0]

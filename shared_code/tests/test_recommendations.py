@@ -233,7 +233,9 @@ def test_recommendation_preview_limits_totals_sorting_and_empty_filters(
     ]
     assert sorted_result.product_total == 12
 
-    product_filters = recommender.products.resolve_public_product_filters({search_filter.slug: f"{prefix} Product 11"})
+    product_filters = recommender.products.resolve_public_product_filters(
+        {search_filter.slug: f'"{prefix} Product 11"'}
+    )
     filtered = recommender.recommend(process.gid, product_filters=product_filters)
     assert filtered.product_total == 1
     assert [row.item.name for row in filtered.products] == [f"{prefix} Product 11"]

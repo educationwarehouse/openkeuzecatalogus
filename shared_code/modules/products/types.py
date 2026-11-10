@@ -12,4 +12,5 @@ class ProductDetailPayload(t.TypedDict):
     product: PublicProduct
     method: PublicMethod
     supplier: PublicSupplier
+    same_method_products: list[PublicProduct]
     visions: list[ResolvedVision]

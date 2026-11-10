@@ -10,19 +10,18 @@ from typedal.helpers import classproperty
 from typedal.types import OpRow
 
 from shared_code.data_model.constants import ROLE_SUPPLIER
-from shared_code.data_model.mixins.effdt.mixin import EffdtFields
 from shared_code.data_model.mixins.search import SearchMixin
 from shared_code.data_model.representers.lists import comma_separated
-from shared_code.data_model.tables.base import BaseTable
+from shared_code.data_model.tables.base import EffdtTable
 from shared_code.util.olid import generate_supplier_olid
 
 if t.TYPE_CHECKING:
-    pass
+    from shared_code.infra.database import DatabaseContext
 
 
 def keep_supplier_group_in_sync(cls: type[SupplierEd]) -> t.Callable[[OpRow, int], None]:
     """Keep the supplier RBAC group aligned with the latest active supplier row."""
-    db = cls._db  # type: DatabaseContext
+    db = t.cast("DatabaseContext", cls._db)
     assert db, "Can't use keep_supplier_group_in_sync on a class used without db.define()"
     auth = db.auth
     # access raw rbac because AuthContext doesn't include all these features (update_identity, add_group)
@@ -44,7 +43,7 @@ def keep_supplier_group_in_sync(cls: type[SupplierEd]) -> t.Callable[[OpRow, int
                 group_email,
                 row.name,
                 [ROLE_SUPPLIER],
-                gid=str(row.gid),
+                gid=row.gid,
                 allow_existing=True,
             )
             db.applog.try_fire(
@@ -52,9 +51,9 @@ def keep_supplier_group_in_sync(cls: type[SupplierEd]) -> t.Callable[[OpRow, int
                     "kind": "event",
                     "action": "supplier-group-created",
                     "user_gid": db.auth.id,
-                    "related": str(row.gid),
+                    "related": row.gid,
                     "details": {
-                        "supplier_gid": str(row.gid),
+                        "supplier_gid": row.gid,
                         "supplier_name": row.name,
                         "group_email": group_email,
                     },
@@ -66,7 +65,7 @@ def keep_supplier_group_in_sync(cls: type[SupplierEd]) -> t.Callable[[OpRow, int
     return wrapper
 
 
-class SupplierEd(BaseTable, EffdtFields):
+class SupplierEd(EffdtTable):
     """Effective-dated supplier source table."""
 
     name = TypedField(str, label="Naam", required=True)
@@ -90,12 +89,21 @@ class SupplierEd(BaseTable, EffdtFields):
         label="Email Domeinen",
         comment="Gebruikt voor automatische rol-toekenning",
         represent=comma_separated,
+        public=False,
     )
 
     endpoint_type = TypedField(
         str,
-        requires=IS_IN_SET(("edu-v", "none")),
+        requires=IS_IN_SET(
+            {
+                "edu-v": "Eigen Edu-V endpoint",
+                "edu-v-kennisnet-v1": "Kennisnet Edu-V v1",
+                "edu-v-kennisnet-v2": "Kennisnet Edu-V v2",
+                "none": "Geen endpoint",
+            }
+        ),
         label="Type API endpoint",
+        public=False,
     )
 
     endpoint_base_url = TypedField(
@@ -103,12 +111,22 @@ class SupplierEd(BaseTable, EffdtFields):
         requires=IS_EMPTY_OR(IS_URL()),
         label="Basis-URL endpoint voor data-import",
         comment="Zonder resource-pad, bijvoorbeeld: https://catalogus.edu-v.kennisnet.nl/v2/",
+        public=False,
     )
 
     endpoint_publisher = TypedField(
         str | None,
         label="Edu-V publisher filter",
-        comment="Alleen invullen voor gedeelde Kennisnet-catalogus URL's; leeg laten voor leverancier-eigen endpoint.",
+        comment="Verplicht voor gedeelde Kennisnet-catalogi; leeg laten voor leverancier-eigen endpoint.",
+        public=False,
+    )
+
+    endpoint_uses_pagination = TypedField(
+        bool,
+        label="Edu-V endpoint gebruikt paginering",
+        default=False,
+        comment="Gebruik start en limit om alle productpagina's op te halen.",
+        public=False,
     )
 
     @classmethod

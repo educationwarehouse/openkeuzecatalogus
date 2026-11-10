@@ -2,7 +2,7 @@
 
 from edwh_migrate import ViewMigrationManager
 
-from .core import create_effdted_model_view_with_prio_v4, drop_table_or_mv, upsert_index_v1
+from .core import create_effdted_model_view_with_prio_v4, create_trigram_index_v1, drop_table_or_mv, upsert_index_v1
 
 
 # noinspection PyPep8Naming
@@ -30,6 +30,8 @@ class ProductModelWithPrio_V1(ViewMigrationManager):
             include=["name", "gid"],
             unique=True,
         )
+        create_trigram_index_v1(self.db, "product_model", "name")
+        create_trigram_index_v1(self.db, "product_model", "olid")
 
     def down(self) -> None:
         """Remove product model triggers/functions and drop the model table."""

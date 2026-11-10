@@ -4,9 +4,9 @@ import json
 import typing as t
 from pathlib import Path
 
-from shared_code.modules.auth import AuthAdapter
 from typedal import TypeDAL
 
+from shared_code.modules.auth import AuthAdapter
 from shared_code.services.mail import Mailer, MockMailer, SMTPMailer
 
 if t.TYPE_CHECKING:
@@ -17,7 +17,7 @@ MOCK_INBOX_PATH = Path("/shared_cache/mail/mock_inbox.jsonl")
 
 def test_mailer_uses_fake_sender_and_writes_inbox(db_psql: TypeDAL) -> None:
     """When SMTP_FAKE is enabled in runner env, mails are written to the JSONL inbox."""
-    sender = Mailer.with_injected(db=db_psql)
+    sender = Mailer.with_injected(db=db_psql, auth_adapter=AuthAdapter.for_service("pytest.mailer.fake"))
     assert isinstance(sender, MockMailer)
 
     sent = sender.send(
@@ -49,9 +49,7 @@ def test_smtp_mailer_from_env_splits_host_and_port(monkeypatch: MonkeyPatch, db_
     monkeypatch.setenv("SMTP_TLS", "1")
     monkeypatch.setenv("SMTP_SSL", "0")
 
-    mailer = Mailer.with_injected(
-        auth_adapter=AuthAdapter.for_service("pytest.smtp_mailer")
-    )
+    mailer = Mailer.with_injected(auth_adapter=AuthAdapter.for_service("pytest.smtp_mailer"))
 
     assert isinstance(mailer, SMTPMailer)
 
@@ -71,7 +69,7 @@ def test_smtp_mailer_from_env_with_incomplete_config_raises_oserror(monkeypatch:
     monkeypatch.delenv("SMTP_PASSWORD", raising=False)
 
     try:
-        SMTPMailer.from_env() # noqa: EW002 - this is on purpose
+        SMTPMailer.from_env()  # noqa: EW002 - this is on purpose
     except OSError as exc:
         assert str(exc) == "Incomplete SMTP Config"
     else:  # pragma: no cover

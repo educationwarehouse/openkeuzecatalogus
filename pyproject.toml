@@ -9,15 +9,21 @@ build-backend = "hatchling.build"
 name = "openkeuzecatalogus"
 dynamic = [
     "version",
-    "dependencies",
+    "optional-dependencies",
 ]
 description = 'Open Keuze Catalogus'
 readme = "README.md"
 requires-python = ">=3.14"
 license = { file = "LICENSE.txt" }
 
+dependencies = [
+    "edwh[server-plugins]>=1.12.0",
+    "endow<2",
+]
+
 [tool.hatch.metadata.hooks.requirements_txt]
-files = ["requirements-dev.txt"]
+[tool.hatch.metadata.hooks.requirements_txt.optional-dependencies]
+dev = ["requirements-dev.txt"]
 
 
 [project.urls]
@@ -66,11 +72,13 @@ extend-exclude = [
     "py4web/apps/_dashboard",
     "shared_code/generated",
     "shared_code/modules/scrapers/eduv/generated",
-    "shared_code/tests",
 ]
 
 [tool.ruff.lint]
 # Start strict-but-practical
+exclude = [
+    "shared_code/tests",
+]
 external = [
     "EW", # project-specific lint rules
 ]
@@ -102,6 +110,21 @@ ignore = [
     "E711", # `== None` is allowed as pydal syntax
     "E712", # `== True` is allowed as pydal syntax
     "S101", # assert is useful for typing and testing reasons (like Rust 'expect')
+]
+
+[tool.ruff.lint.mccabe]
+# default is 10
+max-complexity = 9
+
+[tool.ruff.lint.per-file-ignores]
+"shared_code/tests/**" = ["ALL"]
+
+[tool.pytest.ini_options]
+timeout = "120"
+timeout_method = "thread"
+required_plugins = ["pytest-timeout"]
+markers = [
+    "accessibility: advisory axe-core accessibility scans",
 ]
 
 [tool.ty.rules]

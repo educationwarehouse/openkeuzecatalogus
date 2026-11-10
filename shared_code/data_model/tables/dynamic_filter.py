@@ -8,17 +8,16 @@ from typedal.helpers import classproperty
 from typedal.types import Validator
 
 from shared_code.data_model.constants import CATALOG_APPLIES_TO_LABELS, INTERNAL_FIELD_NAMES
-from shared_code.data_model.tables.base import TableWithGid
+from shared_code.data_model.tables.base import EffdtTable
 
 
-class DynamicFilter(TableWithGid):
-    """Backend-managed metadata for public product/method filters."""
+class DynamicFilterEd(EffdtTable):
+    """Effective-dated source metadata for public product/method filters."""
 
     slug = TypedField(
         str,
         length=40,
         label="Filter sleutel",
-        unique=True,
         comment="Gebruikt in de querystring en als handler-identificatie.",
     )
     label = TypedField(str, length=100, label="Label")
@@ -84,3 +83,7 @@ class DynamicFilter(TableWithGid):
     def admin_grid(cls) -> str:
         """Return the admin grid identifier for dynamic filters."""
         return "dynamic-filters"
+
+
+class DynamicFilter(DynamicFilterEd):
+    """Current metadata for public product/method filters."""

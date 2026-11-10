@@ -11,7 +11,7 @@ from typedal import TypedTable
 from yatl.helpers import XML
 
 from common.models import auth
-from shared_code.data_model.mixins.effdt import model_to_ed
+from shared_code.data_model import AnyDict
 
 from .actions import BUTTON_CLASS
 from .py4web_grid import clean_sc
@@ -111,13 +111,13 @@ class EddieFormStyleFactory(FormStyleFactory):
     def __call__(
         self,
         table: TypedTable,
-        vars: dict[str, t.Any],
-        errors: dict[str, t.Any],
+        vars: AnyDict,
+        errors: AnyDict,
         readonly: bool,
         deletable: bool,
         showreadonly: bool,
         show_id: bool,
-        kwargs: dict[str, t.Any] | None = None,
+        kwargs: AnyDict | None = None,
     ) -> t.Any:
         """Render a form while visually marking required fields."""
         # fields having these should be marked as required with a red *
@@ -169,19 +169,3 @@ class EddieForm(Form):
         """Initialize a form with the Eddie style as the default formstyle."""
         kw["formstyle"] = deepcopy(kw.get("formstyle") or EddieFormStyle)
         super().__init__(table, **kw)
-
-
-def prepare_effdt_form_insert(form: Form) -> None:
-    """Redirect an effective-dated form insert to the matching `_ed` table."""
-    if not form.table._rname.endswith("_model"):
-        # nothing to do
-        return
-
-    if table_ed := model_to_ed(form.table):
-        # make Form insert into _ed instead:
-        form.table = table_ed
-
-        if "last_saved_by" in table_ed.fields and "last_saved_by" not in form.vars:
-            user = auth.get_user()
-            if user and getattr(user, "email", None):
-                form.vars["last_saved_by"] = user.email

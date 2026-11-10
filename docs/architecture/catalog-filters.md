@@ -13,6 +13,14 @@ The runtime reads filter definitions from `dynamic_filter`, turns them into requ
 
 The public listing modules use this flow through `CatalogFilters.resolve(...)` and `CatalogFilters.apply(...)`.
 
+### Asynchronous option lists
+
+Catalogue dropdowns fetch options through `/htmx/filter-options/<entity_kind>/<slug>`.
+The endpoint supports text search (`q`) and pagination (`offset`, `limit`, at most
+100 options per page), so large lists do not need to be rendered into every page.
+Selected values remain in the form while visitors search or load another option
+page. The private recommendation form uses this same public endpoint.
+
 ## Supported Filter Kinds
 
 ### `search`
@@ -68,10 +76,31 @@ The `dynamic_filter` table stores the following configuration:
 
 - Search filters use the first non-empty request value.
 - Scalar dynamic filters use the first non-empty request value.
-- List-field dynamic filters normalize, deduplicate, and preserve request values in order.
+- List-field dynamic filters normalize, deduplicate, and preserve request values in order. A row
+  matches when its list field shares at least one selected value; the catalogue-overlap
+  recommender uses the same matching rule.
 - `match_mode = contains` uses substring matching for dynamic fields.
 - `match_mode = belongs` uses exact membership matching.
 - Checkbox filters are active when the parameter is present.
+
+## Option Caching
+
+`CatalogFilters.resolve(...)` caches the option lists per entity kind
+(`catalog_filter_options`, public scope, 300 seconds) through the
+[cache service](caching.md). Only the option queries are saved: filter
+definitions are still read on every request.
+
+Options are built from `option_builder` before any active value narrows it, so
+one entry serves every request for that entity kind. Active values are parsed
+from the request rather than queried, so they don't vary the key.
+
+A filter added after an entry was written loads its own options instead of
+coming back empty. Filter configuration and option queries record cache
+dependencies; business-model writes and explicit invalidation for raw SQL or
+view refreshes clear affected entries. The 300-second TTL bounds staleness if
+invalidation fails. Invalidation currently runs before commit for Redis and
+memory, so concurrent reads can still refill an entry with pre-commit data; see
+[invalidation limitations](caching.md#dependencies-and-invalidation).
 
 ## Seeded Filters
 

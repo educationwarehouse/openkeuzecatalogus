@@ -5,8 +5,9 @@ import typing as t
 
 from pydal.validators import IS_IN_SET, IS_INT_IN_RANGE, IS_NULL_OR
 from typedal import Ref, relationship
-from typedal.fields import TextField, TypedField, UUIDField
+from typedal.fields import TextField, TypedField
 
+from shared_code.data_model.fields import UUIDReferenceField
 from shared_code.data_model.mixins.effdt.mixin import EffdtFields
 from shared_code.data_model.representers import comma_separated, dutch_bool
 
@@ -27,7 +28,7 @@ class SharedProductField(EffdtFields):
     """Shared fields used by product-like tables."""
 
     olid = TypedField(str, label="OLID", unique=True)
-    supplier_gid = UUIDField(filter_out=str, label="Aanbieder GID", notnull=True)
+    supplier_gid = UUIDReferenceField(label="Aanbieder GID", notnull=True, public=True)
     levels = TypedField(list[str], label="Niveaus", represent=comma_separated)
     subjects = TypedField(list[str], label="Vakken", represent=comma_separated)
     image_url = TypedField(str, label="Afbeelding URL")
@@ -47,7 +48,7 @@ class SharedProductField(EffdtFields):
             )
         ),
     )
-    import_error_codes = TypedField(list[str], label="Importfouten", represent=comma_separated)
+    import_error_codes = TypedField(list[str], label="Importfouten", represent=comma_separated, public=False)
     edition = TypedField(int, label="Editie", requires=IS_NULL_OR(IS_INT_IN_RANGE()))
     publication_date = TypedField(dt.date | None, label="Publicatiedatum")
     authors = TypedField(list[str], label="Auteurs", represent=comma_separated)
@@ -64,4 +65,6 @@ class SharedProductField(EffdtFields):
     bouw = TypedField(list[str], label="Bouw", represent=comma_separated)
     tto = TypedField(bool, label="TTO", represent=dutch_bool)
 
-    supplier = relationship(Ref["Supplier"], condition=lambda self, supplier: self.supplier_gid == supplier.gid)
+    supplier = relationship(
+        Ref["Supplier"], condition=lambda self, supplier: self.supplier_gid == supplier.gid, label="Aanbieder"
+    )

@@ -1,25 +1,28 @@
 """Tagged relationship table definitions."""
 
+import typing as t
+
 from pydal.validators import IS_IN_SET
 from typedal import QueryBuilder
 from typedal.fields import TypedField
+from typedal.types import Expression, OnQuery
 
 from shared_code.data_model.constants import Predicate
-from shared_code.data_model.fields import InternalUUIDField
-from shared_code.data_model.mixins.effdt.mixin import EffdtFields
-from shared_code.data_model.tables.base import BaseTable
+from shared_code.data_model.fields import UUIDReferenceField
+from shared_code.data_model.tables.base import EffdtTable
+
+if t.TYPE_CHECKING:
+    from shared_code.data_model.tables.base import TableWithGid
 
 
-class TaggedEd(BaseTable, EffdtFields):
+class TaggedEd(EffdtTable):
     """Effective-dated tagged relationship source table."""
 
-    # subject_gid = UUIDField(filter_out=str, label="Subject GID")
-    subject_gid = InternalUUIDField(label="Subject GID")
+    subject_gid = UUIDReferenceField(label="Subject GID")
 
     predicate = TypedField(str, label="Predicate", requires=IS_IN_SET([item.value for item in Predicate]))
 
-    # object_gid = UUIDField(filter_out=str, label="Object GID")
-    object_gid = InternalUUIDField(label="Object GID")
+    object_gid = UUIDReferenceField(label="Object GID")
 
     comment = TypedField(str | None, label="Opmerking")
 
@@ -81,3 +84,25 @@ class Tagged(TaggedEd):
             prio=prio,
         )
         return True
+
+
+def tagged_relationship_query(predicate: Predicate, inverse: bool = False) -> OnQuery:
+    """Build a relationship query through a tagged predicate."""
+
+    def on(subject: TableWithGid, related_object: TableWithGid) -> list[Expression]:
+        tagged = Tagged.unique_alias()
+
+        if inverse:
+            tagged_condition = tagged.object_gid == subject.gid
+            related_condition = tagged.subject_gid == related_object.gid
+        else:
+            tagged_condition = tagged.subject_gid == subject.gid
+            related_condition = tagged.object_gid == related_object.gid
+
+        return [
+            t.cast(Expression, tagged),
+            tagged.on((tagged.predicate == predicate) & tagged_condition),
+            related_object.on(related_condition),
+        ]
+
+    return t.cast(OnQuery, on)

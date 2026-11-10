@@ -10,12 +10,12 @@ class PublicMethod(t.TypedDict, total=False):
     sample_copies: str
     preview_digital_environment: str
     olid: str
+    supplier_gid: str
     levels: list[str]
     subjects: list[str]
     image_url: str
     description: str
     available: str
-    import_error_codes: list[str]
     edition: int
     publication_date: dt.date | None
     authors: list[str]
@@ -31,11 +31,13 @@ class PublicMethod(t.TypedDict, total=False):
     priority: int
     bouw: list[str]
     tto: bool
+    gid: str
 
 class PublicProduct(t.TypedDict, total=False):
     """Generated public payload for Product."""
     isbn: str
     name: str
+    method_gid: str
     payment_models: list[str]
     product_usages: list[str]
     related_products: list[str]
@@ -58,12 +60,12 @@ class PublicProduct(t.TypedDict, total=False):
     sale_unit_size: int | None
     supported_until_date: dt.date | None
     olid: str
+    supplier_gid: str
     levels: list[str]
     subjects: list[str]
     image_url: str
     description: str
     available: str
-    import_error_codes: list[str]
     edition: int
     publication_date: dt.date | None
     authors: list[str]
@@ -79,6 +81,7 @@ class PublicProduct(t.TypedDict, total=False):
     priority: int
     bouw: list[str]
     tto: bool
+    gid: str
 
 class PublicSupplier(t.TypedDict, total=False):
     """Generated public payload for Supplier."""
@@ -86,7 +89,4 @@ class PublicSupplier(t.TypedDict, total=False):
     olid: str
     logo_url: str
     status_visions: str
-    email_domains: list[str]
-    endpoint_type: str
-    endpoint_base_url: str | None
-    endpoint_publisher: str | None
+    gid: str

@@ -5,9 +5,11 @@ import re
 import typing as t
 
 from ombott import Request
+from ombott.request_pkg.errors import JSONParsingError
 
 from common.models import backend
-from py4web import HTTP
+from py4web import HTTP, request
+from shared_code.data_model import AnyDict
 from shared_code.modules.catalog_filters import ResolvedCatalogFilters
 
 BRACKET_KEY_RE = re.compile(r"([^\[\]]+)|\[(.*?)\]")
@@ -34,7 +36,7 @@ def _merge_leaf(existing: t.Any, value: t.Any) -> t.Any:
     return [*existing_items, *value_items]
 
 
-def _child_container(next_part: str) -> dict[str, t.Any] | list[t.Any]:
+def _child_container(next_part: str) -> AnyDict | list[t.Any]:
     """Choose a dict or list for the next path segment."""
     return [] if next_part == "" or next_part.isdigit() else {}
 
@@ -46,7 +48,7 @@ def _ensure_index(target: list[t.Any], index: int) -> None:
         target.extend([None] * missing)
 
 
-def _slot_key(target: dict[str, t.Any] | list[t.Any], part: str) -> str | int:
+def _slot_key(target: AnyDict | list[t.Any], part: str) -> str | int:
     """Translate one path segment into a key that addresses a slot in `target`."""
     if isinstance(target, dict):
         return part
@@ -57,7 +59,7 @@ def _slot_key(target: dict[str, t.Any] | list[t.Any], part: str) -> str | int:
     return int(part)
 
 
-def _read_slot(target: dict[str, t.Any] | list[t.Any], key: str | int) -> t.Any:
+def _read_slot(target: AnyDict | list[t.Any], key: str | int) -> t.Any:
     """Read one slot, padding the list first so the index always exists."""
     if isinstance(target, list):
         index = t.cast(int, key)
@@ -67,7 +69,7 @@ def _read_slot(target: dict[str, t.Any] | list[t.Any], key: str | int) -> t.Any:
     return target.get(t.cast(str, key))
 
 
-def _write_slot(target: dict[str, t.Any] | list[t.Any], key: str | int, value: t.Any) -> None:
+def _write_slot(target: AnyDict | list[t.Any], key: str | int, value: t.Any) -> None:
     """Write one slot, padding the list first so the index always exists."""
     if isinstance(target, list):
         index = t.cast(int, key)
@@ -78,7 +80,7 @@ def _write_slot(target: dict[str, t.Any] | list[t.Any], key: str | int, value: t
     target[t.cast(str, key)] = value
 
 
-def _assign_path(target: dict[str, t.Any] | list[t.Any], parts: list[str], value: t.Any) -> None:
+def _assign_path(target: AnyDict | list[t.Any], parts: list[str], value: t.Any) -> None:
     """Assign one bracket-notation path into a nested dict/list structure."""
     part, rest = parts[0], parts[1:]
 
@@ -107,7 +109,7 @@ def _assign_path(target: dict[str, t.Any] | list[t.Any], parts: list[str], value
     _assign_path(child, rest, value)
 
 
-def parse_form_data_with_bracket_notation(data: dict[str, t.Any]) -> dict[str, t.Any]:
+def parse_form_data_with_bracket_notation(data: AnyDict) -> AnyDict:
     """Parse form data with bracket notation keys into nested dicts and lists.
 
     Examples:
@@ -117,7 +119,7 @@ def parse_form_data_with_bracket_notation(data: dict[str, t.Any]) -> dict[str, t
         {'items[1][name]': 'Apple'} -> {'items': [None, {'name': 'Apple'}]}
 
     """
-    result: dict[str, t.Any] = {}
+    result: AnyDict = {}
 
     for key, value in data.items():
         parts = _split_bracket_key(key)
@@ -129,11 +131,25 @@ def parse_form_data_with_bracket_notation(data: dict[str, t.Any]) -> dict[str, t
     return result
 
 
-def parse_form_data(request: Request) -> dict[str, t.Any]:
-    """Return request data with bracket notation expanded into Python values."""
-    data: dict[str, t.Any] = {**(request.query or request.json or request.forms)}
+def get_request_data(source: Request | None = None) -> AnyDict:
+    """Return flat request data merged as query < form < JSON."""
+    source = source or request
+    query_data = source.query or {}
+    try:
+        form_data = source.forms or {}
+        json_data = source.json
+    except (JSONParsingError, ValueError) as error:
+        raise HTTP(400, "Ongeldige JSON-aanvraag.") from error
+    if json_data is None:
+        json_data = {}
+    elif not isinstance(json_data, dict):
+        raise HTTP(400, "De JSON-aanvraag moet een object bevatten.")
+    return query_data | form_data | json_data
 
-    return parse_form_data_with_bracket_notation(data)
+
+def parse_form_data(source: Request | None = None) -> AnyDict:
+    """Return merged request data with bracket notation expanded into Python values."""
+    return parse_form_data_with_bracket_notation(get_request_data(source=source))
 
 
 CatalogView = t.Literal["list", "grid"]
@@ -146,12 +162,12 @@ class CatalogRequest:
     page: int
     view: CatalogView
     sort: str
-    filters: dict[str, t.Any]
+    filters: AnyDict
 
     @classmethod
     def from_request(cls, request: Request) -> t.Self:
         """Build a normalized catalog request from query, JSON, or form data."""
-        filters = parse_form_data(request)
+        filters = parse_form_data(source=request)
         page_raw = t.cast(str | int | None, filters.pop("page", None))
         view_raw = str(filters.pop("view", "") or "grid").strip().lower()
         sort = str(filters.pop("sort", "")).strip().lower()
@@ -187,6 +203,7 @@ class CatalogRequest:
 
 __all__ = [
     "CatalogRequest",
+    "get_request_data",
     "parse_form_data",
     "parse_form_data_with_bracket_notation",
 ]

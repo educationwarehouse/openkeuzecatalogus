@@ -1,6 +1,6 @@
 """Tests for the py4web URL helpers."""
 
-from shared_code.infra.web import PY4WEB_URL, _PY4WEB_URL
+from shared_code.infra.web import _PY4WEB_URL, PY4WEB_URL
 
 
 def test_py4web_url_builds_https_url_from_host_and_path(monkeypatch) -> None:

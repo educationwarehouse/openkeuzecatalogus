@@ -4,6 +4,7 @@ import typing as t
 
 import requests
 
+from ...data_model import AnyDict
 from .contracts import EntreeOAuthService
 
 
@@ -49,7 +50,7 @@ class RequestsEntreeOAuthService(EntreeOAuthService):
         """Build a requests-backed service from environment defaults."""
         return cls()
 
-    def fetch_userinfo(self, userinfo_url: str, token: str) -> dict[str, t.Any]:
+    def fetch_userinfo(self, userinfo_url: str, token: str) -> AnyDict:
         """Fetch user profile data from the Entree userinfo endpoint."""
         resp = self.http_client.get(
             userinfo_url,

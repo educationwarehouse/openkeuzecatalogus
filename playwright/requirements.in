@@ -1,3 +1,6 @@
+axe-playwright-python
+requests
 playwright
 pytest
 pytest-playwright
+pytest-timeout

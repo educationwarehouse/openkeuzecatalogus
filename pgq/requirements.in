@@ -19,4 +19,4 @@ zeep
 pytest-asyncio
 
 ### security bumps ###
-twisted >= 26.4.0
+twisted >= 26.10.0rc1

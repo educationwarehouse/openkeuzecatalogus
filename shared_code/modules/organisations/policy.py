@@ -1,15 +1,11 @@
 """Organisation authorization policy."""
 
-import typing
-
 from endow.policy import AuthorizationResult
 from typedal import QueryBuilder
 
+from shared_code.data_model import Organisation, OrganisationType
 from shared_code.infra.database.policy import ReusablePolicy
 from shared_code.modules.auth import AuthContext
-
-if typing.TYPE_CHECKING:
-    from shared_code.data_model import Organisation
 
 
 class OrganisationPolicy(ReusablePolicy):
@@ -29,3 +25,22 @@ class OrganisationPolicy(ReusablePolicy):
     def request_read(self) -> AuthorizationResult[QueryBuilder[Organisation]]:
         """Return the read scope for organisation queries."""
         return self._request_read_from_recursive_memberships("organisation_model")
+
+    def organisation_query(
+        self,
+        organisation_type: OrganisationType,
+        privilege: str = "read",
+    ) -> QueryBuilder[Organisation]:
+        """Return organisations of one type the actor holds `privilege` on.
+
+        Deliberately a second scope beside `request_read`, narrower in a different direction:
+        this one filters on RBAC *permission grants* while `request_read` filters on *recursive
+        memberships*. They are not interchangeable, so neither delegates to the other.
+        Reconciling them is still open.
+        """
+        builder = Organisation.where(Organisation.organisation_type == organisation_type)
+        if self.auth.is_admin() or self.auth.is_service():
+            return builder
+
+        permitted = self.auth.permitted_object_ids_subquery(privilege)
+        return builder.where(Organisation.gid.belongs(permitted))

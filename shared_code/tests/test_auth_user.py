@@ -31,5 +31,4 @@ def test_blank_password_update_preserves_existing_password(
 
     assert errors2 is None
     assert updated_user2.password != original_password
-    assert updated_user2.password != "very-secure" # should be hashed
-
+    assert updated_user2.password != "very-secure"  # should be hashed

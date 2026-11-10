@@ -1,18 +1,49 @@
 """Shared Playwright fixtures for side-effect cleanup, auth session isolation, and mock-user cleanup."""
 
-import os
-from pathlib import Path
+import typing as t
 from urllib.parse import urljoin
 
 import pytest
 import requests
 from playwright.sync_api import Page
 
-BASE_URL = os.environ.get("WEB_BASE_URL", "http://py4web:8000")
-MOCK_INBOX_PATH = Path("/shared_cache/mail/mock_inbox.jsonl")
-APPLOG_PATH = Path(os.environ.get("APPLOG_PATH", "/shared_applog/events.jsonl"))
-MOCK_EMAIL_DOMAIN = os.environ["PYTEST_MOCK_EMAIL_DOMAIN"]
-RESET_PASSWORD_LINK_MAX_AGE_HOURS = 72
+from .accessibility import AXE_REPORT_PATH, AccessibilityReport
+from .auth_helpers import BrowserData, BrowserDataLoader, BrowserScenario, _create_verified_user, _login_as_user
+from .settings import APPLOG_PATH, BASE_URL, MOCK_EMAIL_DOMAIN, MOCK_INBOX_PATH
+
+
+@pytest.fixture(scope="session")
+def browser_context_args(browser_context_args: dict[str, t.Any]) -> dict[str, t.Any]:
+    """Give browser contexts and their API requests the application's origin."""
+    headers = browser_context_args.get("extra_http_headers", {}) | {"Origin": BASE_URL}
+
+    return browser_context_args | {"extra_http_headers": headers}
+
+
+@pytest.fixture
+def seed_browser_data(clear_auth_session_state: None) -> BrowserDataLoader:
+    """Log in and prepare records for real application pages."""
+
+    def prepare(page: Page, scenario: BrowserScenario = "process") -> BrowserData:
+        email, password = _create_verified_user(page, prefix="browser-ui", admin=True)
+        _login_as_user(page, email=email, password=password)
+        response = page.request.post(f"{BASE_URL}/test_seed_browser_data", form={"scenario": scenario})
+        assert response.ok, response.text()
+
+        return response.json()
+
+    return prepare
+
+
+@pytest.fixture(scope="session")
+def accessibility_report() -> t.Iterator[AccessibilityReport]:
+    """Collect all axe results and persist them after the browser suite."""
+    AXE_REPORT_PATH.unlink(missing_ok=True)
+    report = AccessibilityReport()
+    yield report
+    report.write()
+    if report.has_violations:
+        pytest.fail("axe-core reported accessibility violations; see axe-report.md for details.")
 
 
 @pytest.fixture(autouse=True)

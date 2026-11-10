@@ -5,7 +5,7 @@ import typing as t
 import pytest
 from typedal import TypeDAL
 
-from shared_code.data_model import Method, MethodEd, Product, ProductEd, SearchRankWeight, Supplier
+from shared_code.data_model import MethodEd, Product, ProductEd, SearchRankWeight, Supplier
 from shared_code.modules.auth import AuthAdapter
 from shared_code.modules.search_relevance import SearchRelevance
 
@@ -20,9 +20,7 @@ def _relevance(db: TypeDAL) -> SearchRelevance:
 
 def _rule(entity_kind: str, key: str) -> SearchRankWeight:
     """Load one seeded ranking rule."""
-    rule = SearchRankWeight.where(
-        (SearchRankWeight.entity_kind == entity_kind) & (SearchRankWeight.key == key)
-    ).first()
+    rule = SearchRankWeight.where((SearchRankWeight.entity_kind == entity_kind) & (SearchRankWeight.key == key)).first()
     assert rule is not None
     return rule
 
@@ -53,16 +51,16 @@ def test_product_relevance_preview_is_transient_then_saved_search_uses_the_score
 
     direct_supplier = supplier_factory(name="Direct supplier", email_domains=["direct-relevance.example.test"])
     related_supplier = supplier_factory(name="Target supplier", email_domains=["related-relevance.example.test"])
-    direct_method = method_factory(supplier_gid=str(direct_supplier.gid), olid="direct-method", name="General")
-    related_method = method_factory(supplier_gid=str(related_supplier.gid), olid="related-method", name="General")
+    direct_method = method_factory(supplier_gid=direct_supplier.gid, olid="direct-method", name="General")
+    related_method = method_factory(supplier_gid=related_supplier.gid, olid="related-method", name="General")
     product_factory(
-        supplier_gid=str(direct_supplier.gid),
+        supplier_gid=direct_supplier.gid,
         method_gid=direct_method.gid,
         olid="direct-product",
         name="Target product",
     )
     product_factory(
-        supplier_gid=str(related_supplier.gid),
+        supplier_gid=related_supplier.gid,
         method_gid=related_method.gid,
         olid="related-product",
         name="Other product",
@@ -103,9 +101,7 @@ def test_product_and_method_relevance_settings_are_independent(
 
     relevance.save("product", {f"{product_rule.gid}-exact": "900"})
     method_sections = relevance.sections("method")
-    method_scores = {
-        rule.key: rule.exact for section in method_sections for rule in section["rules"]
-    }
+    method_scores = {rule.key: rule.exact for section in method_sections for rule in section["rules"]}
 
     assert _rule("product", "supplier_name").exact == 900
     assert _rule("method", "supplier_name").exact == 70
@@ -149,10 +145,10 @@ def test_relevance_preview_handles_empty_queries_and_limits_results(
     assert migrated_db_per_file is None
 
     supplier = supplier_factory(name="Preview supplier", email_domains=["preview-relevance.example.test"])
-    method = method_factory(supplier_gid=str(supplier.gid), olid="preview-method", name="Preview method")
+    method = method_factory(supplier_gid=supplier.gid, olid="preview-method", name="Preview method")
     for number in range(4):
         product_factory(
-            supplier_gid=str(supplier.gid),
+            supplier_gid=supplier.gid,
             method_gid=method.gid,
             olid=f"preview-product-{number}",
             name=f"Preview product {number}",

@@ -1,6 +1,5 @@
 """TypeDAL table definitions for applog persistence."""
 
-import typing as t
 from datetime import datetime
 
 from typedal import relationship
@@ -14,7 +13,7 @@ class Evidence(TableWithGid):
     """Deduplicated applog event payload storage."""
 
     session_gid = OptionalUUIDField()
-    source = TypedField(dict[str, t.Any], type="json")
+    source = TypedField(dict[str, object], type="json")
     sha1_digest = TypedField(str, length=40)
 
 
@@ -26,6 +25,7 @@ class Signal(TableWithGid):
     source = TypedField(str, required=True, length=40)
     session_gid = OptionalUUIDField()
     user_gid = OptionalUUIDField()
+    service_actor = TypedField(str | None, length=255)
     evidence_id = TypedField(int)
     evidence_gid = OptionalUUIDField()
     related = OptionalUUIDField()

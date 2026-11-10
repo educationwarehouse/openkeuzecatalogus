@@ -81,7 +81,7 @@ class ReusablePolicy(BasePolicy, abc.ABC):
         if self.auth.is_service() or self.auth.is_admin():
             return Allow(apply=lambda query: query)
 
-        permitted_gids = self.auth.permitted_object_ids("write")
+        permitted_gids = self.auth.permitted_object_ids_subquery("write")
         return Allow(apply=lambda query: query.where(lambda table: table.gid.belongs(permitted_gids)))
 
     def require_read(self) -> Allow:

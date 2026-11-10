@@ -83,6 +83,7 @@
         </div>
     </section>
 
+    [[if show_themes:]]
     <section class="okl-page-container okl-insights" aria-labelledby="insights-title">
         <h2 id="insights-title">Inzichten</h2>
         [[if visions:]]
@@ -112,6 +113,8 @@
             [[pass]]
         </div>
     </section>
+
+    [[pass]]
 
     [[specifications = catalog_fields(item, entity_kind)]]
     <section class="okl-page-container okl-detail-specifications" aria-labelledby="specifications-title">

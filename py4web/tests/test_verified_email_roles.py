@@ -85,7 +85,7 @@ def test_verify_email_grants_supplier_membership_for_matching_domain(
 
     app_auth.grant_roles_after_email_verification(None, user)
 
-    assert rbac.has_membership(str(user.gid), str(supplier.gid))
+    assert rbac.has_membership(user.gid, supplier.gid)
 
 
 def test_verify_email_inherits_admin_via_supplier_group(
@@ -96,7 +96,7 @@ def test_verify_email_inherits_admin_via_supplier_group(
     assert verified_email_role_environment is None
 
     supplier = _get_or_create_supplier("sivon.nl", name="SIVON")
-    app_auth.auth_context.add_membership(str(supplier.gid), ROLE_ADMIN)
+    app_auth.auth_context.add_membership(supplier.gid, ROLE_ADMIN)
     AuthUser._db.commit()
 
     user = _create_user(_unique_email("sivon.nl"))
@@ -104,6 +104,6 @@ def test_verify_email_inherits_admin_via_supplier_group(
 
     app_auth.grant_roles_after_email_verification(None, user)
 
-    assert rbac.has_membership(str(user.gid), str(supplier.gid))
-    assert rbac.has_membership(str(user.gid), ROLE_ADMIN)
+    assert rbac.has_membership(user.gid, supplier.gid)
+    assert rbac.has_membership(user.gid, ROLE_ADMIN)
     # note: auth.store_user_in_session can't properly be tested here since no Session

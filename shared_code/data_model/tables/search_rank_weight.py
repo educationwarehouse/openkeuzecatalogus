@@ -3,7 +3,7 @@
 from pydal.validators import IS_IN_SET, IS_INT_IN_RANGE, IS_NULL_OR
 from typedal import TypedField
 
-from shared_code.data_model.tables.base import TableWithGid
+from shared_code.data_model.tables.base import EffdtTable
 
 SEARCH_RANK_SCORE_NAMES = {
     "exact": "Exacte overeenkomst",
@@ -18,8 +18,8 @@ SEARCH_RANK_SECTION_TITLES = {
 }
 
 
-class SearchRankWeight(TableWithGid):
-    """One editable score configuration for a fixed ranking rule."""
+class SearchRankWeightEd(EffdtTable):
+    """Effective-dated source configuration for one ranking rule."""
 
     entity_kind = TypedField(
         str,
@@ -74,3 +74,7 @@ class SearchRankWeight(TableWithGid):
     prefix = TypedField(int | None, label="Begint met", requires=IS_NULL_OR(IS_INT_IN_RANGE(0, 5001)))
     contains = TypedField(int | None, label="Bevat", requires=IS_NULL_OR(IS_INT_IN_RANGE(0, 5001)))
     trigram = TypedField(int | None, label="Vergelijkbare spelling", requires=IS_NULL_OR(IS_INT_IN_RANGE(0, 5001)))
+
+
+class SearchRankWeight(SearchRankWeightEd):
+    """Current score configuration for a fixed ranking rule."""

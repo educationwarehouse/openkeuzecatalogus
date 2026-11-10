@@ -3,12 +3,15 @@
 import datetime as dt
 import hashlib
 import json
+import logging
 import typing as t
+from pathlib import Path
 from uuid import UUID
 
+from diskcache import Deque
 from typedal import TypeDAL
 
-from shared_code.data_model import Evidence, Signal
+from shared_code.data_model import AnyDict, Evidence, Signal
 from shared_code.modules.auth import AuthAdapter
 from shared_code.services.applog.contracts import ApplogEvent, Applogger, ApplogSignal
 from shared_code.services.applog.deque import DequeApplogger
@@ -28,7 +31,8 @@ def save_applog_evidence(session: str | UUID | None, source: ApplogEvent) -> Evi
     # bereken de hash_value van de json payload.
     # EDIT DEZE JSON NIET, DIE MOET GESORTEERD ZIJN OM DUPLICATEN TE VOORKOMEN
     json_data = json.dumps(source).encode("utf-8")
-    hash_value = hashlib.sha1(json_data).hexdigest()  # noqa: S324 only used to deduplicate; not for secrets hashing
+    # only used to deduplicate; not for secrets hashing
+    hash_value = hashlib.sha1(json_data, usedforsecurity=False).hexdigest()
     # zoek bestaand bewijs
     evidence = Evidence(sha1_digest=hash_value)
     if not evidence:
@@ -61,12 +65,17 @@ def process_applog_signal(
     related: str | UUID | None = None,
 ) -> Signal:
     """Persist a single applog signal row, optionally linked to evidence."""
-    signal_fields: dict[str, t.Any] = {
+    service_actor = None
+    if isinstance(user_gid, str) and user_gid.startswith("service:"):
+        service_actor = user_gid
+        user_gid = None
+    signal_fields: AnyDict = {
         "name": name,
         "source": signal_source,
         # uses db.signal instead of Signal to prevent typing issues with default() not being callable:
-        "ts": ts if ts else db.signal.ts.default(),
+        "ts": ts if ts else Signal.ts.default(),  # ty: ignore[call-non-callable]
         "user_gid": user_gid,
+        "service_actor": service_actor,
         "session_gid": session_gid,
         "related": related,
     }
@@ -86,18 +95,12 @@ def process_applog_signal(
     return Signal.insert(**signal_fields)
 
 
-def process_applog_buffer(db: TypeDAL, events: list[ApplogSignal]) -> None:
-    """Persist buffered applog events using the caller-owned database context."""
-    successful_signals = 0
-    failed_signals = []
+def process_applog_buffer(db: TypeDAL, events: list[ApplogSignal]) -> list[ApplogSignal]:
+    """Commit events independently and return failed payloads for inspection."""
+    failures = []
+
     for event in events:
-        if not event:
-            continue
-
         try:
-            short_related = str(related)[:8] if (related := event.get("related")) else None
-
-            print("[applog] {signal_source}/{name} ({short_related}...)".format(**event, short_related=short_related))
             process_applog_signal(
                 db,
                 name=event["name"],
@@ -108,18 +111,17 @@ def process_applog_buffer(db: TypeDAL, events: list[ApplogSignal]) -> None:
                 ts=event.get("ts"),
                 related=event.get("related"),
             )
-            successful_signals += 1
-        except Exception as e:
+            db.commit()
+        except Exception:
             db.rollback()
-            # waarschijnlijk invalide data
-            print("[applog] invalid data:", event, e)
-            failed_signals.append(event)
+            logging.exception("Audit event could not be persisted; moving it to the failed queue")
+            failures.append(event)
 
-    print(f"[applog] successful: {successful_signals}, failed: {failed_signals!r}")
+    return failures
 
 
 def process_applog_deque(db: TypeDAL, batch_size: int = 50, applog: Applogger | None = None) -> int:
-    """Process queued applog signals with the caller-owned database context."""
+    """Persist events and set aside failures without blocking later events."""
     applog = applog or DequeApplogger.with_injected(
         db=db,
         auth_adapter=AuthAdapter.for_service("pgq.process_applog_deque"),
@@ -130,14 +132,34 @@ def process_applog_deque(db: TypeDAL, batch_size: int = 50, applog: Applogger | 
 
     deque = applog.deque
 
-    buffer: list[ApplogSignal] = []
-    for raw_event in batch_deque(deque, batch_size):
-        event_or_events = json.loads(raw_event)
-        events = [event_or_events] if isinstance(event_or_events, dict) else event_or_events
-        buffer.extend(events)
+    failed_queue = Deque(directory=str(Path(deque.directory) / "failed"))
+    with deque.transact(), failed_queue.transact():
+        buffer: list[ApplogSignal] = []
+        for raw_event in batch_deque(deque, batch_size):
+            try:
+                event_or_events = json.loads(raw_event)
+            except ValueError, TypeError:
+                logging.exception("Invalid audit JSON; moving the raw payload to the failed queue")
+                failed_queue.append(raw_event)
+                continue
 
-    if not buffer:
-        return 0
+            if isinstance(event_or_events, dict):
+                events = [event_or_events]
+            elif isinstance(event_or_events, list):
+                events = event_or_events
+            else:
+                logging.error("Invalid audit payload type; moving the raw payload to the failed queue")
+                failed_queue.append(raw_event)
+                continue
 
-    process_applog_buffer(db, buffer)
+            buffer.extend(events)
+
+        if not buffer:
+            return 0
+
+        failures = process_applog_buffer(db, buffer)
+        for event in failures:
+            failed_queue.append(json.dumps(event, default=str))
+
+    logging.info("Audit events persisted: %s; failed: %s", len(buffer) - len(failures), len(failures))
     return len(buffer)

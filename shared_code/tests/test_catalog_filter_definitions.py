@@ -4,11 +4,28 @@ import typing as t
 import uuid
 from types import SimpleNamespace
 
+import dill
 import pytest
 from typedal import TypeDAL
 
-from shared_code.data_model import DynamicSort, Method, MethodEd, Product, ProductEd, Supplier, Vision
-from shared_code.data_model.validators.sort_expression import IS_SORT_EXPRESSION, parse_sort_expression
+from shared_code.data_model import (
+    CatalogEntityKind,
+    DynamicSort,
+    Method,
+    MethodEd,
+    Product,
+    ProductEd,
+    Supplier,
+    Vision,
+)
+from shared_code.data_model.constants import get_themes
+from shared_code.data_model.validators.sort_expression import (
+    IS_SORT_EXPRESSION,
+    parse_sort_expression,
+    restore_sort_expression,
+    sort_expression_table_name,
+    stringify_sort_expression,
+)
 from shared_code.modules.catalog_filters.definitions import (
     BaseCatalogFilterDefinition,
     BooleanChoiceFilterDefinition,
@@ -27,7 +44,73 @@ from shared_code.modules.catalog_filters.definitions import (
     represent_filter_value,
     stringify_filter_value,
 )
-from shared_code.modules.catalog_filters.types import CatalogFilterContext, DynamicFilterMetadata, FilterOption
+from shared_code.modules.catalog_filters.types import (
+    CatalogFilterContext,
+    CatalogSortOption,
+    DynamicFilterMetadata,
+    FilterOption,
+    ResolvedCatalogFilters,
+    find_filter_table,
+)
+from shared_code.util.types import CachableProtocol
+
+
+@pytest.mark.parametrize("table", (Product, Method))
+@pytest.mark.parametrize("shape", ("ascending", "descending", "tuple", "combined"))
+def test_catalogue_sort_dill_round_trip(
+    db_per_file: TypeDAL,
+    table: type[Product] | type[Method],
+    shape: str,
+) -> None:
+    """Cached sorts retain metadata and restore fields from the current models."""
+    assert table._ensure_db() is db_per_file
+    if shape == "ascending":
+        order = table.name
+    elif shape == "descending":
+        order = ~table.name
+    elif shape == "tuple":
+        order = (table.name, ~table.id)
+    else:
+        order = table.name | ~table.id
+    option = CatalogSortOption(label="Name", order=order, is_default=True, dynamic_sort_ed_id=42)
+
+    cached = option.to_dillable()
+    assert isinstance(option, CachableProtocol)
+    assert isinstance(cached.order, str)
+    assert cached._model == table._tablename
+    assert option.order is order
+    restored = CatalogSortOption.from_dillable(dill.loads(dill.dumps(cached)))
+
+    assert stringify_sort_expression(restored.order) == stringify_sort_expression(order)
+    assert restored.label == option.label
+    assert restored.is_default is True
+    assert restored.dynamic_sort_ed_id == 42
+    assert restored._model == ""
+    first = restored.order[0] if isinstance(restored.order, tuple) else restored.order
+    assert first.db is table._ensure_db()
+
+
+@pytest.mark.parametrize("order", ("random", "name", "~name"))
+def test_catalogue_sort_dill_round_trip_without_bound_fields(order: str) -> None:
+    """String sorts need no table binding during cache restoration."""
+    option = CatalogSortOption(label="Sort", order=order)
+    cached = option.to_dillable()
+    restored = CatalogSortOption.from_dillable(dill.loads(dill.dumps(cached)))
+    assert restored.order == order
+    assert restored._model == ""
+
+
+def test_catalogue_sort_serialization_rejects_unrestorable_orders(db_per_file: TypeDAL) -> None:
+    """Fail explicitly for computed sorts, mixed tables and stale cache data."""
+    assert Product._ensure_db() is db_per_file
+    with pytest.raises(ValueError, match="only support fields"):
+        stringify_sort_expression(Product.name.lower())
+    with pytest.raises(ValueError, match="single table"):
+        sort_expression_table_name((Product.name, Method.name))
+    with pytest.raises(ValueError, match="Unknown cached catalogue sort table"):
+        find_filter_table("missing_table")
+    with pytest.raises(ValueError, match="Invalid cached catalogue sort expression"):
+        restore_sort_expression(Product, "missing_field")
 
 
 def _unique_slug(prefix: str) -> str:
@@ -38,7 +121,6 @@ def _unique_slug(prefix: str) -> str:
 
 
 def _metadata(
-    *,
     slug: str = "filter",
     label: str = "Filter",
     filter_kind: str = "dynamic",
@@ -74,7 +156,7 @@ class DummyFilterDefinition(BaseCatalogFilterDefinition):
         """Return the builder unchanged for rendering-only tests."""
         return builder
 
-    def options(self) -> list[FilterOption]:
+    def build_options(self) -> list[FilterOption]:
         """Expose a stable option set for rendering assertions."""
         return [
             FilterOption(value="one", label="One"),
@@ -207,6 +289,39 @@ def test_catalog_filter_helpers_and_base_rendering() -> None:
     assert multi_html.count('checked="checked"') == 2
 
 
+@pytest.mark.parametrize("entity_kind", ["product", "method"])
+@pytest.mark.parametrize("multiple", [False, True])
+def test_capsule_dropdown_windows_large_option_sets_and_retains_selection(
+    entity_kind: CatalogEntityKind, multiple: bool
+) -> None:
+    """Both filter pages keep an active option visible outside the first window."""
+    context = CatalogFilterContext(
+        entity_kind=entity_kind,
+        table=Product,
+        params={},
+        option_builder=t.cast(t.Any, None),
+    )
+    definition = DummyFilterDefinition(_metadata(slug="choice"), context)
+    definition.set_options([FilterOption(value=str(index), label=f"Option {index}") for index in range(4)])
+    definition.current_value = ["3"] if multiple else "3"
+
+    html = definition.render_capsule_dropdown(multiple=multiple, option_limit=2).xml()
+
+    assert 'data-option-slug="choice"' in html
+    assert f'data-option-kind="{entity_kind}"' in html
+    assert 'data-option-limit="2"' in html
+    assert html.count('name="choice"') == 3
+    assert 'value="0"' in html
+    assert 'value="1"' in html
+    assert 'value="2"' not in html
+    assert 'value="3"' in html
+    assert html.count('checked="checked"') == 1
+
+    unwindowed_html = definition.render_capsule_dropdown(multiple=multiple, option_limit=4).xml()
+    assert "data-option-slug=" not in unwindowed_html
+    assert unwindowed_html.count('name="choice"') == 4
+
+
 def test_search_and_dynamic_filter_definitions_apply_expected_queries(
     migrated_db_per_file: None,
     supplier_factory: t.Callable[..., Supplier],
@@ -229,7 +344,7 @@ def test_search_and_dynamic_filter_definitions_apply_expected_queries(
         name="Algebra VMBO",
         levels=["vmbo", "havo"],
     )
-    assert first_product.follow_up_product != "None" # string non is an issue
+    assert first_product.follow_up_product != "None"  # string non is an issue
     product_factory(
         supplier_gid=supplier.gid,
         method_gid=method.gid,
@@ -246,24 +361,32 @@ def test_search_and_dynamic_filter_definitions_apply_expected_queries(
         params={"q": [" Algebra "]},
         option_builder=builder,
     )
-    search_definition = SearchFilterDefinition(_metadata(slug="q", filter_kind="search", widget_kind="search"), search_context)
+    search_definition = SearchFilterDefinition(
+        _metadata(slug="q", filter_kind="search", widget_kind="search"), search_context
+    )
     assert search_definition.widget_kind == "search"
     assert search_definition.placeholder == "Zoek op naam, OLID of ISBN"
     assert search_definition.parse() == "Algebra"
     assert (
         SearchFilterDefinition(
             _metadata(slug="q", filter_kind="search", applies_to="method", widget_kind="search"),
-            CatalogFilterContext(entity_kind="method", table=Method, params={}, option_builder=Method.select(Method.ALL)),
+            CatalogFilterContext(
+                entity_kind="method", table=Method, params={}, option_builder=Method.select(Method.ALL)
+            ),
         ).placeholder
         == "Zoek op naam of OLID"
     )
     search_rows = search_definition.apply(builder, "Algebra").collect()
     assert [row.olid for row in search_rows] == ["definitions-product-001"]
 
-    passthrough_rows = SearchFilterDefinition(
-        _metadata(slug="q", filter_kind="search", widget_kind="search"),
-        CatalogFilterContext(entity_kind="product", table=t.cast(t.Any, object), params={}, option_builder=builder),
-    ).apply(builder, "Algebra").collect()
+    passthrough_rows = (
+        SearchFilterDefinition(
+            _metadata(slug="q", filter_kind="search", widget_kind="search"),
+            CatalogFilterContext(entity_kind="product", table=t.cast(t.Any, object), params={}, option_builder=builder),
+        )
+        .apply(builder, "Algebra")
+        .collect()
+    )
     assert {row.olid for row in passthrough_rows} == {"definitions-product-001", "definitions-product-002"}
 
     scalar_context = CatalogFilterContext(
@@ -357,7 +480,9 @@ def test_custom_catalog_filter_definitions_filter_and_render_scope_lookups(
 
     has_value = HasValueFilterDefinition(
         _metadata(slug="description", field_name="description", handler_key="has_value"),
-        CatalogFilterContext(entity_kind="product", table=Product, params={"description": ["1"]}, option_builder=builder),
+        CatalogFilterContext(
+            entity_kind="product", table=Product, params={"description": ["1"]}, option_builder=builder
+        ),
     )
     assert has_value.widget_kind == "checkbox"
     assert has_value.parse() is True
@@ -406,7 +531,9 @@ def test_custom_catalog_filter_definitions_filter_and_render_scope_lookups(
 
     supplier_lookup = SupplierFilterDefinition(
         _metadata(slug="supplier_gid", field_name="supplier_gid", handler_key="supplier_lookup"),
-        CatalogFilterContext(entity_kind="product", table=Product, params={"supplier_gid": [supplier_b.gid]}, option_builder=builder),
+        CatalogFilterContext(
+            entity_kind="product", table=Product, params={"supplier_gid": [supplier_b.gid]}, option_builder=builder
+        ),
     )
     assert supplier_lookup.widget_kind == "multi-select"
     assert supplier_lookup.parse() == [supplier_b.gid]
@@ -418,7 +545,9 @@ def test_custom_catalog_filter_definitions_filter_and_render_scope_lookups(
 
     method_lookup = MethodLookupFilterDefinition(
         _metadata(slug="method_gid", field_name="method_gid", handler_key="method_lookup"),
-        CatalogFilterContext(entity_kind="product", table=Product, params={"method_gid": [method_a.gid]}, option_builder=builder),
+        CatalogFilterContext(
+            entity_kind="product", table=Product, params={"method_gid": [method_a.gid]}, option_builder=builder
+        ),
     )
     assert method_lookup.widget_kind == "multi-select"
     assert method_lookup.parse() == [method_a.gid]
@@ -427,7 +556,12 @@ def test_custom_catalog_filter_definitions_filter_and_render_scope_lookups(
 
     composition = ProductCompositionFilterDefinition(
         _metadata(slug="composition", field_name="composition", handler_key="product_composition"),
-        CatalogFilterContext(entity_kind="product", table=Product, params={"composition": [" single ", "package"]}, option_builder=builder),
+        CatalogFilterContext(
+            entity_kind="product",
+            table=Product,
+            params={"composition": [" single ", "package"]},
+            option_builder=builder,
+        ),
     )
     assert composition.widget_kind == "multi-select"
     assert composition.parse() == ["single", "package"]
@@ -448,6 +582,10 @@ def test_vision_apply_search_matches_related_supplier_method_and_product_names(
 ) -> None:
     """Vision search should also match names from related supplier, method, and product records."""
     assert migrated_db_per_file is None
+    theme_gids = iter(get_themes())
+    supplier_theme_gid = next(theme_gids)
+    method_theme_gid = next(theme_gids)
+    product_theme_gid = next(theme_gids)
 
     supplier = supplier_factory(name="Vision Supplier Name", email_domains=["vision-search.example.test"])
     method = method_factory(
@@ -464,17 +602,17 @@ def test_vision_apply_search_matches_related_supplier_method_and_product_names(
 
     vision_factory(
         olid=supplier.olid,
-        onderwijskwaliteit="opbouw-leerdoelen",
+        onderwijskwaliteit=supplier_theme_gid,
         visie="Supplier linked vision",
     )
     vision_factory(
         olid=method.olid,
-        onderwijskwaliteit="kwaliteit-effectiviteit",
+        onderwijskwaliteit=method_theme_gid,
         visie="Method linked vision",
     )
     vision_factory(
         olid=product.olid,
-        onderwijskwaliteit="transparant-eerlijk",
+        onderwijskwaliteit=product_theme_gid,
         visie="Product linked vision",
     )
 
@@ -488,3 +626,146 @@ def test_vision_apply_search_matches_related_supplier_method_and_product_names(
     assert [row.visie for row in Vision.apply_search("Product Name", Vision.select(Vision.ALL)).collect()] == [
         "Product linked vision"
     ]
+
+
+def test_options_are_built_once_and_reused_by_rendering() -> None:
+    """Loading up front and rendering afterwards costs one set of queries, not two."""
+    built: list[str] = []
+
+    class Counting(DummyFilterDefinition):
+        def build_options(self) -> list[FilterOption]:
+            built.append(self.slug)
+            return [FilterOption(value="a", label="A")]
+
+    definition = Counting(_metadata(slug="levels"), t.cast(CatalogFilterContext, None))
+
+    assert built == [], "resolving must not query"
+    assert definition.options() == definition.options()
+    assert built == ["levels"], "a second ask reuses the first result"
+
+
+def test_load_options_moves_the_queries_out_of_rendering() -> None:
+    """The handler forces the option queries so the template only formats them."""
+    built: list[str] = []
+
+    class Counting(DummyFilterDefinition):
+        def build_options(self) -> list[FilterOption]:
+            built.append(self.slug)
+            return []
+
+    definitions: list[BaseCatalogFilterDefinition] = [
+        Counting(_metadata(slug=f"f{index}"), t.cast(CatalogFilterContext, None)) for index in range(3)
+    ]
+    resolved = ResolvedCatalogFilters(
+        entity_kind="product",
+        filters=definitions,
+        active_definitions=[],
+        active_filter_count=0,
+    )
+
+    assert resolved.load_options() is resolved, "chainable, so a handler resolves and loads in one expression"
+    assert len(built) == 3, "every filter queried in the handler"
+
+    built.clear()
+    for definition in definitions:
+        definition.options()  # what rendering does
+
+    assert built == [], "rendering runs no queries of its own"
+
+
+def test_option_page_searches_cached_options_and_preserves_active_selection() -> None:
+    """Paging uses search offsets while returning the selected option once."""
+    definition = DummyFilterDefinition(_metadata(slug="choice"), t.cast(CatalogFilterContext, None))
+    definition.set_options(
+        [
+            FilterOption(value="alpha", label="Alpha"),
+            FilterOption(value="beta", label="Beta"),
+            FilterOption(value="gamma", label="Gamma"),
+            FilterOption(value="delta", label="Delta"),
+            FilterOption(value="selected", label="Epsilon"),
+        ]
+    )
+    definition.current_value = ["selected"]
+    resolved = ResolvedCatalogFilters(
+        entity_kind="product",
+        filters=[definition],
+        active_definitions=[(definition, ["selected"])],
+        active_filter_count=1,
+    )
+
+    first = resolved.option_page("choice", "  A  ", offset=0, limit=2)
+    assert [option.value for option in first.options] == ["alpha", "beta"]
+    assert [option.value for option in first.selected_options] == ["selected"]
+    assert first.next_offset == 2
+    assert first.has_more
+
+    second = resolved.option_page("choice", "a", offset=first.next_offset, limit=2)
+    assert [option.value for option in second.options] == ["gamma", "delta"]
+    assert second.selected_options == []
+    assert second.next_offset == 4
+    assert not second.has_more
+
+    selected_match = resolved.option_page("choice", "SELECTED", offset=0, limit=2)
+    assert selected_match.options == []
+    assert [option.value for option in selected_match.selected_options] == ["selected"]
+    assert not selected_match.has_more
+
+    with pytest.raises(KeyError, match="choice-missing"):
+        resolved.option_page("choice-missing", "", offset=0, limit=2)
+
+
+def test_options_survive_a_round_trip_through_plain_data() -> None:
+    """A cached payload seeds the filters, so a hit renders without querying."""
+    built: list[str] = []
+
+    class Counting(DummyFilterDefinition):
+        def build_options(self) -> list[FilterOption]:
+            built.append(self.slug)
+            return [FilterOption(value=f"{self.slug}-a", label="A")]
+
+    def resolve() -> ResolvedCatalogFilters:
+        definitions: list[BaseCatalogFilterDefinition] = [
+            Counting(_metadata(slug=slug), t.cast(CatalogFilterContext, None)) for slug in ("levels", "subjects")
+        ]
+        return ResolvedCatalogFilters(
+            entity_kind="product",
+            filters=definitions,
+            active_definitions=[],
+            active_filter_count=0,
+        )
+
+    payload = resolve().load_options().options_payload()
+
+    assert built == ["levels", "subjects"]
+    assert payload == {"levels": [("levels-a", "A")], "subjects": [("subjects-a", "A")]}
+
+    built.clear()
+    restored = resolve().apply_options(payload)
+
+    assert [option.value for option in restored.filters[0].options()] == ["levels-a"]
+    assert built == [], "a seeded filter runs no query of its own"
+
+
+def test_a_filter_missing_from_the_payload_still_loads_itself() -> None:
+    """A filter added since the entry was written must not come back empty."""
+    built: list[str] = []
+
+    class Counting(DummyFilterDefinition):
+        def build_options(self) -> list[FilterOption]:
+            built.append(self.slug)
+            return [FilterOption(value=f"{self.slug}-a", label="A")]
+
+    definitions: list[BaseCatalogFilterDefinition] = [
+        Counting(_metadata(slug=slug), t.cast(CatalogFilterContext, None)) for slug in ("levels", "language")
+    ]
+    resolved = ResolvedCatalogFilters(
+        entity_kind="product",
+        filters=definitions,
+        active_definitions=[],
+        active_filter_count=0,
+    )
+
+    resolved.apply_options({"levels": [("levels-a", "A")]})
+
+    assert [option.value for option in resolved.filters[1].options()] == ["language-a"]
+    assert built == ["language"], "only the filter the payload did not mention queried"

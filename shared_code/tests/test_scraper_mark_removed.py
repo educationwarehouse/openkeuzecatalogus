@@ -39,14 +39,14 @@ def test_import_methods_and_products_marks_missing_rows_as_removed(
         methods=[
             {
                 "gid": kept_method_gid,
-                "supplier_gid": str(supplier.gid),
+                "supplier_gid": supplier.gid,
                 "olid": kept_method_olid,
                 "name": "Te Houden Methode",
                 "available": "leverbaar",
             },
             {
                 "gid": removed_method_gid,
-                "supplier_gid": str(supplier.gid),
+                "supplier_gid": supplier.gid,
                 "olid": removed_method_olid,
                 "name": "Te Verwijderen Methode",
                 "available": "leverbaar",
@@ -55,7 +55,7 @@ def test_import_methods_and_products_marks_missing_rows_as_removed(
         products=[
             {
                 "gid": kept_product_gid,
-                "supplier_gid": str(supplier.gid),
+                "supplier_gid": supplier.gid,
                 "olid": kept_product_olid,
                 "name": "Te Houden Product",
                 "available": "leverbaar",
@@ -64,7 +64,7 @@ def test_import_methods_and_products_marks_missing_rows_as_removed(
             },
             {
                 "gid": removed_product_gid,
-                "supplier_gid": str(supplier.gid),
+                "supplier_gid": supplier.gid,
                 "olid": removed_product_olid,
                 "name": "Te Verwijderen Product",
                 "available": "leverbaar",
@@ -86,7 +86,7 @@ def test_import_methods_and_products_marks_missing_rows_as_removed(
         methods=[
             {
                 "gid": kept_method_gid,
-                "supplier_gid": str(supplier.gid),
+                "supplier_gid": supplier.gid,
                 "olid": kept_method_olid,
                 "name": "Te Houden Methode",
                 "available": "leverbaar",
@@ -95,7 +95,7 @@ def test_import_methods_and_products_marks_missing_rows_as_removed(
         products=[
             {
                 "gid": kept_product_gid,
-                "supplier_gid": str(supplier.gid),
+                "supplier_gid": supplier.gid,
                 "olid": kept_product_olid,
                 "name": "Te Houden Product",
                 "available": "leverbaar",

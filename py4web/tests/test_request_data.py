@@ -1,28 +1,25 @@
 """Tests for request-data parsing helpers."""
 
-import dataclasses as dc
+from collections.abc import Callable, Mapping
+from contextlib import AbstractContextManager
 
 import pytest
 from common.models.request_data import parse_form_data, parse_form_data_with_bracket_notation
 
 
-@dc.dataclass
-class Request:
-    """Minimal request double used by the parse_form_data tests."""
-
-    query: dict
-
-
-def test_parse_form_data_uses_request_query() -> None:
+def test_parse_form_data_uses_request_query(
+    request_query: Callable[[Mapping[str, str | list[str]]], AbstractContextManager[None]],
+) -> None:
     """Parse request data from the query mapping."""
-    request = Request(
-        query={
+    with request_query(
+        {
             "user[name]": "Alice",
             "tags[]": ["python", "django"],
         },
-    )
+    ):
+        parsed = parse_form_data()
 
-    assert parse_form_data(request) == {
+    assert parsed == {
         "user": {
             "name": "Alice",
         },

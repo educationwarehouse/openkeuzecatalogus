@@ -5,7 +5,7 @@ import typing as t
 import pytest
 from typedal import TypeDAL
 
-from shared_code.data_model import Method, Product, ProductEd, SearchRankWeight, Supplier, SupplierEd, MethodEd
+from shared_code.data_model import Method, MethodEd, Product, ProductEd, SearchRankWeight, Supplier, SupplierEd
 from shared_code.data_model.mixins.search import basic_search_query
 from shared_code.infra.database.tables import is_readonly_table
 
@@ -48,7 +48,7 @@ def seeded_products(migrated_db_per_file: None, db_per_file: TypeDAL) -> str:
         supplier_gid=demo_supplier.gid,
     )
     db_per_file.commit()
-    return str(demo_supplier.gid)
+    return demo_supplier.gid
 
 
 def test_search_mixin_matches_single_term(seeded_products: str) -> None:
@@ -77,7 +77,7 @@ def test_basic_search_matches_uuid_custom_fields_on_a_generic_table(seeded_produ
     """Generic-table search supports readable UUID custom fields."""
     rows = ProductEd.where(basic_search_query(seeded_products, ProductEd)).collect()
 
-    assert {str(row.supplier_gid) for row in rows} == {seeded_products}
+    assert {row.supplier_gid for row in rows} == {seeded_products}
 
 
 def test_is_readonly_table_detects_generated_and_maintained_tables(
@@ -162,38 +162,40 @@ def test_product_search_matches_method_and_supplier_names_but_prefers_product_na
     assert db_per_file
 
     supplier_direct = supplier_factory(name="Direct Supplier", email_domains=["direct-product-search.example.test"])
-    supplier_secondary = supplier_factory(name="Target Supplier", email_domains=["secondary-product-search.example.test"])
+    supplier_secondary = supplier_factory(
+        name="Target Supplier", email_domains=["secondary-product-search.example.test"]
+    )
 
     method_direct = method_factory(
-        supplier_gid=str(supplier_direct.gid),
+        supplier_gid=supplier_direct.gid,
         olid="product-search-method-direct",
         name="General Method",
     )
     method_secondary = method_factory(
-        supplier_gid=str(supplier_direct.gid),
+        supplier_gid=supplier_direct.gid,
         olid="product-search-method-secondary",
         name="Target Method",
     )
     method_supplier = method_factory(
-        supplier_gid=str(supplier_secondary.gid),
+        supplier_gid=supplier_secondary.gid,
         olid="product-search-method-supplier",
         name="Another Method",
     )
 
     product_factory(
-        supplier_gid=str(supplier_direct.gid),
+        supplier_gid=supplier_direct.gid,
         method_gid=method_direct.gid,
         olid="product-search-direct",
         name="Zeta Target Product",
     )
     product_factory(
-        supplier_gid=str(supplier_direct.gid),
+        supplier_gid=supplier_direct.gid,
         method_gid=method_secondary.gid,
         olid="product-search-method-hit",
         name="Alpha Product",
     )
     product_factory(
-        supplier_gid=str(supplier_secondary.gid),
+        supplier_gid=supplier_secondary.gid,
         method_gid=method_supplier.gid,
         olid="product-search-supplier-hit",
         name="Beta Product",
@@ -225,16 +227,16 @@ def test_product_search_score_overrides_change_result_order(
 
     direct_supplier = supplier_factory(name="Preview Direct", email_domains=["preview-direct.example.test"])
     related_supplier = supplier_factory(name="Preview Target", email_domains=["preview-related.example.test"])
-    direct_method = method_factory(supplier_gid=str(direct_supplier.gid), olid="preview-method-direct", name="General")
-    related_method = method_factory(supplier_gid=str(related_supplier.gid), olid="preview-method-related", name="General")
+    direct_method = method_factory(supplier_gid=direct_supplier.gid, olid="preview-method-direct", name="General")
+    related_method = method_factory(supplier_gid=related_supplier.gid, olid="preview-method-related", name="General")
     product_factory(
-        supplier_gid=str(direct_supplier.gid),
+        supplier_gid=direct_supplier.gid,
         method_gid=direct_method.gid,
         olid="preview-product-direct",
         name="Target Product",
     )
     product_factory(
-        supplier_gid=str(related_supplier.gid),
+        supplier_gid=related_supplier.gid,
         method_gid=related_method.gid,
         olid="preview-product-related",
         name="Other Product",
@@ -264,16 +266,20 @@ def test_method_search_matches_supplier_names_but_prefers_method_name(
     assert migrated_db_per_file is None
     assert db_per_file
 
-    supplier_direct = supplier_factory(name="General Method Supplier", email_domains=["direct-method-search.example.test"])
-    supplier_secondary = supplier_factory(name="Target Method Supplier", email_domains=["secondary-method-search.example.test"])
+    supplier_direct = supplier_factory(
+        name="General Method Supplier", email_domains=["direct-method-search.example.test"]
+    )
+    supplier_secondary = supplier_factory(
+        name="Target Method Supplier", email_domains=["secondary-method-search.example.test"]
+    )
 
     method_factory(
-        supplier_gid=str(supplier_direct.gid),
+        supplier_gid=supplier_direct.gid,
         olid="method-search-direct",
         name="Zeta Target Method",
     )
     method_factory(
-        supplier_gid=str(supplier_secondary.gid),
+        supplier_gid=supplier_secondary.gid,
         olid="method-search-supplier-hit",
         name="Alpha Method",
     )

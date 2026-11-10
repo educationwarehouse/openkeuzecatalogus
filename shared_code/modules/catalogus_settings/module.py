@@ -11,12 +11,22 @@ from shared_code.modules.auth import AuthContext
 if t.TYPE_CHECKING:
     from shared_code.infra.database import DatabaseContext
 
+CATALOG_SHOW_THEMES_KEY = "catalog.show_themes"
+
 
 class CatalogusSettings(Domain):
     """Share keyed JSON settings across catalogue features."""
 
     db: DatabaseContext
     auth: AuthContext
+
+    def get_show_themes(self) -> bool:
+        """Show catalogue themes unless they have explicitly been disabled."""
+        return self.get(CATALOG_SHOW_THEMES_KEY, default=True) is not False
+
+    def save_show_themes(self, value: bool) -> None:
+        """Persist theme visibility without changing the underlying vision data."""
+        self.set(CATALOG_SHOW_THEMES_KEY, value=value)
 
     @staticmethod
     def get(key: str, default: object = None) -> object:

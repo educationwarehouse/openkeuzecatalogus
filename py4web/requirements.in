@@ -8,22 +8,26 @@ humanize
 # invoke
 # py4web==1.20240509.1
 py4web==1.20260403.2 # note: 1.20260518.2 has breaking change regarding fixtures
-py4web-debug-tools
+py4web-debug-tools >= 1.4
 # watchdog
 
 # === Data / DB ===
 # bcrypt
 # celery
 filelock
+openpyxl
 
 # === Parsing / Content / Metadata ===
 # pybars4
 # pysass
 # pyyaml
-# qrcode[pil]
+qrcode[pil]==8.2
 ua-parser
 user-agents
 yatl
+
+# rust based bs4 parser:
+soup5ever >=0.2, <1
 
 # === Tooling / Test ===
 pgqueuer~=0.24.3

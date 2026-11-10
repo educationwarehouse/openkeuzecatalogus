@@ -10,6 +10,7 @@ from yatl.helpers import A
 
 from common.models.redirects import find_next
 from py4web import URL, redirect, request
+from shared_code.data_model import AnyDict
 from shared_code.data_model.constants import ROLE_SUPPLIER
 from shared_code.data_model.tables import AuthUser
 from shared_code.data_model.validators.is_existing_sso_account import (
@@ -52,18 +53,18 @@ class LoggingAuthForms(DefaultAuthForms):
         return find_next(default)
 
     @t.overload
-    def logout(self, model: t.Literal[True]) -> dict[str, t.Any]: ...
+    def logout(self, model: t.Literal[True]) -> AnyDict: ...
 
     @t.overload
     def logout(self, model: t.Literal[False]) -> str: ...
 
-    def logout(self, model: bool = False) -> dict[str, t.Any] | str:  # ty: ignore[invalid-method-override]
+    def logout(self, model: bool = False) -> AnyDict | str:  # ty: ignore[invalid-method-override]
         """Log logout attempts before delegating to the base implementation."""
         user = self.auth.get_user()
         self.log_auth_action(action="logout", success=True, user=user.as_dict() if user else {})
         return super().logout(model=model)
 
-    def login(self, model: bool = False) -> dict[str, t.Any] | str | Form:
+    def login(self, model: bool = False) -> AnyDict | str | Form:
         """Skip the login form when the user already has a valid session."""
         if not model and self.auth.is_logged_in:
             raise redirect(self._redirect_target_for_authenticated_user())
@@ -106,7 +107,7 @@ class LoggingAuthForms(DefaultAuthForms):
 
         return result
 
-    def _is_invalid_login_error(self, errors: dict[str, t.Any]) -> bool:
+    def _is_invalid_login_error(self, errors: AnyDict) -> bool:
         """Return whether form errors represent generic invalid credentials."""
         password_error = str(errors.get("password") or "").strip().lower()
         return password_error in {
@@ -121,7 +122,7 @@ class LoggingAuthForms(DefaultAuthForms):
         query = (AuthUser.sso_id != None) & build_normalized_email_match_query(AuthUser.email, normalized_email)
         return bool(AuthUser.where(query).select(AuthUser.id, limitby=(0, 1)).first())
 
-    def _replace_login_sso_hint_with_magic_link(self, errors: dict[str, t.Any], email: str) -> None:
+    def _replace_login_sso_hint_with_magic_link(self, errors: AnyDict, email: str) -> None:
         """Replace sentinel login error with a clickable magic-login fallback link."""
         if errors.get("password") != self._LOGIN_SSO_ACCOUNT_HINT_ERROR:
             return
@@ -132,7 +133,7 @@ class LoggingAuthForms(DefaultAuthForms):
             A("Vraag hier een magic login-link per e-mail aan.", _href=magic_link_url),
         )
 
-    def register(self, model: bool = False) -> dict[str, t.Any] | str | Form:
+    def register(self, model: bool = False) -> AnyDict | str | Form:
         """Show SSO-specific guidance and magic-login fallback on register conflicts."""
         result = super().register(model=model)
         if not isinstance(result, Form):
@@ -149,7 +150,7 @@ class LoggingAuthForms(DefaultAuthForms):
         )
         return result
 
-    def request_reset_password(self, model: bool = False) -> dict[str, t.Any] | str | Form:
+    def request_reset_password(self, model: bool = False) -> AnyDict | str | Form:
         """Show the preferred Entree login route alongside the email fallback."""
         result = super().request_reset_password(model=model)
         if model or not isinstance(result, Form) or result.submitted or "oauth2kennisnet" not in self.auth.plugins:
@@ -165,12 +166,13 @@ class LoggingAuthForms(DefaultAuthForms):
         self.log_auth_action(action="sso-reset-option-opened", success=True)
         return result
 
-    def verify_email(self, model: bool = False) -> dict[str, t.Any] | None:
+    def verify_email(self, model: bool = False) -> AnyDict | None:
         """Verify the email token, pass the resolved user to hooks, and auto-login on success."""
         if model:
             return super().verify_email(model=model)
 
         token = request.query.get("token")
+
         user = AuthUser.where(self.auth._query_from_token(token)).first()
         verified = self.auth.verify_email(token)
 
@@ -178,11 +180,11 @@ class LoggingAuthForms(DefaultAuthForms):
             self.auth.store_user_in_session(user.id)
 
         self._set_flash("email-verified" if verified else "link-expired")
-        self._postprocessing("verify_email", user=user)
+        self._postprocessing("verify_email", user=user, success=verified)
 
         return None
 
-    def request_magic_login(self, model: bool = False) -> dict[str, t.Any] | None:
+    def request_magic_login(self, model: bool = False) -> AnyDict | None:
         """Send a one-click login link and redirect back to login."""
         if model:
             return {
@@ -210,7 +212,7 @@ class LoggingAuthForms(DefaultAuthForms):
         )
         return None
 
-    def magic_login(self, model: bool = False) -> dict[str, t.Any] | None:
+    def magic_login(self, model: bool = False) -> AnyDict | None:
         """Consume a magic-login token and sign the user in."""
         if model:
             return {
@@ -245,7 +247,7 @@ class LoggingAuthForms(DefaultAuthForms):
         user: AuthUser | None = None,
         email: str | None = None,
         success: bool | None = None,
-        details: dict[str, t.Any] | None = None,
+        details: AnyDict | None = None,
     ) -> None:
         if action == "logout":
             raise redirect(URL("auth", "login", use_appname=False))
@@ -267,7 +269,7 @@ class LoggingAuthForms(DefaultAuthForms):
                 email=normalize_email_for_lookup(user.email),
             )
 
-        if action in self.auth.on_accept:
+        if action in self.auth.on_accept and user:
             self.auth.on_accept[action](form, user)
 
         if not form or form.accepted:
@@ -282,7 +284,7 @@ class LoggingAuthForms(DefaultAuthForms):
         self,
         action: str,
         success: bool,
-        user: dict[str, t.Any] | Row | None = None,
+        user: AnyDict | Row | None = None,
         email: str | None = None,
         details: t.Mapping[str, t.Any] | None = None,
     ) -> None:

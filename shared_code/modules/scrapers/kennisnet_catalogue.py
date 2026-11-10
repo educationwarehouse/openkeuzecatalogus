@@ -5,6 +5,8 @@ import json
 import typing as t
 from pathlib import Path
 
+from filelock import FileLock
+from pydal.adapters.base import BaseAdapter
 from typedal import TypeDAL, TypedField, TypedTable
 from yayarl import URL
 
@@ -75,11 +77,15 @@ def refresh_kennisnet_catalogue_if_stale(
     base_url: URL = KENNISNET_CATALOGUE_BASE_URL,
 ) -> KennisnetCatalogueRefresh:
     """Refresh the shared SQLite catalogue when stale or explicitly requested."""
-    catalogue_db = _catalogue_database(database_path=database_path)
-    try:
-        return _refresh_catalogue(catalogue_db, force=force, base_url=base_url)
-    finally:
-        catalogue_db.close()
+    database_path.parent.mkdir(parents=True, exist_ok=True)
+    # FileLock coordinates processes and releases its OS lock if the importer crashes.
+    with FileLock(database_path.with_suffix(".refresh.lock")):
+        catalogue_db = _catalogue_database(database_path=database_path)
+        try:
+            # Check freshness only after acquiring the lock and opening a new connection.
+            return _refresh_catalogue(catalogue_db, force=force, base_url=base_url)
+        finally:
+            catalogue_db.close()
 
 
 def _refresh_catalogue(catalogue_db: TypeDAL, force: bool, base_url: URL) -> KennisnetCatalogueRefresh:
@@ -124,10 +130,20 @@ def catalogue_status(database: TypeDAL) -> KennisnetCatalogueStatus:
     )
 
 
+def configure_catalogue_connection(adapter: BaseAdapter) -> None:
+    """Allow catalogue readers to keep reading while a refresh writes new rows."""
+    adapter.execute("PRAGMA journal_mode=WAL")
+
+
 def _catalogue_database(database_path: Path = KENNISNET_CATALOGUE_DB_PATH) -> TypeDAL:
     """Open one catalogue connection; the caller owns its lifetime."""
     database_path.parent.mkdir(parents=True, exist_ok=True)
-    database = TypeDAL(f"sqlite://{database_path}", migrate=True, use_pyproject=False)
+    database = TypeDAL(
+        f"sqlite://{database_path}",
+        migrate=True,
+        use_pyproject=False,
+        after_connection=configure_catalogue_connection,
+    )
     define_catalogue_tables(database)
 
     return database

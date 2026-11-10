@@ -40,6 +40,20 @@ class ImportErrorCode(enum.StrEnum):
             return None
 
 
+class ImportWarningCode(enum.StrEnum):
+    """Supported non-fatal importer warning codes."""
+
+    IMAGE_UPLOAD_FAILED = "image_upload_failed"
+    EDUV_NEWER_VERSION = "eduv_newer_version"
+    EDUV_UNUSED_PRODUCT_FIELDS = "eduv_unused_product_fields"
+    EDUV_VALIDATION_FAILED = "eduv_validation_failed"
+    EDUV_LEVEL_SKIPPED = "eduv_level_skipped"
+    EDUV_PRODUCT_ROW_SKIPPED = "eduv_product_row_skipped"
+    EDUV_PUBLISHER_MISSING = "eduv_publisher_missing"
+    EDUV_ACCESS_URL_SKIPPED = "eduv_access_url_skipped"
+    EDUV_BUNDLE_REFERENCE_UNRESOLVED = "eduv_bundle_reference_unresolved"
+
+
 def normalize_import_error_codes(raw_codes: t.Iterable[str | ImportErrorCode] | None) -> list[str]:
     """Normalize raw error inputs into a deduplicated list of code strings."""
     if raw_codes is None:

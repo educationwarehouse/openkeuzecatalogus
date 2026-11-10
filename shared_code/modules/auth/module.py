@@ -8,7 +8,7 @@ from pydal.validators import IS_EMAIL
 from typedal.fields import Field, TypedField
 from typedal.types import Query
 
-from shared_code.data_model.tables import AuthUser, Organisation, Supplier
+from shared_code.data_model.tables import AuthUser, DecisionTeam, Identity, Organisation, Supplier
 from shared_code.data_model.validators.is_existing_sso_account import build_normalized_email_match_query
 from shared_code.services.mail.contracts import Mailer
 from shared_code.util.email import (
@@ -17,6 +17,7 @@ from shared_code.util.email import (
     normalize_email_for_lookup,
 )
 
+from ...data_model import Membership
 from .contract import AuthContext
 
 if t.TYPE_CHECKING:
@@ -24,20 +25,33 @@ if t.TYPE_CHECKING:
 
 
 class InviteMembershipTarget(t.TypedDict):
-    """Resolved organisation or supplier invite target."""
+    """Resolved organisation, supplier, or teaching-team invite target."""
 
     gid: str
     label: str
 
 
 class InviteCandidate(t.TypedDict):
-    """Existing user or invited identity candidate."""
+    """Existing user or invited identity candidate.
+
+    The two membership flags are deliberately separate, because they answer different
+    questions and can disagree:
+
+    - `already_member`: can this subject reach the group at all, at any nesting depth? A user
+      attached to a team below a school reaches the school, and the board above it, this way.
+    - `direct_member`: is there a `membership` row linking subject and group directly? Only
+      these show up in a depth-1 member listing, and only these can be revoked again.
+
+    An inherited-only subject (`already_member` without `direct_member`) may still be granted
+    a direct membership: that is what puts them in the organisation's own member list.
+    """
 
     subject_id: str
     email: str
     full_name: str
     source: str
     already_member: bool
+    direct_member: bool
 
 
 class InviteLookupResult(t.TypedDict):
@@ -57,7 +71,7 @@ class AuthSupportBackend(Domain):
     mailer: Mailer
 
     def resolve_membership_target(self, membership_gid: str | None) -> InviteMembershipTarget | None:
-        """Resolve an inviteable supplier or organisation target."""
+        """Resolve an inviteable supplier, organisation, or teaching-team target."""
         if not membership_gid:
             return None
 
@@ -73,6 +87,12 @@ class AuthSupportBackend(Domain):
                 label=supplier.name or membership_gid,
             )
 
+        if team := DecisionTeam.where(gid=membership_gid).select(DecisionTeam.name).first():
+            return InviteMembershipTarget(
+                gid=membership_gid,
+                label=team.name or membership_gid,
+            )
+
         return None
 
     def normalize_invite_email(self, email: str | None) -> tuple[str | None, str | None]:
@@ -84,8 +104,9 @@ class AuthSupportBackend(Domain):
 
         return str(value), None
 
-    def lookup_invite_candidate(self, email: str, membership_gid: str) -> InviteLookupResult:
+    def lookup_invite_candidate(self, email: str, membership_gid: str | None) -> InviteLookupResult:
         """Lookup exact and similar existing identities for an invite email."""
+        # todo: Once organisations can manage this themselves, suggest related existing users while typing.
         exact_match = self._find_exact_match(email, membership_gid)
         similar_match = None if exact_match else self._find_similar_match(email, membership_gid)
 
@@ -99,14 +120,18 @@ class AuthSupportBackend(Domain):
     def grant_invited_membership(self, subject_id: str, membership_gid: str) -> None:
         """Grant direct membership to an existing user or invited identity."""
         self.auth.add_membership(subject_id, membership_gid)
-        self.db.commit()
 
     def revoke_invited_membership(self, subject_id: str, membership_gid: str) -> None:
         """Revoke direct membership from an invited identity or user subject."""
         self.auth.remove_membership(subject_id, membership_gid)
         self.db.commit()
 
-    def create_invited_identity(self, email: str, first_name: str, last_name: str) -> InviteCandidate:
+    def create_invited_identity(
+        self,
+        email: str,
+        first_name: str,
+        last_name: str,
+    ) -> InviteCandidate:
         """Create an invited RBAC identity claimable by later registration or SSO."""
         gid = str(uuid.uuid4())
 
@@ -118,14 +143,13 @@ class AuthSupportBackend(Domain):
             member_of=[],
             gid=gid,
         )
-        self.db.commit()
-
         return InviteCandidate(
             subject_id=gid,
             email=email,
             full_name=f"{first_name} {last_name}".strip(),
             source="identity",
             already_member=False,
+            direct_member=False,
         )
 
     def send_membership_invite_email(
@@ -149,27 +173,70 @@ class AuthSupportBackend(Domain):
             ),
         )
 
-    def _candidate_from_user(self, user: AuthUser, membership_gid: str) -> InviteCandidate:
-        subject_id = str(user.gid)
+    def invite_membership(
+        self,
+        *,
+        email: str | None,
+        first_name: str,
+        last_name: str,
+        membership_gid: str,
+        membership_label: str,
+        invite_url: str,
+    ) -> None:
+        """Grant an existing identity or create and invite a new membership identity."""
+        normalized_email, error = self.normalize_invite_email(email)
+        if error or not normalized_email:
+            raise ValueError(error or "Vul een geldig e-mailadres in.")
+
+        lookup = self.lookup_invite_candidate(normalized_email, membership_gid)
+        candidate = lookup["exact_match"] or lookup["similar_match"]
+        if candidate:
+            # `direct_member`, not `already_member`: someone who only inherits access through a
+            # nested group still needs their own row to appear in this organisation's member list
+            if not candidate["direct_member"]:
+                self.grant_invited_membership(candidate["subject_id"], membership_gid)
+            return
+
+        invited = self.create_invited_identity(normalized_email, first_name, last_name)
+        self.grant_invited_membership(invited["subject_id"], membership_gid)
+        self.send_membership_invite_email(
+            email=normalized_email,
+            membership_label=membership_label,
+            invite_url=invite_url,
+            first_name=first_name,
+        )
+
+    def has_direct_membership(self, subject_id: str, membership_gid: str) -> bool:
+        """Return whether a direct `membership` row links one subject to one group.
+
+        `AuthContext.has_subject_membership` answers the transitive question instead, so the
+        two differ for a subject that only reaches the group through a nested group.
+        """
+        return Membership.where(subject=subject_id).where(member_of=membership_gid).exists()
+
+    def _candidate_from_user(self, user: AuthUser, membership_gid: str | None) -> InviteCandidate:
+        subject_id = user.gid
         return InviteCandidate(
             subject_id=subject_id,
             email=user.email,
             full_name=user.full_name.strip(),
             source="user",
-            already_member=self.auth.has_subject_membership(subject_id, membership_gid),
+            already_member=bool(membership_gid) and self.auth.has_subject_membership(subject_id, membership_gid),
+            direct_member=bool(membership_gid) and self.has_direct_membership(subject_id, membership_gid),
         )
 
-    def _candidate_from_identity(self, identity: t.Any, membership_gid: str) -> InviteCandidate:
+    def _candidate_from_identity(self, identity: t.Any, membership_gid: str | None) -> InviteCandidate:
         subject_id = str(identity.object_id)
         return InviteCandidate(
             subject_id=subject_id,
             email=str(identity.email or ""),
             full_name=str(identity.fullname or identity.firstname or identity.email or ""),
             source="identity",
-            already_member=self.auth.has_subject_membership(subject_id, membership_gid),
+            already_member=bool(membership_gid) and self.auth.has_subject_membership(subject_id, membership_gid),
+            direct_member=bool(membership_gid) and self.has_direct_membership(subject_id, membership_gid),
         )
 
-    def _find_exact_match(self, email: str, membership_gid: str) -> InviteCandidate | None:
+    def _find_exact_match(self, email: str, membership_gid: str | None) -> InviteCandidate | None:
         normalized_email = normalize_email_for_lookup(email)
 
         user = (
@@ -180,17 +247,17 @@ class AuthSupportBackend(Domain):
         if user:
             return self._candidate_from_user(user, membership_gid)
 
-        identity_query = (self.db.identity.object_type == "user") & build_normalized_email_match_query(
-            self.db.identity.email,
+        identity_query = (Identity.object_type == "user") & build_normalized_email_match_query(
+            Identity.email,
             normalized_email,
         )
         identity = (
-            self.db(identity_query)
+            Identity.where(identity_query)
             .select(
-                self.db.identity.object_id,
-                self.db.identity.email,
-                self.db.identity.firstname,
-                self.db.identity.fullname,
+                Identity.object_id,
+                Identity.email,
+                Identity.firstname,
+                Identity.fullname,
                 limitby=(0, 1),
             )
             .first()
@@ -210,7 +277,7 @@ class AuthSupportBackend(Domain):
         literal = self.db._adapter.represent(domain, "string")
         return Query(self.db, f"{email_domain_sql_v1(email_field)} = {literal}")
 
-    def _find_similar_match(self, email: str, membership_gid: str) -> InviteCandidate | None:
+    def _find_similar_match(self, email: str, membership_gid: str | None) -> InviteCandidate | None:
         normalized_email = normalize_email_for_lookup(email)
         target = canonicalize_email_for_similarity(email)
         if "@" not in target:
@@ -234,16 +301,16 @@ class AuthSupportBackend(Domain):
             if canonicalize_email_for_similarity(user_email) == target:
                 return self._candidate_from_user(user, membership_gid)
 
-        identity_rows = self.db(
-            (self.db.identity.email != None)
-            & (self.db.identity.object_type == "user")
-            & self._same_email_domain(self.db.identity.email, target_domain),
+        identity_rows = Identity.where(
+            (Identity.email != None)
+            & (Identity.object_type == "user")
+            & self._same_email_domain(Identity.email, target_domain),
         ).select(
-            self.db.identity.object_id,
-            self.db.identity.email,
-            self.db.identity.firstname,
-            self.db.identity.fullname,
-            orderby=self.db.identity.id,
+            Identity.object_id,
+            Identity.email,
+            Identity.firstname,
+            Identity.fullname,
+            orderby=Identity.id,
         )
         for identity in identity_rows:
             identity_email = normalize_email_for_lookup(identity.email)

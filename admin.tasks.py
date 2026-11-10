@@ -1,122 +1,19 @@
 """Invoke tasks for managing users and feature flags through py4web."""
 
-import ast
-import contextlib
 import getpass
-import json
-import re
-import shlex
-import typing as t
 
 import edwh.tasks
 from edwh import DOCKER_COMPOSE, task
 from ewok import Context
-from invoke.exceptions import Exit
 from rich import print as rprint
-from rich.panel import Panel
 from rich.table import Table
 
-ANSI_ESCAPE_RE = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
-PY4WEB_HTTP_ERROR_RE = re.compile(r'py4web\.core\.HTTP:\s*\((\d+),\s*["\'](.+?)["\']\)', flags=re.DOTALL)
-
-
-def _ui_error(message: str) -> None:
-    rprint(Panel.fit(message, title="Error", border_style="red"))
+# local:
+from task_support import parse_boolean_result, py4web_call
 
 
 def _ui_success(message: str) -> None:
     rprint(f"[green]{message}[/green]")
-
-
-def _parse_json_line(line: str) -> dict[str, t.Any] | None:
-    line = ANSI_ESCAPE_RE.sub("", line).strip()
-    if not line:
-        return None
-
-    # If the payload is embedded in another line, try to extract a dict-like fragment.
-    if "{" in line and "}" in line:
-        line = line[line.find("{") : line.rfind("}") + 1]
-
-    try:
-        value = json.loads(line)
-        if isinstance(value, dict):
-            return value
-    except json.JSONDecodeError:
-        pass
-
-    with contextlib.suppress(ValueError, SyntaxError):
-        value = ast.literal_eval(line)
-        if isinstance(value, dict):
-            return value
-        if isinstance(value, bool):
-            return {"ok": value}
-
-    return None
-
-
-def _extract_json(stdout: str) -> dict[str, t.Any]:
-    for line in reversed((stdout or "").splitlines()):
-        line = line.strip()
-        if not line:
-            continue
-        if parsed := _parse_json_line(line):
-            return parsed
-
-    raise ValueError(f"No JSON payload found in output:\n{stdout}")
-
-
-def _extract_py4web_http_error(output: str) -> tuple[int, str] | None:
-    # e.g. py4web.core.HTTP: (404, "User 'foo@bar' not found")
-    match = PY4WEB_HTTP_ERROR_RE.search(output)
-    if not match:
-        return None
-    return int(match.group(1)), match.group(2).strip()
-
-
-def py4web_call(ctx: Context, fn: str, args: dict | None = None) -> dict[str, t.Any]:
-    """Call a py4web CLI helper inside the container and parse its JSON output."""
-    args = args or {}
-    args_json = shlex.quote(json.dumps(args))
-    call = f"py4web call apps admin.models.cli_support.{fn} --args {args_json}"
-
-    commands = (
-        f"{DOCKER_COMPOSE} exec -T py4web {call}",
-        f"{DOCKER_COMPOSE} run --rm --no-deps -T py4web {call}",
-    )
-
-    failures: list[str] = []
-    for cmd in commands:
-        result = ctx.run(cmd, warn=True, hide=True)
-        combined_output = "\n".join(part for part in (result.stdout, result.stderr) if part)
-
-        if http_error := _extract_py4web_http_error(combined_output):
-            code, message = http_error
-            _ui_error(f"{message} (HTTP {code})")
-            raise Exit(code=1)
-
-        if not result.ok:
-            failures.append(result.stderr or result.stdout or f"Command failed: {cmd}")
-            continue
-
-        if fn == "toggle_feature":
-            if "True" in combined_output:
-                return {"ok": True}
-            if "False" in combined_output:
-                return {"ok": False}
-
-        try:
-            return _extract_json(combined_output)
-        except ValueError as err:
-            failures.append(str(err))
-            continue
-
-    compact = "\n".join(
-        line
-        for line in "\n\n".join(failures).splitlines()
-        if line.strip() and not line.strip().startswith("Container ")
-    )
-    _ui_error(compact or "Command failed")
-    raise Exit(code=1)
 
 
 def _default_name_from_email(email: str) -> tuple[str, str]:
@@ -137,7 +34,8 @@ def featureflag(ctx: Context, flag_name: str, disabled: bool = False) -> None:
     py4web_call(
         ctx,
         "toggle_feature",
-        {"feature": flag_name, "enabled": "off" if disabled else "on"},
+        args={"feature": flag_name, "enabled": "off" if disabled else "on"},
+        result_parser=parse_boolean_result,
     )
 
     # needs restart after switching flag:
@@ -147,7 +45,7 @@ def featureflag(ctx: Context, flag_name: str, disabled: bool = False) -> None:
 @task(aliases=("list",))
 def list_users(ctx: Context, role: str = "") -> None:
     """Show the known users, optionally filtered by role."""
-    data = py4web_call(ctx, "list_users", {"role": (role or "").strip()})
+    data = py4web_call(ctx, "list_users", args={"role": (role or "").strip()})
     users = data.get("users", [])
 
     table = Table(title=f"Users ({len(users)})")
@@ -167,6 +65,21 @@ def list_users(ctx: Context, role: str = "") -> None:
     rprint(table)
 
 
+def _prompt_user_name(email: str) -> tuple[str, str]:
+    """Prompt for a complete name using defaults derived from the email."""
+    guessed_first, guessed_last = _default_name_from_email(email)
+    first_name = ""
+    last_name = ""
+    while not first_name:
+        first_name = input(f"First name [{guessed_first}]: ").strip() or guessed_first
+    while not last_name:
+        if guessed_last:
+            last_name = input(f"Last name [{guessed_last}]: ").strip() or guessed_last
+        else:
+            last_name = input("Last name: ").strip()
+    return first_name, last_name
+
+
 @task()
 def add_user(
     ctx: Context,
@@ -184,14 +97,7 @@ def add_user(
         raise ValueError("Email is required")
 
     if not first_name and not last_name:
-        guessed_first, guessed_last = _default_name_from_email(email)
-        while not first_name:
-            first_name = input(f"First name [{guessed_first}]: ").strip() or guessed_first
-        while not last_name:
-            if guessed_last:
-                last_name = input(f"Last name [{guessed_last}]: ").strip() or guessed_last
-            else:
-                last_name = input("Last name: ").strip()
+        first_name, last_name = _prompt_user_name(email)
     if not password:
         password = getpass.getpass("Password: ").strip()
 
@@ -204,7 +110,7 @@ def add_user(
     data = py4web_call(
         ctx,
         "add_user",
-        {
+        args={
             "email": email,
             "first_name": first_name,
             "last_name": last_name,
@@ -218,7 +124,7 @@ def add_user(
 @task()
 def remove_user(ctx: Context, email: str) -> None:
     """Remove a user account by email."""
-    data = py4web_call(ctx, "remove_user", {"email": email})
+    data = py4web_call(ctx, "remove_user", args={"email": email})
     _ui_success(f"Removed user: {data.get('email', email)}")
 
 
@@ -231,7 +137,7 @@ def set_password(ctx: Context, email: str, password: str = "") -> None:
         if password != confirm:
             raise ValueError("Passwords do not match")
 
-    data = py4web_call(ctx, "set_password", {"email": email, "password": password})
+    data = py4web_call(ctx, "set_password", args={"email": email, "password": password})
     _ui_success(f"Password updated for: {data.get('email', email)}")
 
 
@@ -239,7 +145,7 @@ def set_password(ctx: Context, email: str, password: str = "") -> None:
 def grant_role(ctx: Context, email: str, role: str) -> None:
     """Grant a role to a user."""
     role = (role or "").strip()
-    data = py4web_call(ctx, "grant_role", {"email": email, "role": role})
+    data = py4web_call(ctx, "grant_role", args={"email": email, "role": role})
     _ui_success(f"Granted role {data.get('role', role)} to {data.get('email', email)}")
 
 
@@ -247,7 +153,7 @@ def grant_role(ctx: Context, email: str, role: str) -> None:
 def revoke_role(ctx: Context, email: str, role: str) -> None:
     """Revoke a role from a user."""
     role = (role or "").strip()
-    data = py4web_call(ctx, "revoke_role", {"email": email, "role": role})
+    data = py4web_call(ctx, "revoke_role", args={"email": email, "role": role})
     _ui_success(f"Revoked role {data.get('role', role)} from {data.get('email', email)}")
 
 
@@ -255,3 +161,24 @@ def revoke_role(ctx: Context, email: str, role: str) -> None:
 def make_admin(ctx: Context, email: str) -> None:
     """Grant the internal admin role to a user."""
     grant_role(ctx, email, "admin@internal")
+
+
+@task()
+def clear_pgq(ctx: Context) -> None:
+    """Clear all active PGQ jobs."""
+    running_services = ctx.run(
+        f"{DOCKER_COMPOSE} ps --services --status running",
+        hide=True,
+    ).stdout.splitlines()
+    pgq_services = [service for service in running_services if service.startswith("pgq-")]
+
+    if pgq_services:
+        edwh.tasks.down(ctx, service=pgq_services)
+
+    try:
+        py4web_call(ctx, "clear_pgq")
+    finally:
+        if pgq_services:
+            edwh.tasks.up(ctx, service=pgq_services)
+
+    _ui_success("Cleared all active PGQ jobs.")

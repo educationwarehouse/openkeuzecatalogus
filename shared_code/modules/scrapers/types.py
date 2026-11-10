@@ -5,10 +5,11 @@ import enum
 import typing as t
 
 from shared_code.generated.import_payloads import ImportMethod, ImportProduct, ImportSupplier, ImportVision
+from shared_code.modules.scrapers.errors import ImportWarningCode
 
-JsonPrimitive = str | int | float | bool | None
-JsonValue = JsonPrimitive | dict[str, "JsonValue"] | list["JsonValue"]
-JsonObject = dict[str, JsonValue]
+type JsonPrimitive = str | int | float | bool | None
+type JsonValue = JsonPrimitive | dict[str, "JsonValue"] | list["JsonValue"]
+type JsonObject = dict[str, JsonValue]
 
 # status offsets (outside enum)
 OFFSET_ERR = 10
@@ -22,7 +23,6 @@ HUMAN_BASE = 100_000
 
 # source bases (outside enum)
 GENERIC_IMPORTER_BASE = SUPPLIER_BAND + 0 * SOURCE_STRIDE
-CUMULUS_BASE = SUPPLIER_BAND + 1 * SOURCE_STRIDE
 
 # todo: this is an example prio implementation,
 #       later we might want to differentiate multiple error types etc.
@@ -67,6 +67,7 @@ class ImportTypeStats:
     seen: int = 0
     new: int = 0
     changed: int = 0
+    unchanged: int = 0
     skipped: int = 0
     removed: int = 0
     issues: int = 0
@@ -86,7 +87,19 @@ class ImportRunErrorStat:
     method_gid: str | None = None
     method_name: str | None = None
     validation_failed: bool = False
-    error_details: JsonObject | None = None
+    error_details: JsonObject | t.Any | None = None
+
+
+@dc.dataclass
+class ImportEntityOutcome:
+    """One named entity outcome retained for importer-run drill-downs."""
+
+    entity_type: str
+    outcome: str
+    supplier_gid: str | None = None
+    entity_gid: str | None = None
+    entity_olid: str | None = None
+    entity_name: str | None = None
 
 
 @dc.dataclass
@@ -106,8 +119,16 @@ class ImportRunCountStat:
 class ImportRunWarningStat:
     """One importer warning stored with a run."""
 
-    warning_code: str
+    warning_code: ImportWarningCode
     message: str
+    product_name: str | None = None
+    reason: str | None = None
+    source_url: str | None = None
+    supplier_gid: str | None = None
+    supplier_name: str | None = None
+    entity_type: t.Literal["run", "supplier", "method", "product"] = "run"
+    entity_gid: str | None = None
+    entity_olid: str | None = None
 
 
 @dc.dataclass
@@ -155,8 +176,10 @@ class ImportStats:
     visions: ImportAuxStats = dc.field(default_factory=ImportAuxStats)
     image_uploads: CdnImageUploadStats = dc.field(default_factory=CdnImageUploadStats)
     error_stats: list[ImportRunErrorStat] = dc.field(default_factory=list)
+    entity_outcomes: list[ImportEntityOutcome] = dc.field(default_factory=list)
     warning_stats: list[ImportRunWarningStat] = dc.field(default_factory=list)
     count_stats: list[ImportRunCountStat] = dc.field(default_factory=list)
+    supplier_type_stats: dict[str, SupplierTypeStats] = dc.field(default_factory=dict)
 
     def _iter_rows(self) -> list[tuple[str, ImportTypeStats]]:
         rows: list[tuple[str, ImportTypeStats]] = []
@@ -200,6 +223,14 @@ class ImportStats:
         return "ImportStats\n" + "\n".join(lines)
 
 
+@dc.dataclass
+class SupplierTypeStats:
+    """Method and product outcomes collected for one supplier in an aggregate run."""
+
+    methods: ImportTypeStats = dc.field(default_factory=ImportTypeStats)
+    products: ImportTypeStats = dc.field(default_factory=ImportTypeStats)
+
+
 class ChangeStatus(enum.Enum):
     """High-level outcomes of an import row comparison."""
 
@@ -218,7 +249,6 @@ def to_err_prio(prio: int | ImportPriority) -> int:
 
 
 __all__ = [
-    "CUMULUS_BASE",
     "GENERIC_IMPORTER_BASE",
     "GRIST_BASE",
     "HUMAN_BASE",
@@ -243,5 +273,6 @@ __all__ = [
     "JsonObject",
     "JsonPrimitive",
     "JsonValue",
+    "SupplierTypeStats",
     "to_err_prio",
 ]

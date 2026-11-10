@@ -33,7 +33,9 @@ class ComparisonVisionValue(t.TypedDict):
 class ComparisonRecord(t.TypedDict):
     """One selected catalogue record used as a comparison column heading."""
 
+    gid: str
     name: str
+    image_url: str
 
 
 class ComparisonPage(t.TypedDict):

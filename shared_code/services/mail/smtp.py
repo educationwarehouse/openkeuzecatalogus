@@ -6,6 +6,7 @@ import traceback
 import typing as t
 from email.message import EmailMessage
 
+from shared_code.services.applog import Applogger
 from shared_code.services.error_tickets import ErrorTicketService
 from shared_code.services.mail.contracts import EmailAddress, Mailer
 from shared_code.util.env import bool_from_env
@@ -14,6 +15,7 @@ from shared_code.util.env import bool_from_env
 class SMTPMailer(Mailer):
     """SMTP-backed mailer implementation for real email delivery."""
 
+    applog: Applogger
     error_tickets: ErrorTicketService
 
     def __init__(
@@ -35,9 +37,23 @@ class SMTPMailer(Mailer):
         self.tls = tls
         self.ssl = ssl
 
+    def _delivery_details(self, message: EmailMessage, all_recipients: list[EmailAddress]) -> dict[str, t.Any]:
+        """Describe one delivery attempt without recording recipient addresses or content."""
+        return {
+            "transport": "smtp",
+            "host": self.host,
+            "port": self.port,
+            "tls": self.tls,
+            "ssl": self.ssl,
+            "sender": self.sender,
+            "recipient_count": len(all_recipients),
+            "message_id": message.get("Message-ID", ""),
+        }
+
     def send_email_message(self, message: EmailMessage, all_recipients: list[EmailAddress]) -> bool:
         """Send a prepared email via SMTP and report success as a boolean."""
         smtp_class = smtplib.SMTP_SSL if self.ssl else smtplib.SMTP
+        details = self._delivery_details(message, all_recipients)
 
         try:
             with smtp_class(self.host, self.port, timeout=5) as server:
@@ -46,25 +62,24 @@ class SMTPMailer(Mailer):
 
                 server.login(self.user, self.password or "")
                 server.send_message(message, from_addr=message["From"], to_addrs=all_recipients)
+                self.applog.try_fire(
+                    {
+                        "kind": "event",
+                        "action": "email-sent",
+                        "details": details,
+                    },
+                )
                 return True
+
         except Exception as e:
             print(f"[mailer] failed with {type(e)}({e})")
             print("[mailer]", "".join(traceback.format_exception(e)))
 
             context = {
                 "application": "mail.send_email_message",
-                "mailer": {
-                    "transport": "smtp",
-                    "host": self.host,
-                    "port": self.port,
-                    "tls": self.tls,
-                    "ssl": self.ssl,
-                    "sender": self.sender,
-                    "recipient_count": len(all_recipients),
-                    "message_id": message.get("Message-ID", ""),
-                },
+                "mailer": details,
             }
-            ticket_id = self.error_tickets.try_store(context)
+            ticket_id = self.error_tickets.try_store(context, applog=True)
 
             print(f"[mailer] failed; error ticket: {ticket_id or 'failed to store ticket'}")
             return False

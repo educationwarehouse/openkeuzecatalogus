@@ -45,7 +45,7 @@ def test_mapping_report_includes_location_when_board_organisation_is_removed(db_
     )
     db_per_file.commit()
 
-    assert str(location.gid) not in _reported_location_gids(db_per_file)
+    assert location.gid not in _reported_location_gids(db_per_file)
 
     OrganisationEd.insert(
         gid=board.gid,
@@ -56,4 +56,4 @@ def test_mapping_report_includes_location_when_board_organisation_is_removed(db_
     )
     db_per_file.commit()
 
-    assert str(location.gid) in _reported_location_gids(db_per_file)
+    assert location.gid in _reported_location_gids(db_per_file)

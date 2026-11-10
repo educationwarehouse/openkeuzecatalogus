@@ -5,18 +5,17 @@ from typedal import TypedField
 from typedal.helpers import classproperty
 
 from shared_code.data_model.constants import CATALOG_APPLIES_TO_LABELS
-from shared_code.data_model.tables.base import TableWithGid
+from shared_code.data_model.tables.base import EffdtTable
 from shared_code.data_model.validators.sort_expression import IS_SORT_EXPRESSION
 
 
-class DynamicSort(TableWithGid):
-    """Backend-managed metadata for public product/method sort options."""
+class DynamicSortEd(EffdtTable):
+    """Effective-dated source metadata for public catalogue sort options."""
 
     slug = TypedField(
         str,
         length=40,
         label="Sorteer sleutel",
-        unique=True,
         comment="Gebruikt in de querystring en als sorteer-identificatie.",
     )
     label = TypedField(str, length=100, label="Label")
@@ -43,3 +42,7 @@ class DynamicSort(TableWithGid):
     def admin_grid(cls) -> str:
         """Return the admin grid identifier for dynamic sorts."""
         return "dynamic-sorts"
+
+
+class DynamicSort(DynamicSortEd):
+    """Current metadata for public catalogue sort options."""

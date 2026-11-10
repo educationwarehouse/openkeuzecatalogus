@@ -4,6 +4,7 @@ import typing as t
 from pathlib import Path
 
 import py4web
+from common.fixtures.static_hash import static_hash
 from py4web import URL
 
 COMMON_PATH = Path("/p4w/common")
@@ -20,6 +21,7 @@ def render_template(
     templates_path: Path | None = None,
     **context: t.Any,
 ) -> str:
-    """Render a shared template with ``URL`` available in its context."""
+    """Render a shared template with ``URL`` and ``STATIC`` available in its context."""
     context.setdefault("URL", URL)
+    context.setdefault("STATIC", static_hash.url_with_hash)
     return yatl_render(template, templates_path=templates_path, **context)

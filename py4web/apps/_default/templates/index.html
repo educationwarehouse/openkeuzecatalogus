@@ -1,23 +1,5 @@
 [[extend '../../../common/templates/layout.html']]
-[[block layout_title]]Open Keuzecatalogus[[end]]
 [[block page_head]]
-    <meta name="description"
-          content="De Open Keuzecatalogus Leermiddelen helpt lerarenteams om methodes en aanvullend materiaal te vinden, te vergelijken en hun keuze te onderbouwen vanuit de eigen onderwijsvisie.">
-    <meta name="robots" content="index, follow, max-image-preview:large">
-    <link rel="canonical" href="https://openkeuzecatalogus.nl/">
-    <meta property="og:locale" content="nl_NL">
-    <meta property="og:type" content="website">
-    <meta property="og:site_name" content="Open Keuzecatalogus Leermiddelen">
-    <meta property="og:title" content="Open Keuzecatalogus Leermiddelen">
-    <meta property="og:description"
-          content="Vind en vergelijk leermiddelen die passen bij jullie onderwijsvisie.">
-    <meta property="og:url" content="https://openkeuzecatalogus.nl/">
-    <meta property="og:image" content="https://openkeuzecatalogus.nl/images/okl-social-preview.png">
-    <meta property="og:image:type" content="image/png">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="Open Keuzecatalogus Leermiddelen — vind leermiddelen die passen bij jullie visie">
-    <meta name="twitter:card" content="summary_large_image">
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
@@ -657,68 +639,23 @@
                 </a>
             </div>
             <div class="col-lg-8">
-                <!-- faq:preview:start — regenerate with `python3 tools/build_faq.py` -->
                 <div class="accordion okl-accordion" id="accFaq">
-                    <div class="accordion-item js-faq-item" data-faq-search="wat is de open keuzecatalogus leermiddelen? de open keuzecatalogus is een openbare en onafhankelijke catalogus die lerarenteams helpt bij het vinden, vergelijken en kiezen van leermiddelen. naast feitelijke productinformatie biedt de catalogus verdieping op 12 inhoudelijke thema’s, ervaringen van docenten en mogelijkheden om leermiddelen met elkaar te vergelijken. zo kunnen lerarenteams beter bepalen welke leermiddelen passen bij hun onderwijsvisie en behoeften. de catalogus wordt onder publieke regie van schoolbesturen en SIVON ontwikkeld en is sinds 1 oktober 2026 beschikbaar.">
+                    [[for faq_index, faq_item in enumerate(faq_preview):]]
+                    <div class="accordion-item js-faq-item" data-faq-search="[[=faq_item['search_text']]]">
                         <h3 class="accordion-header">
-                            <button class="accordion-button" type="button" data-bs-toggle="collapse"
-                                    data-bs-target="#accFaq-0" aria-expanded="true"
-                                    aria-controls="accFaq-0">Wat is de Open Keuzecatalogus Leermiddelen?
-                            </button>
+                            <button class="accordion-button [[if faq_index > 0:]]collapsed[[pass]]" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#accFaq-[[=faq_index]]" [[if faq_index > 0:]]aria-expanded="false"[[else:]]aria-expanded="true"[[pass]]
+                                    aria-controls="accFaq-[[=faq_index]]">[[=faq_item['row'].question]]</button>
                         </h3>
-                        <div id="accFaq-0" class="accordion-collapse collapse show" data-bs-parent="#accFaq">
+                        <div id="accFaq-[[=faq_index]]"
+                             class="accordion-collapse collapse [[if faq_index == 0:]]show[[pass]]" data-bs-parent="#accFaq">
                             <div class="accordion-body d-flex flex-column gap-3">
-                                <p>De Open Keuzecatalogus is een openbare en onafhankelijke catalogus die lerarenteams helpt bij het vinden, vergelijken en kiezen van leermiddelen.</p>
-                                <p>Naast feitelijke productinformatie biedt de catalogus verdieping op 12 inhoudelijke thema’s, ervaringen van docenten en mogelijkheden om leermiddelen met elkaar te vergelijken. Zo kunnen lerarenteams beter bepalen welke leermiddelen passen bij hun onderwijsvisie en behoeften.</p>
-                                <p>De catalogus wordt onder publieke regie van schoolbesturen en SIVON ontwikkeld en is sinds 1 oktober 2026 beschikbaar.</p>
+                                [[=faq_item['row'].markdown('answer')]]
                             </div>
                         </div>
                     </div>
-                    <div class="accordion-item js-faq-item" data-faq-search="voor wie is de open keuzecatalogus bedoeld en wie kan de informatie zien? de open keuzecatalogus is openbaar en voor iedereen toegankelijk. de catalogus is in de eerste plaats bedoeld voor lerarenteams die leermiddelen willen vinden, vergelijken en kiezen. daarnaast is de informatie relevant voor schoolbesturen, aanbieders van leermiddelen en andere organisaties die betrokken zijn bij de leermiddelenketen. bij de informatie over een leermiddel is duidelijk zichtbaar wat feitelijke productinformatie is, welke informatie van de aanbieder komt en welke informatie afkomstig is van docenten.">
-                        <h3 class="accordion-header">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                    data-bs-target="#accFaq-1" aria-expanded="false"
-                                    aria-controls="accFaq-1">Voor wie is de Open Keuzecatalogus bedoeld en wie kan de informatie zien?
-                            </button>
-                        </h3>
-                        <div id="accFaq-1" class="accordion-collapse collapse" data-bs-parent="#accFaq">
-                            <div class="accordion-body d-flex flex-column gap-3">
-                                <p>De Open Keuzecatalogus is openbaar en voor iedereen toegankelijk.</p>
-                                <p>De catalogus is in de eerste plaats bedoeld voor lerarenteams die leermiddelen willen vinden, vergelijken en kiezen. Daarnaast is de informatie relevant voor schoolbesturen, aanbieders van leermiddelen en andere organisaties die betrokken zijn bij de leermiddelenketen.</p>
-                                <p>Bij de informatie over een leermiddel is duidelijk zichtbaar wat feitelijke productinformatie is, welke informatie van de aanbieder komt en welke informatie afkomstig is van docenten.</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="accordion-item js-faq-item" data-faq-search="wat kun je wel en niet met de open keuzecatalogus? de open keuzecatalogus ondersteunt het onderwijskundige keuzeproces. lerarenteams kunnen er leermiddelen vinden, vergelijken en beoordelen aan de hand van hun eigen wensen en onderwijsvisie. de catalogus is geen bestel-, contract- of inkoopplatform. bestellen en contracteren verlopen via bestaande kanalen en de eigen inkoopprocessen van scholen en schoolbesturen.">
-                        <h3 class="accordion-header">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                    data-bs-target="#accFaq-2" aria-expanded="false"
-                                    aria-controls="accFaq-2">Wat kun je wel en niet met de Open Keuzecatalogus?
-                            </button>
-                        </h3>
-                        <div id="accFaq-2" class="accordion-collapse collapse" data-bs-parent="#accFaq">
-                            <div class="accordion-body d-flex flex-column gap-3">
-                                <p>De Open Keuzecatalogus ondersteunt het onderwijskundige keuzeproces. Lerarenteams kunnen er leermiddelen vinden, vergelijken en beoordelen aan de hand van hun eigen wensen en onderwijsvisie.</p>
-                                <p>De catalogus is geen bestel-, contract- of inkoopplatform. Bestellen en contracteren verlopen via bestaande kanalen en de eigen inkoopprocessen van scholen en schoolbesturen.</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="accordion-item js-faq-item" data-faq-search="wat zijn de 12 thema’s en hoe sluiten die aan op het slo kwaliteitskader? de 12 thema’s helpen scholen om inhoudelijk naar leermiddelen te kijken. per thema kan een aanbieder toelichten welke visie en ontwerpkeuzes achter een leermiddel zitten, bijvoorbeeld op het gebied van leerdoelen, differentiatie, ai, onafhankelijkheid en duurzaamheid. de eerste vijf thema’s zijn rechtstreeks gebaseerd op het kwaliteitskader leermiddelen van slo. hierdoor gebruiken scholen, aanbieders en andere betrokken partijen zoveel mogelijk dezelfde taal bij het beoordelen en vergelijken van leermiddelen.">
-                        <h3 class="accordion-header">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                    data-bs-target="#accFaq-3" aria-expanded="false"
-                                    aria-controls="accFaq-3">Wat zijn de 12 thema’s en hoe sluiten die aan op het SLO Kwaliteitskader?
-                            </button>
-                        </h3>
-                        <div id="accFaq-3" class="accordion-collapse collapse" data-bs-parent="#accFaq">
-                            <div class="accordion-body d-flex flex-column gap-3">
-                                <p>De 12 thema’s helpen scholen om inhoudelijk naar leermiddelen te kijken. Per thema kan een aanbieder toelichten welke visie en ontwerpkeuzes achter een leermiddel zitten, bijvoorbeeld op het gebied van leerdoelen, differentiatie, AI, onafhankelijkheid en duurzaamheid.</p>
-                                <p>De eerste vijf thema’s zijn rechtstreeks gebaseerd op het Kwaliteitskader Leermiddelen van SLO. Hierdoor gebruiken scholen, aanbieders en andere betrokken partijen zoveel mogelijk dezelfde taal bij het beoordelen en vergelijken van leermiddelen.</p>
-                            </div>
-                        </div>
-                    </div>
+                    [[pass]]
                 </div>
-                <!-- faq:preview:end -->
             </div>
         </div>
     </div>

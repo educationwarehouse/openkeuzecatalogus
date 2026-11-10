@@ -2,7 +2,7 @@ FROM educationwarehouse/edwhale-3.14:latest
 
 # Generate Dutch locale
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends locales && \
+    apt-get install -y --no-install-recommends locales build-essential libxml2-dev libxslt1-dev pkg-config && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # locale-gen nl_NL doesn't seem to work but this does:

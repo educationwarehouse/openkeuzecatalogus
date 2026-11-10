@@ -1,9 +1,10 @@
 """Effective-dating related fields shared across multiple tables."""
 
 from typedal import TypeDAL
-from typedal.fields import BooleanField, StringField, TimestampField, TypedField, UUIDField
+from typedal.fields import BooleanField, StringField, TimestampField, TypedField
 from typedal.mixins import Mixin
 
+from shared_code.data_model.fields import OptionalUUIDField
 from shared_code.data_model.representers import dutch_date, fix_sqlcustomtype
 from shared_code.util.time import utcnow
 
@@ -21,7 +22,7 @@ class EffdtFields(Mixin):
     effstatus = BooleanField(default=True, writable=False)
     last_saved_by = StringField(writable=False, label="Laatst Bijgewerkt Door")
     prio = TypedField(int, default=0, writable=False, readable=False)
-    sync_gid = UUIDField(writable=False, readable=False, filter_out=str)  # default = uuid7 via psql
+    sync_gid = OptionalUUIDField(writable=False, readable=False)  # default = uuid7 via psql
 
     @classmethod
     def __on_define__(cls, db: TypeDAL) -> None:

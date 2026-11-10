@@ -1,5 +1,4 @@
 {
-  "name": "CI Workflow Forgejo",
   "nodes": [
     {
       "parameters": {
@@ -9,8 +8,8 @@
       },
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        240,
-        -192
+        -352,
+        -544
       ],
       "typeVersion": 1,
       "id": "ad1e6977-c62a-4018-ba2b-cccadc8740a7",
@@ -24,8 +23,8 @@
       },
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        848,
-        -576
+        800,
+        -880
       ],
       "typeVersion": 1,
       "id": "15ef2ea8-eb43-41a1-9929-cc49b7344ebd",
@@ -45,13 +44,13 @@
                 },
                 "conditions": [
                   {
-                    "leftValue": "={{ $json.body.pull_request.head.ref }}",
+                    "id": "080fbb68-b51b-4d68-98ea-e92d0f000dfe",
+                    "leftValue": "={{ $('Github Trigger').item.json.body.pull_request.base.ref }}",
                     "rightValue": "staging",
                     "operator": {
                       "type": "string",
                       "operation": "contains"
-                    },
-                    "id": "e0780f0c-3ca1-4d0b-b68c-1071a5348b55"
+                    }
                   }
                 ],
                 "combinator": "and"
@@ -67,8 +66,8 @@
                 },
                 "conditions": [
                   {
-                    "id": "256f3a98-22d1-41a8-bd58-498466978ad0",
-                    "leftValue": "={{ $json.body.pull_request.head.ref }}",
+                    "id": "b8071da0-a3b3-4312-a576-ca8b097b49a3",
+                    "leftValue": "={{ $('Github Trigger').item.json.body.pull_request.base.ref }}",
                     "rightValue": "prd",
                     "operator": {
                       "type": "string",
@@ -86,8 +85,8 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        480,
-        -208
+        64,
+        -432
       ],
       "id": "c5fd394f-0fc9-41aa-a8cc-018d0b83b578",
       "name": "Switch"
@@ -100,8 +99,8 @@
       },
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        432,
-        -288
+        32,
+        -496
       ],
       "typeVersion": 1,
       "id": "f0f68674-5ad9-455b-8e68-d1eaf00db266",
@@ -112,8 +111,8 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        1648,
-        -208
+        2256,
+        -48
       ],
       "id": "bc485549-9744-4c8b-8789-a9f3564c55f9",
       "name": "No Operation, do nothing2"
@@ -129,10 +128,10 @@
         },
         "repository": {
           "__rl": true,
-          "value": "onzeleermiddelen-private",
+          "value": "openkeuzecatalogus-private",
           "mode": "list",
-          "cachedResultName": "onzeleermiddelen-private",
-          "cachedResultUrl": "https://github.com/educationwarehouse/onzeleermiddelen-private"
+          "cachedResultName": "openkeuzecatalogus-private",
+          "cachedResultUrl": "https://github.com/educationwarehouse/openkeuzecatalogus-private"
         },
         "events": [
           "pull_request"
@@ -144,8 +143,8 @@
       "type": "n8n-nodes-base.githubTrigger",
       "typeVersion": 1,
       "position": [
-        -160,
-        -112
+        -752,
+        -384
       ],
       "id": "bf398768-3927-4d83-8746-a3b49403ae91",
       "name": "Github Trigger",
@@ -169,10 +168,10 @@
         },
         "repository": {
           "__rl": true,
-          "value": "onzeleermiddelen-private",
+          "value": "openkeuzecatalogus-private",
           "mode": "list",
-          "cachedResultName": "onzeleermiddelen-private",
-          "cachedResultUrl": "https://github.com/educationwarehouse/onzeleermiddelen-private"
+          "cachedResultName": "openkeuzecatalogus-private",
+          "cachedResultUrl": "https://github.com/educationwarehouse/openkeuzecatalogus-private"
         },
         "pullRequestNumber": "={{ $('Github Trigger').item.json.body.number }}",
         "event": "comment",
@@ -182,8 +181,8 @@
       "type": "n8n-nodes-base.github",
       "typeVersion": 1.1,
       "position": [
-        1216,
-        -496
+        1280,
+        -800
       ],
       "id": "7cf4b144-53e5-45e6-9c33-bcd6e70d3244",
       "name": "Create a review",
@@ -208,7 +207,7 @@
             {
               "id": "29a6c0cb-6fae-4fae-8f9f-a434a1899ed3",
               "leftValue": "={{ $json.body.action }}",
-              "rightValue": "opened",
+              "rightValue": "=opened",
               "operator": {
                 "type": "string",
                 "operation": "contains"
@@ -222,8 +221,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        32,
-        -112
+        -560,
+        -384
       ],
       "id": "40ae9144-8e53-4c75-82bb-dfae34688e52",
       "name": "If"
@@ -233,8 +232,8 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        496,
-        144
+        -112,
+        -208
       ],
       "id": "a37f6688-abae-41be-bca0-11d89176779f",
       "name": "No Operation, do nothing"
@@ -251,7 +250,7 @@
           "conditions": [
             {
               "id": "95e1029d-af9d-4b4d-97ca-c698a3e3c370",
-              "leftValue": "={{ $json.body.pull_request.head.ref }}",
+              "leftValue": "={{ $json.body.pull_request.base.ref }}",
               "rightValue": "staging",
               "operator": {
                 "type": "string",
@@ -260,7 +259,7 @@
             },
             {
               "id": "e3fc61b1-8c5f-4722-8d4f-6c160ca481c6",
-              "leftValue": "={{ $json.body.pull_request.head.ref }}",
+              "leftValue": "={{ $json.body.pull_request.base.ref }}",
               "rightValue": "prd",
               "operator": {
                 "type": "string",
@@ -275,8 +274,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        272,
-        -112
+        -320,
+        -480
       ],
       "id": "7ee018bd-3df8-4c50-ba3f-253ccd8ac0c7",
       "name": "branch"
@@ -284,14 +283,14 @@
     {
       "parameters": {
         "authentication": "privateKey",
-        "command": "git stash && git pull",
+        "command": "git pull --ff-only && ./venv/bin/edwh setup --non-interactive build --yes",
         "cwd": "/home/ubuntu/onzeleermiddelen-staging"
       },
       "type": "n8n-nodes-base.ssh",
       "typeVersion": 1,
       "position": [
-        688,
-        -416
+        544,
+        -800
       ],
       "id": "12256ab4-7a4d-4035-a38f-f4cd4830e99f",
       "name": "git pull",
@@ -306,14 +305,14 @@
     {
       "parameters": {
         "authentication": "privateKey",
-        "command": ". ./venv/bin/activate && ./venv/bin/edwh test.run",
+        "command": ". ./venv/bin/activate && ./venv/bin/edwh test.run --output ci",
         "cwd": "/home/ubuntu/onzeleermiddelen-staging"
       },
       "type": "n8n-nodes-base.ssh",
       "typeVersion": 1,
       "position": [
-        880,
-        -496
+        832,
+        -800
       ],
       "id": "2f468f5f-41c3-4f31-9eff-d8b8921cb2fd",
       "name": "pytest uitvoeren",
@@ -337,10 +336,10 @@
         },
         "repository": {
           "__rl": true,
-          "value": "onzeleermiddelen-private",
+          "value": "openkeuzecatalogus-private",
           "mode": "list",
-          "cachedResultName": "onzeleermiddelen-private",
-          "cachedResultUrl": "https://github.com/educationwarehouse/onzeleermiddelen-private"
+          "cachedResultName": "openkeuzecatalogus-private",
+          "cachedResultUrl": "https://github.com/educationwarehouse/openkeuzecatalogus-private"
         },
         "pullRequestNumber": "={{ $('Github Trigger').item.json.body.number }}",
         "event": "comment",
@@ -350,8 +349,8 @@
       "type": "n8n-nodes-base.github",
       "typeVersion": 1.1,
       "position": [
-        1232,
-        -304
+        416,
+        -416
       ],
       "id": "29a52222-b08a-4a7d-b27b-e9dba39e3e26",
       "name": "Create a review1",
@@ -375,10 +374,10 @@
         },
         "repository": {
           "__rl": true,
-          "value": "onzeleermiddelen-private",
+          "value": "openkeuzecatalogus-private",
           "mode": "list",
-          "cachedResultName": "onzeleermiddelen-private",
-          "cachedResultUrl": "https://github.com/educationwarehouse/onzeleermiddelen-private"
+          "cachedResultName": "openkeuzecatalogus-private",
+          "cachedResultUrl": "https://github.com/educationwarehouse/openkeuzecatalogus-private"
         },
         "pullRequestNumber": "={{ $('Github Trigger').item.json.body.number }}",
         "event": "comment",
@@ -388,8 +387,8 @@
       "type": "n8n-nodes-base.github",
       "typeVersion": 1.1,
       "position": [
-        1216,
-        -128
+        1264,
+        48
       ],
       "id": "54338e50-70a3-48f1-b16d-04b4a0ba9d8d",
       "name": "Create a review2",
@@ -418,8 +417,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1056,
-        -128
+        944,
+        32
       ],
       "id": "42b616ca-4eab-4c12-9790-f4c8fbda1908",
       "name": "Edit Fields2"
@@ -427,14 +426,14 @@
     {
       "parameters": {
         "authentication": "privateKey",
-        "command": "git stash && git pull",
-        "cwd": "/home/ubuntu/onzeleermiddelen-prd"
+        "command": "git pull --ff-only && ./venv/bin/edwh setup --non-interactive build--yes",
+        "cwd": "/home/ubuntu/onzeleermiddelen-staging"
       },
       "type": "n8n-nodes-base.ssh",
       "typeVersion": 1,
       "position": [
-        688,
-        -48
+        512,
+        32
       ],
       "id": "76c36dc8-cf60-436d-9c64-0cdff11c28ce",
       "name": "git pull1",
@@ -449,14 +448,14 @@
     {
       "parameters": {
         "authentication": "privateKey",
-        "command": ". ./venv/bin/activate && uv pip install . && ./venv/bin/edwh lint",
+        "command": ". ./venv/bin/activate && ./venv/bin/edwh lint --output ci",
         "cwd": "/home/ubuntu/onzeleermiddelen-staging"
       },
       "type": "n8n-nodes-base.ssh",
       "typeVersion": 1,
       "position": [
-        992,
-        -304
+        1440,
+        -800
       ],
       "id": "69618834-0675-4faf-8e27-211d903e494e",
       "name": "linttest uitvoeren",
@@ -471,14 +470,14 @@
     {
       "parameters": {
         "authentication": "privateKey",
-        "command": ". ./venv/bin/activate && ./venv/bin/edwh test.run",
-        "cwd": "/home/ubuntu/onzeleermiddelen-prd"
+        "command": ". ./venv/bin/activate && ./venv/bin/edwh test.run --output ci",
+        "cwd": "/home/ubuntu/onzeleermiddelen-staging"
       },
       "type": "n8n-nodes-base.ssh",
       "typeVersion": 1,
       "position": [
-        880,
-        -128
+        800,
+        32
       ],
       "id": "3f7ec7ca-29f6-45e2-aa87-e4f581f4f73f",
       "name": "pytest uitvoeren1",
@@ -507,8 +506,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1056,
-        -496
+        976,
+        -800
       ],
       "id": "42178ca6-c1e6-4e03-8381-457e6f1cd467",
       "name": "Edit Fields"
@@ -525,10 +524,10 @@
         },
         "repository": {
           "__rl": true,
-          "value": "onzeleermiddelen-private",
+          "value": "openkeuzecatalogus-private",
           "mode": "list",
-          "cachedResultName": "onzeleermiddelen-private",
-          "cachedResultUrl": "https://github.com/educationwarehouse/onzeleermiddelen-private"
+          "cachedResultName": "openkeuzecatalogus-private",
+          "cachedResultUrl": "https://github.com/educationwarehouse/openkeuzecatalogus-private"
         },
         "pullRequestNumber": "={{ $('Github Trigger').item.json.body.number }}",
         "event": "comment",
@@ -538,8 +537,8 @@
       "type": "n8n-nodes-base.github",
       "typeVersion": 1.1,
       "position": [
-        1216,
-        96
+        400,
+        480
       ],
       "id": "0e2777d9-38b3-499f-9557-94d1041bb02f",
       "name": "Create a review3",
@@ -554,14 +553,14 @@
     {
       "parameters": {
         "authentication": "privateKey",
-        "command": ". ./venv/bin/activate && uv pip install . && ./venv/bin/edwh lint",
-        "cwd": "/home/ubuntu/onzeleermiddelen-prd"
+        "command": ". ./venv/bin/activate && uv pip install . && ./venv/bin/edwh lint --output ci",
+        "cwd": "/home/ubuntu/onzeleermiddelen-staging"
       },
       "type": "n8n-nodes-base.ssh",
       "typeVersion": 1,
       "position": [
-        976,
-        96
+        1472,
+        48
       ],
       "id": "9d3f9cb8-2ef8-46a6-89b6-5706009746f3",
       "name": "linttest uitvoeren1",
@@ -572,22 +571,1090 @@
           "name": "SSH Utils Hetzner"
         }
       }
+    },
+    {
+      "parameters": {
+        "resource": "review",
+        "owner": {
+          "__rl": true,
+          "value": "educationwarehouse",
+          "mode": "list",
+          "cachedResultName": "educationwarehouse",
+          "cachedResultUrl": "https://github.com/educationwarehouse"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "openkeuzecatalogus-private",
+          "mode": "list",
+          "cachedResultName": "openkeuzecatalogus-private",
+          "cachedResultUrl": "https://github.com/educationwarehouse/openkeuzecatalogus-private"
+        },
+        "pullRequestNumber": "={{ $('Github Trigger').item.json.body.number }}",
+        "event": "comment",
+        "body": "=Okay let's go. Conducting tests now :)",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [
+        256,
+        -800
+      ],
+      "id": "02728194-780c-4e5e-92e9-c364f992b4d2",
+      "name": "Create a review4",
+      "webhookId": "3f3d306c-e197-4b66-983d-1b7837482480",
+      "credentials": {
+        "githubApi": {
+          "id": "mnodTH6qEgckZtPs",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "review",
+        "owner": {
+          "__rl": true,
+          "value": "educationwarehouse",
+          "mode": "list",
+          "cachedResultName": "educationwarehouse",
+          "cachedResultUrl": "https://github.com/educationwarehouse"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "openkeuzecatalogus-private",
+          "mode": "list",
+          "cachedResultName": "openkeuzecatalogus-private",
+          "cachedResultUrl": "https://github.com/educationwarehouse/openkeuzecatalogus-private"
+        },
+        "pullRequestNumber": "={{ $('Github Trigger').item.json.body.number }}",
+        "event": "comment",
+        "body": "=Okay let's go. Conducting tests now :)",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        32
+      ],
+      "id": "3fb4700e-725b-4cc2-8cdf-ab63fc92e708",
+      "name": "Create a review5",
+      "webhookId": "3f3d306c-e197-4b66-983d-1b7837482480",
+      "credentials": {
+        "githubApi": {
+          "id": "mnodTH6qEgckZtPs",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": "~/.local/bin/edwh file.upload -f ./htmlcov -s files.edwh.nl -a 180",
+        "cwd": "/home/ubuntu/onzeleermiddelen-staging/shared_cache/pytest"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        560,
+        -416
+      ],
+      "id": "94d78fd5-7e42-48bd-b9e3-975ebca371e1",
+      "name": "htmlcov uploaden",
+      "alwaysOutputData": false,
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "yd9tmkNdCsx0IjIL",
+          "name": "SSH Utils Hetzner"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "review",
+        "owner": {
+          "__rl": true,
+          "value": "educationwarehouse",
+          "mode": "list",
+          "cachedResultName": "educationwarehouse",
+          "cachedResultUrl": "https://github.com/educationwarehouse"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "openkeuzecatalogus-private",
+          "mode": "list",
+          "cachedResultName": "openkeuzecatalogus-private",
+          "cachedResultUrl": "https://github.com/educationwarehouse/openkeuzecatalogus-private"
+        },
+        "pullRequestNumber": "={{ $('Github Trigger').item.json.body.number }}",
+        "event": "comment",
+        "body": "=htmlcov (ttl 180 days)\n{{ $json.stdout }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [
+        704,
+        -416
+      ],
+      "id": "91c1d39f-b065-444d-b86f-9f08e9b1b1df",
+      "name": "Create a review6",
+      "webhookId": "3f3d306c-e197-4b66-983d-1b7837482480",
+      "credentials": {
+        "githubApi": {
+          "id": "mnodTH6qEgckZtPs",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": "~/.local/bin/edwh file.upload -f ./htmlcov -s files.edwh.nl -a 180",
+        "cwd": "/home/ubuntu/onzeleermiddelen-staging/shared_cache/pytest"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        544,
+        480
+      ],
+      "id": "bef0d03e-dbca-419e-bfd8-03764488b913",
+      "name": "htmlcov uploaden1",
+      "alwaysOutputData": false,
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "yd9tmkNdCsx0IjIL",
+          "name": "SSH Utils Hetzner"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "review",
+        "owner": {
+          "__rl": true,
+          "value": "educationwarehouse",
+          "mode": "list",
+          "cachedResultName": "educationwarehouse",
+          "cachedResultUrl": "https://github.com/educationwarehouse"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "openkeuzecatalogus-private",
+          "mode": "list",
+          "cachedResultName": "openkeuzecatalogus-private",
+          "cachedResultUrl": "https://github.com/educationwarehouse/openkeuzecatalogus-private"
+        },
+        "pullRequestNumber": "={{ $('Github Trigger').item.json.body.number }}",
+        "event": "comment",
+        "body": "=htmlcov (ttl 180 days)\n{{ $json.stdout }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [
+        688,
+        480
+      ],
+      "id": "80447f48-1e06-4eb9-9fd6-87445e198e63",
+      "name": "Create a review7",
+      "webhookId": "3f3d306c-e197-4b66-983d-1b7837482480",
+      "credentials": {
+        "githubApi": {
+          "id": "mnodTH6qEgckZtPs",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b30b6546-4262-466f-a289-791d40c75596",
+              "name": "test_report",
+              "value": "={{ $json.stdout.replace(/\\r/g, '').split('--- START REPORTING ---')[1].split('--- END REPORTING ---')[0].trim() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        992,
+        -416
+      ],
+      "id": "a09e7b07-473a-4ec4-8247-6a827d828203",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": "./n8n/scripts/sbom-generate.sh",
+        "cwd": "/home/ubuntu/onzeleermiddelen-staging"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        848,
+        -416
+      ],
+      "id": "10344499-c1eb-451c-a4b4-8400878c7580",
+      "name": "SBOM generate",
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "yd9tmkNdCsx0IjIL",
+          "name": "SSH Utils Hetzner"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "review",
+        "owner": {
+          "__rl": true,
+          "value": "educationwarehouse",
+          "mode": "list",
+          "cachedResultName": "educationwarehouse",
+          "cachedResultUrl": "https://github.com/educationwarehouse"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "openkeuzecatalogus-private",
+          "mode": "list",
+          "cachedResultName": "openkeuzecatalogus-private",
+          "cachedResultUrl": "https://github.com/educationwarehouse/openkeuzecatalogus-private"
+        },
+        "pullRequestNumber": "={{ $('Github Trigger').item.json.body.number }}",
+        "event": "comment",
+        "body": "=SBOM:\n{{ $json.test_report }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [
+        1312,
+        -416
+      ],
+      "id": "9a4d3d34-fa17-4a17-97a6-016f8b4cf2ad",
+      "name": "Create a review8",
+      "webhookId": "3f3d306c-e197-4b66-983d-1b7837482480",
+      "credentials": {
+        "githubApi": {
+          "id": "mnodTH6qEgckZtPs",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b30b6546-4262-466f-a289-791d40c75596",
+              "name": "test_report",
+              "value": "={{ $json.stdout.replace(/\\r/g, '').split('--- START REPORTING ---')[1].split('--- END REPORTING ---')[0].trim() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1680,
+        -416
+      ],
+      "id": "d001b8c8-9321-4186-88bc-eb8552a9a331",
+      "name": "Edit Fields3"
+    },
+    {
+      "parameters": {
+        "resource": "review",
+        "owner": {
+          "__rl": true,
+          "value": "educationwarehouse",
+          "mode": "list",
+          "cachedResultName": "educationwarehouse",
+          "cachedResultUrl": "https://github.com/educationwarehouse"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "openkeuzecatalogus-private",
+          "mode": "list",
+          "cachedResultName": "openkeuzecatalogus-private",
+          "cachedResultUrl": "https://github.com/educationwarehouse/openkeuzecatalogus-private"
+        },
+        "pullRequestNumber": "={{ $('Github Trigger').item.json.body.number }}",
+        "event": "comment",
+        "body": "=Security-scan:\n{{ $json.test_report }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [
+        2000,
+        -416
+      ],
+      "id": "6d4c14cb-ef7d-40b8-98e3-343dff4d166d",
+      "name": "Create a review9",
+      "webhookId": "3f3d306c-e197-4b66-983d-1b7837482480",
+      "credentials": {
+        "githubApi": {
+          "id": "mnodTH6qEgckZtPs",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": "./n8n/scripts/security-scan.sh",
+        "cwd": "/home/ubuntu/onzeleermiddelen-staging"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        1504,
+        -416
+      ],
+      "id": "a3d57857-a204-4782-8975-97c8d5af99d9",
+      "name": "Security-scan",
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "yd9tmkNdCsx0IjIL",
+          "name": "SSH Utils Hetzner"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b30b6546-4262-466f-a289-791d40c75596",
+              "name": "test_report",
+              "value": "={{ $json.stdout.replace(/\\r/g, '').split('--- START REPORTING ---')[1].split('--- END REPORTING ---')[0].trim() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        976,
+        480
+      ],
+      "id": "fcf071e1-56eb-4a92-974d-7f51bb4b97e2",
+      "name": "Edit Fields4"
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": "./n8n/scripts/sbom-generate.sh",
+        "cwd": "/home/ubuntu/onzeleermiddelen-staging"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        832,
+        480
+      ],
+      "id": "9010caac-32c5-4308-8079-4ab3ae415a02",
+      "name": "SBOM generate1",
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "yd9tmkNdCsx0IjIL",
+          "name": "SSH Utils Hetzner"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "review",
+        "owner": {
+          "__rl": true,
+          "value": "educationwarehouse",
+          "mode": "list",
+          "cachedResultName": "educationwarehouse",
+          "cachedResultUrl": "https://github.com/educationwarehouse"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "openkeuzecatalogus-private",
+          "mode": "list",
+          "cachedResultName": "openkeuzecatalogus-private",
+          "cachedResultUrl": "https://github.com/educationwarehouse/openkeuzecatalogus-private"
+        },
+        "pullRequestNumber": "={{ $('Github Trigger').item.json.body.number }}",
+        "event": "comment",
+        "body": "=SBOM:\n{{ $json.test_report }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [
+        1312,
+        480
+      ],
+      "id": "3555ed2c-6757-43d8-85aa-e84d20b2ea09",
+      "name": "Create a review10",
+      "webhookId": "3f3d306c-e197-4b66-983d-1b7837482480",
+      "credentials": {
+        "githubApi": {
+          "id": "mnodTH6qEgckZtPs",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b30b6546-4262-466f-a289-791d40c75596",
+              "name": "test_report",
+              "value": "={{ $json.stdout.replace(/\\r/g, '').split('--- START REPORTING ---')[1].split('--- END REPORTING ---')[0].trim() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1616,
+        480
+      ],
+      "id": "27d282fc-4806-4ad7-a6ac-58e8cdb54349",
+      "name": "Edit Fields5"
+    },
+    {
+      "parameters": {
+        "resource": "review",
+        "owner": {
+          "__rl": true,
+          "value": "educationwarehouse",
+          "mode": "list",
+          "cachedResultName": "educationwarehouse",
+          "cachedResultUrl": "https://github.com/educationwarehouse"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "openkeuzecatalogus-private",
+          "mode": "list",
+          "cachedResultName": "openkeuzecatalogus-private",
+          "cachedResultUrl": "https://github.com/educationwarehouse/openkeuzecatalogus-private"
+        },
+        "pullRequestNumber": "={{ $('Github Trigger').item.json.body.number }}",
+        "event": "comment",
+        "body": "=Security-scan:\n{{ $json.test_report }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [
+        1936,
+        480
+      ],
+      "id": "d3c33846-465c-4681-9ba8-91f549639704",
+      "name": "Create a review11",
+      "webhookId": "3f3d306c-e197-4b66-983d-1b7837482480",
+      "credentials": {
+        "githubApi": {
+          "id": "mnodTH6qEgckZtPs",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": "./n8n/scripts/security-scan.sh",
+        "cwd": "/home/ubuntu/onzeleermiddelen-staging"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        1472,
+        480
+      ],
+      "id": "89f8d390-204e-4bf4-9b2f-9efce475b6c8",
+      "name": "Security-scan1",
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "yd9tmkNdCsx0IjIL",
+          "name": "SSH Utils Hetzner"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": "=git fetch origin && git switch -C \"{{ $('branch').item.json.body.pull_request.head.ref }}\" \"origin/{{ $('branch').item.json.body.pull_request.head.ref }}\"",
+        "cwd": "/home/ubuntu/onzeleermiddelen-staging"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        400,
+        -800
+      ],
+      "id": "01f58702-b276-4185-951f-993164cb19e0",
+      "name": "git branch switch",
+      "alwaysOutputData": false,
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "yd9tmkNdCsx0IjIL",
+          "name": "SSH Utils Hetzner"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": "=git fetch origin && git switch -C \"{{ $('branch').item.json.body.pull_request.head.ref }}\" \"origin/{{ $('branch').item.json.body.pull_request.head.ref }}\"",
+        "cwd": "/home/ubuntu/onzeleermiddelen-staging"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        368,
+        32
+      ],
+      "id": "a06cfc8c-9702-4ee0-ab65-7b27e4a63664",
+      "name": "git branch switch1",
+      "alwaysOutputData": false,
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "yd9tmkNdCsx0IjIL",
+          "name": "SSH Utils Hetzner"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": "./venv/bin/edwh self-update",
+        "cwd": "/home/ubuntu/onzeleermiddelen-staging"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        -432
+      ],
+      "id": "fd1efb18-bfa5-43cc-acb7-b5ae453c3fe7",
+      "name": "ew self-update",
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "yd9tmkNdCsx0IjIL",
+          "name": "SSH Utils Hetzner"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": ". ./venv/bin/activate && uv pip install . ",
+        "cwd": "/home/ubuntu/onzeleermiddelen-staging"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        688,
+        -800
+      ],
+      "id": "e79df85f-4bf3-4b8e-bb20-4fd750004344",
+      "name": "uv pip install .",
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "yd9tmkNdCsx0IjIL",
+          "name": "SSH Utils Hetzner"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": ". ./venv/bin/activate && uv pip install . ",
+        "cwd": "/home/ubuntu/onzeleermiddelen-staging"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        656,
+        32
+      ],
+      "id": "952324b2-d3dc-46fe-a040-4c5df944ce66",
+      "name": "uv pip install .1",
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "yd9tmkNdCsx0IjIL",
+          "name": "SSH Utils Hetzner"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3bfee97b-ebc8-48f1-9817-3ffe3d211de0",
+              "leftValue": "={{ $json.test_report }}",
+              "rightValue": "=null",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1120,
+        -800
+      ],
+      "id": "b165c163-c2e4-4e03-a9b7-7dc54608b504",
+      "name": "If1",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "resource": "review",
+        "owner": {
+          "__rl": true,
+          "value": "educationwarehouse",
+          "mode": "list",
+          "cachedResultName": "educationwarehouse",
+          "cachedResultUrl": "https://github.com/educationwarehouse"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "openkeuzecatalogus-private",
+          "mode": "list",
+          "cachedResultName": "openkeuzecatalogus-private",
+          "cachedResultUrl": "https://github.com/educationwarehouse/openkeuzecatalogus-private"
+        },
+        "pullRequestNumber": "={{ $('Github Trigger').item.json.body.number }}",
+        "event": "comment",
+        "body": "=Pytest niet of niet goed uitgevoerd.\nControleer de N8N workflow als dit niet bewust is.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [
+        1280,
+        -960
+      ],
+      "id": "0aa87117-3bb0-4d5a-a69d-4eed274df3c1",
+      "name": "Create a review12",
+      "webhookId": "3f3d306c-e197-4b66-983d-1b7837482480",
+      "credentials": {
+        "githubApi": {
+          "id": "mnodTH6qEgckZtPs",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3bfee97b-ebc8-48f1-9817-3ffe3d211de0",
+              "leftValue": "={{ $json.test_report }}",
+              "rightValue": "=null",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1152,
+        -416
+      ],
+      "id": "8b40b8dd-c021-482e-acb9-efbe367666b2",
+      "name": "If2",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "resource": "review",
+        "owner": {
+          "__rl": true,
+          "value": "educationwarehouse",
+          "mode": "list",
+          "cachedResultName": "educationwarehouse",
+          "cachedResultUrl": "https://github.com/educationwarehouse"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "openkeuzecatalogus-private",
+          "mode": "list",
+          "cachedResultName": "openkeuzecatalogus-private",
+          "cachedResultUrl": "https://github.com/educationwarehouse/openkeuzecatalogus-private"
+        },
+        "pullRequestNumber": "={{ $('Github Trigger').item.json.body.number }}",
+        "event": "comment",
+        "body": "=SBOM niet of niet goed uitgevoerd.\nControleer de N8N workflow als dit niet bewust is.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [
+        1312,
+        -560
+      ],
+      "id": "ddc25c19-3d8c-4b82-8bb3-1a3fd57783c3",
+      "name": "Create a review13",
+      "webhookId": "3f3d306c-e197-4b66-983d-1b7837482480",
+      "credentials": {
+        "githubApi": {
+          "id": "mnodTH6qEgckZtPs",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3bfee97b-ebc8-48f1-9817-3ffe3d211de0",
+              "leftValue": "={{ $json.test_report }}",
+              "rightValue": "=null",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1840,
+        -416
+      ],
+      "id": "3cff848a-af6c-4808-900f-848464d2991b",
+      "name": "If3",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "resource": "review",
+        "owner": {
+          "__rl": true,
+          "value": "educationwarehouse",
+          "mode": "list",
+          "cachedResultName": "educationwarehouse",
+          "cachedResultUrl": "https://github.com/educationwarehouse"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "openkeuzecatalogus-private",
+          "mode": "list",
+          "cachedResultName": "openkeuzecatalogus-private",
+          "cachedResultUrl": "https://github.com/educationwarehouse/openkeuzecatalogus-private"
+        },
+        "pullRequestNumber": "={{ $('Github Trigger').item.json.body.number }}",
+        "event": "comment",
+        "body": "=Security-scan niet of niet goed uitgevoerd.\nControleer de N8N workflow als dit niet bewust is.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [
+        2000,
+        -576
+      ],
+      "id": "8bb8bd05-ab31-4e07-912f-04af60891efd",
+      "name": "Create a review14",
+      "webhookId": "3f3d306c-e197-4b66-983d-1b7837482480",
+      "credentials": {
+        "githubApi": {
+          "id": "mnodTH6qEgckZtPs",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3bfee97b-ebc8-48f1-9817-3ffe3d211de0",
+              "leftValue": "={{ $json.test_report }}",
+              "rightValue": "=null",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1088,
+        32
+      ],
+      "id": "9cf10df7-52d9-4af0-be0b-f8f9530db689",
+      "name": "If4",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "resource": "review",
+        "owner": {
+          "__rl": true,
+          "value": "educationwarehouse",
+          "mode": "list",
+          "cachedResultName": "educationwarehouse",
+          "cachedResultUrl": "https://github.com/educationwarehouse"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "openkeuzecatalogus-private",
+          "mode": "list",
+          "cachedResultName": "openkeuzecatalogus-private",
+          "cachedResultUrl": "https://github.com/educationwarehouse/openkeuzecatalogus-private"
+        },
+        "pullRequestNumber": "={{ $('Github Trigger').item.json.body.number }}",
+        "event": "comment",
+        "body": "=Pytest niet of niet goed uitgevoerd.\nControleer de N8N workflow als dit niet bewust is.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [
+        1264,
+        -128
+      ],
+      "id": "da5da18f-98b1-48ba-8a5f-1e9287db4a4e",
+      "name": "Create a review15",
+      "webhookId": "3f3d306c-e197-4b66-983d-1b7837482480",
+      "credentials": {
+        "githubApi": {
+          "id": "mnodTH6qEgckZtPs",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3bfee97b-ebc8-48f1-9817-3ffe3d211de0",
+              "leftValue": "={{ $json.test_report }}",
+              "rightValue": "=null",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1152,
+        480
+      ],
+      "id": "605b2d2d-296d-4654-968c-91cc3e5fa0d7",
+      "name": "If5",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "resource": "review",
+        "owner": {
+          "__rl": true,
+          "value": "educationwarehouse",
+          "mode": "list",
+          "cachedResultName": "educationwarehouse",
+          "cachedResultUrl": "https://github.com/educationwarehouse"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "openkeuzecatalogus-private",
+          "mode": "list",
+          "cachedResultName": "openkeuzecatalogus-private",
+          "cachedResultUrl": "https://github.com/educationwarehouse/openkeuzecatalogus-private"
+        },
+        "pullRequestNumber": "={{ $('Github Trigger').item.json.body.number }}",
+        "event": "comment",
+        "body": "=SBOM niet of niet goed uitgevoerd.\nControleer de N8N workflow als dit niet bewust is.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [
+        1312,
+        320
+      ],
+      "id": "2d2a3a8b-85a1-406d-b5ae-13b96aadeed9",
+      "name": "Create a review16",
+      "webhookId": "3f3d306c-e197-4b66-983d-1b7837482480",
+      "credentials": {
+        "githubApi": {
+          "id": "mnodTH6qEgckZtPs",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3bfee97b-ebc8-48f1-9817-3ffe3d211de0",
+              "leftValue": "={{ $json.test_report }}",
+              "rightValue": "=null",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1776,
+        480
+      ],
+      "id": "d47795a9-adc4-4f20-ae68-6b79a43307cd",
+      "name": "If6",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "resource": "review",
+        "owner": {
+          "__rl": true,
+          "value": "educationwarehouse",
+          "mode": "list",
+          "cachedResultName": "educationwarehouse",
+          "cachedResultUrl": "https://github.com/educationwarehouse"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "openkeuzecatalogus-private",
+          "mode": "list",
+          "cachedResultName": "openkeuzecatalogus-private",
+          "cachedResultUrl": "https://github.com/educationwarehouse/openkeuzecatalogus-private"
+        },
+        "pullRequestNumber": "={{ $('Github Trigger').item.json.body.number }}",
+        "event": "comment",
+        "body": "=Security-scan niet of niet goed uitgevoerd.\nControleer de N8N workflow als dit niet bewust is.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [
+        1936,
+        320
+      ],
+      "id": "8f9384cf-d025-42af-b059-9b14852e7c31",
+      "name": "Create a review17",
+      "webhookId": "3f3d306c-e197-4b66-983d-1b7837482480",
+      "credentials": {
+        "githubApi": {
+          "id": "mnodTH6qEgckZtPs",
+          "name": "GitHub account"
+        }
+      }
     }
   ],
-  "pinData": {},
   "connections": {
     "Switch": {
       "main": [
         [
           {
-            "node": "git pull",
+            "node": "Create a review4",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "git pull1",
+            "node": "Create a review5",
             "type": "main",
             "index": 0
           }
@@ -638,7 +1705,7 @@
       "main": [
         [
           {
-            "node": "Switch",
+            "node": "ew self-update",
             "type": "main",
             "index": 0
           }
@@ -656,7 +1723,7 @@
       "main": [
         [
           {
-            "node": "pytest uitvoeren",
+            "node": "uv pip install .",
             "type": "main",
             "index": 0
           }
@@ -678,29 +1745,7 @@
       "main": [
         [
           {
-            "node": "No Operation, do nothing2",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Edit Fields2": {
-      "main": [
-        [
-          {
-            "node": "Create a review2",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "git pull1": {
-      "main": [
-        [
-          {
-            "node": "pytest uitvoeren1",
+            "node": "htmlcov uploaden",
             "type": "main",
             "index": 0
           }
@@ -712,6 +1757,28 @@
         [
           {
             "node": "linttest uitvoeren1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "If4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "git pull1": {
+      "main": [
+        [
+          {
+            "node": "uv pip install .1",
             "type": "main",
             "index": 0
           }
@@ -744,7 +1811,18 @@
       "main": [
         [
           {
-            "node": "Create a review",
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a review3": {
+      "main": [
+        [
+          {
+            "node": "htmlcov uploaden1",
             "type": "main",
             "index": 0
           }
@@ -762,7 +1840,423 @@
         ]
       ]
     },
-    "Create a review3": {
+    "Create a review4": {
+      "main": [
+        [
+          {
+            "node": "git branch switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a review5": {
+      "main": [
+        [
+          {
+            "node": "git branch switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "htmlcov uploaden": {
+      "main": [
+        [
+          {
+            "node": "Create a review6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a review6": {
+      "main": [
+        [
+          {
+            "node": "SBOM generate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "htmlcov uploaden1": {
+      "main": [
+        [
+          {
+            "node": "Create a review7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a review7": {
+      "main": [
+        [
+          {
+            "node": "SBOM generate1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SBOM generate": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a review8": {
+      "main": [
+        [
+          {
+            "node": "Security-scan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields3": {
+      "main": [
+        [
+          {
+            "node": "If3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a review9": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Security-scan": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields4": {
+      "main": [
+        [
+          {
+            "node": "If5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SBOM generate1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a review10": {
+      "main": [
+        [
+          {
+            "node": "Security-scan1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields5": {
+      "main": [
+        [
+          {
+            "node": "If6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a review11": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Security-scan1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "git branch switch": {
+      "main": [
+        [
+          {
+            "node": "git pull",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "git branch switch1": {
+      "main": [
+        [
+          {
+            "node": "git pull1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ew self-update": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uv pip install .": {
+      "main": [
+        [
+          {
+            "node": "pytest uitvoeren",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uv pip install .1": {
+      "main": [
+        [
+          {
+            "node": "pytest uitvoeren1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Create a review12",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create a review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a review12": {
+      "main": [
+        [
+          {
+            "node": "linttest uitvoeren",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Create a review13",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create a review8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a review13": {
+      "main": [
+        [
+          {
+            "node": "Security-scan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If3": {
+      "main": [
+        [
+          {
+            "node": "Create a review14",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create a review9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a review14": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If4": {
+      "main": [
+        [
+          {
+            "node": "Create a review15",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create a review2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a review15": {
+      "main": [
+        [
+          {
+            "node": "linttest uitvoeren1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If5": {
+      "main": [
+        [
+          {
+            "node": "Create a review16",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create a review10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a review16": {
+      "main": [
+        [
+          {
+            "node": "Security-scan1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If6": {
+      "main": [
+        [
+          {
+            "node": "Create a review17",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create a review11",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a review17": {
       "main": [
         [
           {
@@ -774,21 +2268,9 @@
       ]
     }
   },
-  "active": true,
-  "settings": {
-    "executionOrder": "v1",
-    "binaryMode": "separate",
-    "availableInMCP": false,
-    "timeSavedMode": "fixed",
-    "errorWorkflow": "W7cWIrqhp1xDy3oa",
-    "callerPolicy": "workflowsFromSameOwner"
-  },
-  "versionId": "4cba2781-9929-4506-b0f6-47e88a408972",
+  "pinData": {},
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "bbd3a9deeac13480fc3948fdf4224b13c81c9022f13c693bd7074a073726ba5f"
-  },
-  "nodeGroups": [],
-  "id": "cFq1Gz1OM5c6OVWX",
-  "tags": []
+  }
 }
