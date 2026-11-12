@@ -45,6 +45,7 @@ class ImportProduct(t.TypedDict, total=False):
     """Generated importer payload for ProductEd."""
     isbn: str
     name: str
+    product_family_name: str | None
     method_gid: str | None
     payment_models: list[str]
     product_usages: list[str]
@@ -111,6 +112,7 @@ class ImportSupplier(t.TypedDict, total=False):
     name: str
     olid: str
     logo_url: str
+    catalogue_participation_status: str
     status_visions: str
     email_domains: list[str]
     endpoint_type: str

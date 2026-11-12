@@ -6,7 +6,7 @@ from playwright.sync_api import Page, Route, expect
 from .settings import BASE_URL
 
 
-@pytest.mark.parametrize("path", ["producten", "methodes"])
+@pytest.mark.parametrize("path", ["producten", "pakketten"])
 def test_catalog_loading_preserves_geometry_and_announces_status(page: Page, path: str) -> None:
     """Keep existing results stable while announcing catalogue updates."""
     pending: list[Route] = []

@@ -1190,9 +1190,9 @@ def lint_fixmes(ctx: Context, mode: OutputMode = "cli") -> bool:
 
 @task()
 def fmt_prettier(ctx: Context) -> bool | None:
-    """Format JavaScript, TypeScript, and application SCSS files with Prettier."""
+    """Format JavaScript, TypeScript, application SCSS, and Markdown files with Prettier."""
     if bunx := ensure_bun(ctx):
-        patterns = "'**/*.js' '**/*.ts' 'py4web/apps/*/assets/css/**/*.scss'"
+        patterns = "'**/*.js' '**/*.ts' 'py4web/apps/*/assets/css/**/*.scss' '**/*.md' '!superset/**' '!venv/**'"
 
         return edwh.tasks.run_pty_ok(ctx, bunx, f"prettier --write {patterns} > /dev/null")
     else:
@@ -1201,7 +1201,7 @@ def fmt_prettier(ctx: Context) -> bool | None:
 
 @task()
 def fmt(ctx: Context) -> None:
-    """Format JavaScript, TypeScript, and application SCSS files with Prettier."""
+    """Format JavaScript, TypeScript, application SCSS, and Markdown files with Prettier."""
     color = "green" if fmt_prettier(ctx) else "red"
     cprint("⬤ prettier", color=color)
 

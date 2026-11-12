@@ -44,14 +44,14 @@ some of the checked HTML5 behavior.
 In one py4web-container run on a generated page with 1,000 articles, the median of
 three parse-only runs was:
 
-| Parser                    | Median parse time | HTML5 checks |
-|---------------------------|-------------------|--------------|
-| `soup5ever-experimental`  | 18.1 ms           | 5/5          |
-| `soup5ever`               | 23.2 ms           | 5/5          |
-| `html5_parser`            | 27.5 ms           | 5/5          |
-| `html5lib`                | 170.5 ms          | 5/5          |
-| `lxml`                    | 57.3 ms           | 2/5          |
-| `html.parser`             | 80.6 ms           | 0/5          |
+| Parser                   | Median parse time | HTML5 checks |
+| ------------------------ | ----------------- | ------------ |
+| `soup5ever-experimental` | 18.1 ms           | 5/5          |
+| `soup5ever`              | 23.2 ms           | 5/5          |
+| `html5_parser`           | 27.5 ms           | 5/5          |
+| `html5lib`               | 170.5 ms          | 5/5          |
+| `lxml`                   | 57.3 ms           | 2/5          |
+| `html.parser`            | 80.6 ms           | 0/5          |
 
 The five checks cover foster parenting, implied `tbody`, paragraph closing,
 formatting reconstruction, and option closing. They are a focused sample, not a
@@ -82,9 +82,11 @@ If restart flag is stale, process exits non-zero so container healthchecks can r
 `flash` is the py4web flash fixture exposed by `py4web/apps/_default/fixtures/__init__.py` as `flash = auth.flash`.
 
 Python code can use it in two ways:
+
 - Generic controllers import `flash` from `..fixtures` and call `flash.set("message")` or `flash.set("message", "alert-success")`.
 - Auth-specific code uses `AppAuth.flash_error(...)`, `flash_success(...)`, `flash_warning(...)`, or `flash_info(...)`, which delegate to `self.flash.set(...)`.
 
 Rendering flow:
+
 - `py4web/apps/_default/templates/layout.html` reads the flash object from the template globals and emits a `py4web-flash` template element.
 - `py4web/apps/_default/assets/js/bootstrap-flash.js` turns that template into a dismissible Bootstrap alert in the top-right corner of the page.

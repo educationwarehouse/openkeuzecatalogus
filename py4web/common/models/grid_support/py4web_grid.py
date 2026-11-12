@@ -194,7 +194,7 @@ class Grid:
             fullpath = request.fullpath.rstrip("/")
             if path == "index":
                 fullpath = fullpath[:-6]
-            redirect(f"{fullpath}/select" + (f"?{request.query_string}" if request.query_string else ""))
+            return redirect(f"{fullpath}/select" + (f"?{request.query_string}" if request.query_string else ""))
 
         # in case the query is a Table insteance
         if query and isinstance(query, query._db.Table):
@@ -459,9 +459,9 @@ class Grid:
             if self.form.accepted or (readonly and request.method == "POST"):
                 referrer = request.query.get("_referrer")
                 if referrer:
-                    redirect(base64.b16decode(referrer.encode("utf8")).decode("utf8"))
+                    return redirect(base64.b16decode(referrer.encode("utf8")).decode("utf8"))
                 else:
-                    redirect(self.endpoint)
+                    return redirect(self.endpoint)
 
         elif self.action == "delete" and self.is_deletable(record):
             db(db[self.tablename].id == self.record_id).delete()
@@ -470,7 +470,7 @@ class Grid:
             url = self.endpoint + "/select"
             if referrer and referrer.query:
                 url += f"?{referrer.query}"
-            redirect(url)
+            return redirect(url)
 
         elif self.action == "select":
             self.referrer = f"_referrer={base64.b16encode(request.url.encode('utf8')).decode('utf8')}"
@@ -1152,18 +1152,12 @@ class Grid:
         )
         footer.append(row_count)
 
-        #  build the pager
-        if self.number_of_pages > 1:
-            footer.append(self._make_table_pager())
-
-        html.append(footer)
-
         if self.param.footer_elements and len(self.param.footer_elements) > 0:
             for element in self.param.footer_elements:
                 if isinstance(element, str):
-                    html.append(XML(element))
+                    footer.append(XML(element))
                 elif callable(element):
-                    html.append(element())
+                    footer.append(element())
                 else:
                     override_classes = element.__dict__.get("override_classes", None)
                     if not override_classes:
@@ -1177,7 +1171,7 @@ class Grid:
                             self.param.grid_class_style.styles.get("grid-footer-element", "")
                             + f" {element.__dict__.get('additional_styles')}"
                         )
-                    html.append(
+                    footer.append(
                         self._make_action_button(
                             url=element.url,
                             button_text=self.T(element.text),
@@ -1195,6 +1189,11 @@ class Grid:
                         )
                     )
 
+        #  build the pager
+        if self.number_of_pages > 1:
+            footer.append(self._make_table_pager())
+
+        html.append(footer)
         return html
 
     def render(self) -> HTMLElement | FormWithParam:
@@ -1203,7 +1202,7 @@ class Grid:
         :return: html representation of the table or the py4web Form object
         """
         if self.action in ("new", "details", "edit"):
-            assert self.form
+            assert self.form, "The new, details and edit actions should initialize a form before rendering"
             return self.form
         else:
             return self._make_table()

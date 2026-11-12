@@ -35,17 +35,19 @@ Behavior:
 
 1. Build a release snapshot from the private working tree.
 2. Apply exclusion rules:
-   - `.git`
-   - all `.gitignore`-matched paths
-   - py4web apps in `PRIVATE_APPS`
+    - `.git`
+    - all `.gitignore`-matched paths
+    - py4web apps in `PRIVATE_APPS`
 3. Sync snapshot into the airgapped public workspace.
 4. Target directory defaults to sibling `../onzeleermiddelen-public` when `PUBLIC_TARGET` is unset.
 
 Operational flags:
+
 - `edwh local.prepare-public --test`: dry-run (`rsync -n`)
 - `edwh local.prepare-public --files`: verbose copied file listing
 
 Notes:
+
 - The command syncs files only; it does not create commits in the public repository.
 - Commit policy ("one commit per release") remains an operational convention around this command.
 

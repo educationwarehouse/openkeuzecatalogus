@@ -18,10 +18,10 @@ We gebruiken KeeShare in de modus **Import**, zodat de gedeelde credentials alle
 
 Zorg dat je het volgende hebt:
 
-* KeePassXC
-* Tailscale en verbinding met het EDWH Tailscale-netwerk
-* Samba-gebruikersnaam en wachtwoord
-* Wachtwoord van `edwh-env.kdbx`
+- KeePassXC
+- Tailscale en verbinding met het EDWH Tailscale-netwerk
+- Samba-gebruikersnaam en wachtwoord
+- Wachtwoord van `edwh-env.kdbx`
 
 ---
 
@@ -127,9 +127,9 @@ De gedeelde EDWH-database vervangt je persoonlijke database dus **niet**.
 
 Je database kan bijvoorbeeld deze structuur krijgen:
 
-* Persoonlijke wachtwoorden
-* Eigen servers
-* EDWH ENV credentials ← gedeeld via KeeShare
+- Persoonlijke wachtwoorden
+- Eigen servers
+- EDWH ENV credentials ← gedeeld via KeeShare
 
 ---
 

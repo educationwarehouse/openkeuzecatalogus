@@ -51,39 +51,52 @@ shared_code/
 ## Layer Responsibilities
 
 ### `modules/`
+
 Feature-oriented business flows (use-cases/orchestration) and feature-local types.
+
 - Use package directories per feature or bounded context.
 - `module.py`: orchestration logic for a module/feature.
 - `types.py`: module-level typed structures/contracts.
 
 ### `data_model/`
+
 ORM-backed data model definitions.
+
 - Use package directories per table family, mixin family, or related model set.
 - Contains model classes used by the application core.
 - Keeps persistence model code grouped and discoverable.
 
 ### `services/`
+
 External or side-effecting capabilities (mail, applog, caching, remote APIs).
+
 - Use package directories per service family or adapter boundary.
 - Keep contracts explicit (`contracts.py`) where practical.
 - Put real adapters in implementation files (e.g. `smtp.py`).
 - Provide test doubles/fakes (e.g. `fake.py`) for deterministic tests.
 
 ### `infra/`
+
 Runtime glue, database wiring, framework-adjacent helpers, and file-backed persistence.
+
 - Use package directories per runtime concern.
 - Keep application/bootstrap code here when it is not a business flow or external adapter.
 
 ### `util/`
+
 Pure helpers with no I/O or side effects.
+
 - Use package directories for grouped utility families when a helper set is more than one file.
 - Keep stateless helper functions here.
 
 ### `migrations/`
+
 Schema/data migration units grouped by concern.
 
 ### `tests/`
+
 Automated tests for modules, data models, and services.
+
 - Includes unit tests for business logic.
 - Includes tests for integration boundaries with fakes/mocks.
 

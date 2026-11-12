@@ -6,7 +6,12 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 from playwright.sync_api import Page, expect
 
-from .auth_helpers import _login_as_user, _login_from_current_page, _register_and_verify_user
+from .auth_helpers import (
+    _create_verified_user,
+    _login_as_user,
+    _login_from_current_page,
+    _register_and_verify_user,
+)
 from .settings import BASE_URL, MOCK_EMAIL_DOMAIN
 
 
@@ -125,3 +130,38 @@ def test_build_archive_table_marks_current_and_highlights_changed_fields(page: P
     assert updated_name in (current_row.inner_text() or "")
 
     assert page.locator(".archive-container .grid-table th", has_text="Type API endpoint").count() == 0
+
+
+def test_supplier_cannot_change_own_catalogue_participation_status(page: Page) -> None:
+    """The public participation widget reads this status, so only admins may edit it."""
+    admin_email, admin_password = _create_verified_user(page, prefix="participation-admin", admin=True)
+    _login_as_user(page, email=admin_email, password=admin_password)
+    seeded = page.request.post(f"{BASE_URL}/test_seed_supplier")
+    assert seeded.ok, seeded.text()
+    supplier = seeded.json()
+    status_field = page.locator("select[name='catalogue_participation_status']")
+
+    page.goto(f"{BASE_URL}/admin/suppliers/select")
+    supplier_row = page.locator(".grid-table tr", has_text=supplier["supplier_name"])
+    supplier_row.get_by_role("button", name="Bewerken").first.click()
+    page.wait_for_url("**/admin/suppliers/edit/**")
+    expect(status_field).to_be_visible()
+
+    page.goto(f"{BASE_URL}/auth/logout")
+    supplier_suffix = uuid.uuid4().hex[:10]
+    supplier_email = f"supplier-user-{supplier_suffix}@{supplier['email_domain']}"
+    supplier_password = f"SupplierPass!{supplier_suffix}123"
+    try:
+        _register_and_verify_user(page, email=supplier_email, password=supplier_password, last_name="Supplier")
+        _login_as_user(page, email=supplier_email, password=supplier_password)
+
+        # Grid action links are signed per session, so the supplier opens the form from their own grid.
+        page.goto(f"{BASE_URL}/admin/suppliers/select")
+        supplier_row = page.locator(".grid-table tr", has_text=supplier["supplier_name"])
+        supplier_row.get_by_role("button", name="Bewerken").first.click()
+        page.wait_for_url("**/admin/suppliers/edit/**")
+        expect(page.locator("input[name='name']")).to_be_visible()
+        expect(status_field).to_have_count(0)
+    finally:
+        cleanup = page.request.post(f"{BASE_URL}/auth/cleanup_mock_users", params={"domain": supplier["email_domain"]})
+        assert cleanup.ok, cleanup.text()

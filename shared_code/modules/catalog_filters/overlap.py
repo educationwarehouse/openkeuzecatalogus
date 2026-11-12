@@ -5,6 +5,7 @@ import typing as t
 from typedal import TypedField
 from typedal.types import Field, Query
 
+from shared_code.util.queries import falsey_query
 from shared_code.util.types import MultiValue
 
 
@@ -25,7 +26,7 @@ def any_value_matches(field: Field | TypedField[t.Any], values: MultiValue[str])
         return None
 
     # start off with falsey query so we can do |=
-    query = Query(field.db, "FALSE")
+    query = falsey_query(field)
     for value in values:
         query |= field.contains(value)
 

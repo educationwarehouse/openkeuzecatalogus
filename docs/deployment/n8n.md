@@ -533,7 +533,7 @@ en:
 De gebruikte expressie is:
 
 ```js
-$json.stdout.replace(/\r/g, '').split('--- START REPORTING ---')[1].split('--- END REPORTING ---')[0].trim()
+$json.stdout.replace(/\r/g, "").split("--- START REPORTING ---")[1].split("--- END REPORTING ---")[0].trim();
 ```
 
 Hierdoor wordt alleen het relevante testverslag gebruikt voor de review op de pull request.
@@ -708,25 +708,25 @@ Deze node doet inhoudelijk niets en markeert alleen het einde van de flow.
 
 ## Overzicht van de belangrijkste nodes
 
-| Node | Functie |
-|---|---|
-| GitHub Trigger | Start de workflow bij pull request-events |
-| If | Controleert of de PR-actie `opened` is |
-| Branchcontrole | Controleert of de branch `staging` of `prd` is |
-| Switch | Stuurt de flow naar het staging- of PRD-pad |
-| SSH: git pull staging | Haalt de nieuwste staging-code op |
-| SSH: git pull PRD | Haalt de nieuwste PRD-code op |
-| SSH: tests staging | Draait tests op staging |
-| SSH: tests PRD | Draait tests op PRD |
-| Edit Fields staging | Haalt het relevante pytest-rapport uit staging-output |
-| Edit Fields PRD | Haalt het relevante pytest-rapport uit PRD-output |
-| GitHub review staging tests | Plaatst pytest-resultaat voor staging |
-| GitHub review PRD tests | Plaatst pytest-resultaat voor PRD |
-| SSH: lint staging | Draait lintcheck op staging |
-| SSH: lint PRD | Draait lintcheck op PRD |
-| GitHub review staging lint | Plaatst lintresultaat voor staging |
-| GitHub review PRD lint | Plaatst lintresultaat voor PRD |
-| No Operation nodes | Stoppen de workflow op gecontroleerde plekken |
+| Node                        | Functie                                               |
+| --------------------------- | ----------------------------------------------------- |
+| GitHub Trigger              | Start de workflow bij pull request-events             |
+| If                          | Controleert of de PR-actie `opened` is                |
+| Branchcontrole              | Controleert of de branch `staging` of `prd` is        |
+| Switch                      | Stuurt de flow naar het staging- of PRD-pad           |
+| SSH: git pull staging       | Haalt de nieuwste staging-code op                     |
+| SSH: git pull PRD           | Haalt de nieuwste PRD-code op                         |
+| SSH: tests staging          | Draait tests op staging                               |
+| SSH: tests PRD              | Draait tests op PRD                                   |
+| Edit Fields staging         | Haalt het relevante pytest-rapport uit staging-output |
+| Edit Fields PRD             | Haalt het relevante pytest-rapport uit PRD-output     |
+| GitHub review staging tests | Plaatst pytest-resultaat voor staging                 |
+| GitHub review PRD tests     | Plaatst pytest-resultaat voor PRD                     |
+| SSH: lint staging           | Draait lintcheck op staging                           |
+| SSH: lint PRD               | Draait lintcheck op PRD                               |
+| GitHub review staging lint  | Plaatst lintresultaat voor staging                    |
+| GitHub review PRD lint      | Plaatst lintresultaat voor PRD                        |
+| No Operation nodes          | Stoppen de workflow op gecontroleerde plekken         |
 
 ## Belangrijke output
 

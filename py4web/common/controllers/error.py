@@ -1,12 +1,14 @@
 """Shared error rendering helpers for py4web."""
 
 import json
+import logging
 import typing as t
 
 import ombott
 from py4web_debug.internals import ContextDict
 
 from common.fixtures import error_ticket_helper
+from common.fixtures.content_editable import ContentEditableV2
 from common.models import auth, auth_context, backend, db, session
 from common.models.rendering import render_template
 from py4web import HTTP, action, request
@@ -15,6 +17,8 @@ from shared_code.data_model.constants import ROLE_ADMIN
 
 if t.TYPE_CHECKING:
     from shared_code.services.error_tickets import SnapshotDict
+
+logger = logging.getLogger(__name__)
 
 
 def error_renderer_json(context: ContextDict) -> str:
@@ -172,8 +176,30 @@ def error_renderer_5xx(context: ContextDict) -> str:
     )
 
 
-def error_renderer_4xx(route: str) -> str:
-    """Render the standard 404 page."""
+@action.uses(session, auth, db)
+def render_editable_not_found(route: str) -> str:
+    """Render directly, with request fixtures only for auth and stored content."""
+    is_admin = auth_context.is_admin()
+    html = render_template(
+        "not_found.html",
+        auth=auth,
+        soort=None,
+        output=f"De pagina {route} bestaat niet." if is_admin else {},
+        error_code=404,
+        text="Deze pagina bestaat niet.",
+        subtext="Ben je de weg kwijt?",
+        ticket_id="",
+        user_email=current_user_email(),
+        is_admin=is_admin,
+        **{"contenteditable-allowed": is_admin},
+    )
+    content = ContentEditableV2("not_found.html", scope="error_404")
+
+    return content.render_html(html, scope=content.scope)
+
+
+def render_standard_not_found(route: str) -> str:
+    """Keep a 404 available when editable content cannot be loaded."""
     error_id = 404
     text = "Deze pagina bestaat niet."
     subtext = "Ben je de weg kwijt?"
@@ -188,6 +214,28 @@ def error_renderer_4xx(route: str) -> str:
         user_email=user_email,
         is_admin=is_admin,
     )
+
+
+def is_asset_path(path: str) -> bool:
+    """Return whether a missing path points at a file rather than a page."""
+    last_segment = path.rsplit("/", 1)[-1]
+
+    return "/static/" in path or "." in last_segment
+
+
+def error_renderer_4xx(route: str) -> str:
+    """Render editable 404 content, falling back if its storage is unavailable."""
+    # Missing assets and bot probes (/wp-login.php, /.env) need no stored page content.
+    if is_asset_path(request.path):
+        return render_standard_not_found(route)
+
+    try:
+        if not getattr(request, "app_name", None):
+            request.app_name = "_default"
+        return render_editable_not_found(route)
+    except Exception:
+        logger.warning("Could not load editable 404 content; rendering the standard error page.", exc_info=True)
+        return render_standard_not_found(route)
 
 
 @ombott.error(404, "/<params:path>")

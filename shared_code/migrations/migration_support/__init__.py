@@ -24,6 +24,7 @@ from .learning_material import LearningMaterial_V1
 from .method import MethodModelWithPrio_V1
 from .organisation import OrganisationModelWithPrio_V1
 from .product import ProductModelWithPrio_V1
+from .school_subject import SchoolSubjectModelWithPrio_V1
 from .supplier import SupplierModelWithPrio_V1
 from .tagged import TaggedModelWithPrio_V1
 from .vision import VisionModelWithPrio_V1
@@ -40,6 +41,7 @@ __all__ = [
     "MethodModelWithPrio_V1",
     "OrganisationModelWithPrio_V1",
     "ProductModelWithPrio_V1",
+    "SchoolSubjectModelWithPrio_V1",
     "SearchRankWeightModelWithPrio_V1",
     "SupplierModelWithPrio_V1",
     "TaggedModelWithPrio_V1",

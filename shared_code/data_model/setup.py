@@ -44,6 +44,8 @@ from shared_code.data_model.tables import (
     Product,
     ProductEd,
     RecursiveMembers,
+    SchoolSubject,
+    SchoolSubjectEd,
     SearchRankWeight,
     SearchRankWeightEd,
     Signal,
@@ -107,8 +109,8 @@ def define_tables(db: DatabaseContext, caching: CacheService | None = None) -> D
         CatalogFavoriteEd,
         rname="catalog_favorite_ed",
         format="%(entity_kind)s#%(entity_gid)s",
-        singular="Favoriet versie",
-        plural="Favoriet versies",
+        singular="Favoriet",
+        plural="Favorieten",
         redefine=True,
         migrate=False,
     )
@@ -543,6 +545,26 @@ def define_tables(db: DatabaseContext, caching: CacheService | None = None) -> D
         redefine=True,
         migrate=False,
         permissions=PERMISSION_READONLY,
+    )
+
+    db.define(
+        SchoolSubject,
+        rname="school_subject_model",
+        format="%(name)s",
+        singular="Vak",
+        plural="Vakken",
+        redefine=True,
+        migrate=False,
+        permissions=PERMISSION_MODEL_VIEW,
+    )
+    db.define(
+        SchoolSubjectEd,
+        rname="school_subject_ed",
+        format="%(name)s",
+        singular="Vak",
+        plural="Vakken",
+        redefine=True,
+        migrate=False,
     )
 
     setup_record_operators(db=db)

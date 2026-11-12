@@ -6,16 +6,26 @@ server-rendered routes backed by framework-light modules in `shared_code/modules
 
 ## Public Routes
 
-- `/producten` and `/methodes`: catalogue overview pages.
+- `/producten` and `/pakketten`: catalogue overview pages for `single` and `package`
+  products respectively. Components are excluded from both tabs. Each tab has its own
+  filter and sort configuration; composition cannot be changed through a request filter.
+- `/methodes`: redirects to the FAQ question that explains why packages replaced the
+  method overview. The method overview template and its htmx endpoints remain in place.
 - `/product/<gid>`: one publicly available product.
 - `/methode/<gid>`: one publicly available method.
 - `/compare/product/<gid>/<gid>/...`: compare two or more public products.
+- `/compare/package/<gid>/<gid>/...`: compare public packages separately from single
+  products. Each comparison route excludes products of the other compositions.
 - `/compare/methode/<gid>/<gid>/...`: compare two or more public methods.
 
 Detail routes return a styled 404 when the requested item does not exist or is not
 publicly available. Comparison routes require at least two valid UUIDs of one entity
 kind. Duplicate identifiers are ignored while preserving the original URL order;
 items that are no longer public are omitted and reported to the visitor.
+
+Packages retain the existing `/product/<gid>` detail pages and product favorite
+identity. Method data, derivation, detail pages and comparisons remain available.
+There is no redirect from `/methodes` to `/pakketten`; it points to the FAQ instead.
 
 ## Data Flow
 
@@ -77,6 +87,7 @@ used for their response.
 
 ## Related Docs
 
+- [Catalogue participation](catalogue-participation.md): supplier status import, live counts, and the HTMX widget contract.
 - [Catalogue filtering](catalog-filters.md): overview-page filter definitions and request handling.
 - [Search ranking](search-ranking.md): relevance weights behind free-text catalogue search.
 - [Payload type generation](../development/tooling.md#payload-type-generation): generated public payload types.

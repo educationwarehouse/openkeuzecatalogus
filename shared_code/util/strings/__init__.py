@@ -3,6 +3,15 @@
 import datetime as dt
 import json
 import typing as t
+from inspect import cleandoc
+
+
+def text_block(text: str) -> str:
+    """Remove indentation and surrounding blank lines from an indented multi-line string literal.
+
+    Text may start on the same line as the opening quotes; that first line is cleaned separately.
+    """
+    return cleandoc(text)
 
 
 def pluralize(word: str, count: int, plural: str = "", hide_count: bool = False) -> str:

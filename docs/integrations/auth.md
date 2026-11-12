@@ -6,6 +6,7 @@ Auth is implemented with py4web `Auth` and a project-specific wrapper in
 `py4web/common/models/backend/auth_cls.py`.
 
 Classes:
+
 - `AppAuth(Auth)`: custom auth adapter (`auth_cls.py`).
 - `LoggingAuthForms(DefaultAuthForms)`: logs auth actions to applog (`auth_forms.py`).
 
@@ -19,6 +20,7 @@ See [Auth and RBAC](../architecture/auth-rbac.md).
 ## Enabled Actions
 
 Configured `allowed_actions`:
+
 - `login`
 - `logout`
 - `request_magic_login`
@@ -39,6 +41,7 @@ Configured `allowed_actions`:
   both the request and token-consumption result.
 
 Logged metadata includes:
+
 - action
 - success/failure
 - user gid / email (if available)

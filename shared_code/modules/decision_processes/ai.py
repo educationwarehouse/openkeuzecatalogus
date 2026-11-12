@@ -1,7 +1,6 @@
 """Vision-enhancement request construction for decision processes."""
 
 import typing as t
-from inspect import cleandoc
 
 from pydantic import BaseModel, model_validator
 
@@ -13,6 +12,7 @@ from shared_code.data_model import (
 )
 from shared_code.services.llm import CompletionRequest
 from shared_code.services.llm.limits import validate_user_input
+from shared_code.util.strings import text_block
 from shared_code.util.types import MultiValue
 
 if t.TYPE_CHECKING:
@@ -59,7 +59,7 @@ class VisionEnhancementContext(BaseModel):
 
 def build_vision_enhancement_instructions(theme_label: str) -> str:
     """Build Dutch instructions for generating an enhanced vision for a theme."""
-    return cleandoc(f"""Je bent een onderwijskundige adviseur die docenten helpt bij het formuleren van
+    return text_block(f"""Je bent een onderwijskundige adviseur die docenten helpt bij het formuleren van
     een heldere en concrete visie op leermaterialen.
 
     BELANGRIJK: Gebruik ALLEEN de onderstaande informatie.

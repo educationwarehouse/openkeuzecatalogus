@@ -338,6 +338,7 @@ class BaseEduVImporter(AbstractImporter, abc.ABC):
             product_data.update(
                 olid=olid.generate("product", product_id),
                 name=identity.name,
+                product_family_name=(identity.product_family_name or "").strip() or None,
                 method_olid=olid.generate("method", self._method_key(identity.publisher, family_name)),
                 method_name=family_name,
             )
@@ -378,6 +379,7 @@ class BaseEduVImporter(AbstractImporter, abc.ABC):
                 "olid": olid.generate("product", product_id),
                 "isbn": product_id if self._looks_like_isbn(product_id) else None,
                 "name": product.name,
+                "product_family_name": (product.product_family_name or "").strip() or None,
                 "method_olid": olid.generate("method", self._method_key(product.publisher, family_name)),
                 "method_name": family_name,
                 "available": STATUS_MAPPING[product.status.value],

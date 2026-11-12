@@ -10,6 +10,7 @@ from typedal.helpers import classproperty
 from typedal.types import OpRow
 
 from shared_code.data_model.constants import ROLE_SUPPLIER
+from shared_code.data_model.constants.catalog import PARTICIPATION_LABELS
 from shared_code.data_model.mixins.search import SearchMixin
 from shared_code.data_model.representers.lists import comma_separated
 from shared_code.data_model.tables.base import EffdtTable
@@ -71,6 +72,13 @@ class SupplierEd(EffdtTable):
     name = TypedField(str, label="Naam", required=True)
     olid = TypedField(str, label="OLID", unique=True)
     logo_url = TypedField(str, label="Logo URL")
+    catalogue_participation_status = TypedField(
+        str,
+        label="Catalogusdeelname",
+        default="unknown",
+        requires=IS_IN_SET(PARTICIPATION_LABELS),
+        public=False,
+    )
     status_visions = TypedField(
         str,
         label="Status Visies",

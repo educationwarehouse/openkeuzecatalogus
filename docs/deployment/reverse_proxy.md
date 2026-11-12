@@ -1,12 +1,11 @@
-This repo uses a reverse proxy, for which we use Traefik. 
+This repo uses a reverse proxy, for which we use Traefik.
 
 This repo considers using the following traefik repository:
 https://github.com/educationwarehouse/reverse_proxy
 
 When using this repo, there are some requirements, traefik uses a broker network to communicate with other containers and uses labels to declare behaviour.
 
-
-The broker network is declared as following: 
+The broker network is declared as following:
 
 ```
 networks:
@@ -14,6 +13,7 @@ networks:
     name: broker
     external: true
 ```
+
 In the service under the network section it should be declared aswell:
 
 ```
@@ -44,4 +44,4 @@ It adds the domain which needs to be routed to the app and finally adds any corr
 
 The middlewares can either provide security and/or behaviour (like tls upgrade, www redirects, etc) and are either traefik standard or can be found within the traefik.yml in the revere_proxy repo.
 
-Setting up traefik yourself can done using the readme from the reverse_proxy repo. 
+Setting up traefik yourself can done using the readme from the reverse_proxy repo.

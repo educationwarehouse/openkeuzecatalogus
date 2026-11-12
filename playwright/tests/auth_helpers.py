@@ -21,7 +21,7 @@ class BrowserData(t.TypedDict):
     material_names: list[str]
 
 
-type BrowserScenario = t.Literal["process", "overview", "catalog", "material"]
+type BrowserScenario = t.Literal["process", "overview", "catalog", "material", "package"]
 
 
 class BrowserDataLoader(t.Protocol):

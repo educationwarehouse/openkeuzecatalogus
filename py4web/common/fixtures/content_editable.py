@@ -1,5 +1,6 @@
 """Template fixture for editable and projected static HTML content."""
 
+import dataclasses as dc
 import typing as t
 
 import bs4
@@ -22,6 +23,16 @@ class ScopeSectionQuery(t.NamedTuple):
     query: Query
     scope: str
     section: str
+
+
+@dc.dataclass
+class ContentRender:
+    """State shared by the tag transforms while rendering one page."""
+
+    scope: str
+    stored: dict[str, str]
+    sections_used: set[str] = dc.field(default_factory=set)
+    source_fallbacks: dict[str, str] = dc.field(default_factory=dict)
 
 
 class ContentEditableV2(Template):
@@ -87,17 +98,21 @@ class ContentEditableV2(Template):
         # turns output from dict to html:
         super().on_success(context)
 
-        html = str(context["output"])
+        context["output"] = self.render_html(str(context["output"]), scope=scope)
 
+    def render_html(self, html: str, scope: str) -> str:
+        """Replace content-editable and content-projection tags in already rendered HTML."""
         if not any(tag in html for tag in self._html_tags):
-            return
+            return html
 
         doc = self.parse_document(html)
+        # One query for every region on the page, instead of one per editable or projected tag.
+        render = ContentRender(scope=scope, stored=self.read_scope(scope))
 
-        source_fallbacks = self.process_edwh_editable(doc, scope=scope)
-        self.process_edwh_content(doc, scope=scope, source_fallbacks=source_fallbacks)
+        self.process_edwh_editable(doc, render)
+        self.process_edwh_content(doc, render)
 
-        context["output"] = str(doc)
+        return str(doc)
 
     @staticmethod
     def parse_document(html: str) -> bs4.BeautifulSoup:
@@ -119,37 +134,33 @@ class ContentEditableV2(Template):
         # parse_document would add html/head/body wrappers around the content.
         return bs4.BeautifulSoup(html, "html.parser")
 
-    def process_edwh_editable(self, doc: bs4.BeautifulSoup, scope: str) -> dict[str, str]:
-        """Transform editable tags and collect their fallback content by section."""
-        source_fallbacks: dict[str, str] = {}
-        sections_used = set()
+    def process_edwh_editable(self, doc: bs4.BeautifulSoup, render: ContentRender) -> None:
+        """Transform editable tags and collect their fallback content for later projections."""
         for tag in doc.find_all(TAG_EDWH_EDITABLE):
             if isinstance(section := tag.get("id"), str) and section:
-                source_fallbacks[section] = " ".join(str(child) for child in tag.contents)
+                render.source_fallbacks[section] = " ".join(str(child) for child in tag.contents)
 
-            self.content_editable_transform(scope, tag, sections_used=sections_used)
+            self.content_editable_transform(tag, render)
 
-        return source_fallbacks
-
-    def process_edwh_content(self, doc: bs4.BeautifulSoup, scope: str, source_fallbacks: dict[str, str]) -> None:
+    def process_edwh_content(self, doc: bs4.BeautifulSoup, render: ContentRender) -> None:
         """Transform read-only content tags using stored or editable fallback content."""
         for tag in doc.find_all(TAG_EDWH_CONTENT):
-            self.content_projection_transform(scope, tag, source_fallbacks=source_fallbacks)
+            self.content_projection_transform(tag, render)
 
-    def content_editable_transform(self, scope: str, elt: bs4.Tag, sections_used: set[str]) -> None:
+    def content_editable_transform(self, elt: bs4.Tag, render: ContentRender) -> None:
         """Convert one editable tag to a stored, editable HTML section."""
         section = elt.get("id")
         if not isinstance(section, str) or not section:
             raise ValueError(f"Content Editable Section has no ID:\n {elt}")
 
-        if section in sections_used:
+        if section in render.sections_used:
             raise ValueError(
-                f"Duplicate 'sections' in one scope ({scope}:{section})! Please make the sections unique.",
+                f"Duplicate 'sections' in one scope ({render.scope}:{section})! Please make the sections unique.",
             )
 
-        sections_used.add(section)
+        render.sections_used.add(section)
 
-        identifier = scope + "#" + section
+        identifier = render.scope + "#" + section
 
         elt.name = "div"
         elt["data-editable"] = "true"
@@ -158,7 +169,7 @@ class ContentEditableV2(Template):
         class_list.append("is-content-editable")
         elt["class"] = class_list
 
-        content = self.read_value(identifier)
+        content = render.stored.get(section)
 
         if content is None:
             content = " ".join(str(_) for _ in elt.contents)
@@ -169,20 +180,15 @@ class ContentEditableV2(Template):
         fragment = self.parse_fragment(content)
         elt.extend(fragment.contents)
 
-    def content_projection_transform(
-        self,
-        scope: str,
-        elt: bs4.Tag,
-        source_fallbacks: dict[str, str],
-    ) -> None:
+    def content_projection_transform(self, elt: bs4.Tag, render: ContentRender) -> None:
         """Replace a read-only projection with stored or fallback content."""
         section = elt.get("id")
         if not isinstance(section, str) or not section:
             raise ValueError(f"Content projection has no ID:\n {elt}")
 
-        content = self.read_value(f"{scope}#{section}")
+        content = render.stored.get(section)
         if content is None:
-            content = source_fallbacks.get(section) or " ".join(str(_) for _ in elt.contents)
+            content = render.source_fallbacks.get(section) or " ".join(str(_) for _ in elt.contents)
             content = self.normalize_fallback_content(content)
 
         fragment = self.parse_fragment(content)
@@ -219,6 +225,14 @@ class ContentEditableV2(Template):
         query &= table.section == section
 
         return ScopeSectionQuery(query, scope, section)
+
+    @classmethod
+    def read_scope(cls, scope: str) -> dict[str, str]:
+        """Read every stored section of one scope, keyed by section."""
+        table = cls._table
+        rows = db(table.scope == scope).select(table.section, table.content)
+
+        return {row.section: row.content for row in rows}
 
     @classmethod
     def read_value(cls, identifier: str) -> str | None:

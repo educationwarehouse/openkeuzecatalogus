@@ -25,11 +25,11 @@ Wanneer een bezoeker de website opent, stuurt het script data naar Umami. Deze d
 
 Voorbeelden van gegevens die Umami kan tonen:
 
-* pageviews
-* bezoekers
-* referrers
-* gebruikte pagina's
-* events
+- pageviews
+- bezoekers
+- referrers
+- gebruikte pagina's
+- events
 
 ## Configuratie
 
@@ -38,15 +38,15 @@ De configuratie staat in `docker-compose.yml` via environment variables.
 
 Belangrijke variabelen zijn:
 
-* `DATABASE_URL`: verbinding naar PostgreSQL
-* `APP_SECRET`: geheime sleutel voor authenticatie en sessies
+- `DATABASE_URL`: verbinding naar PostgreSQL
+- `APP_SECRET`: geheime sleutel voor authenticatie en sessies
 
 Voorbeeld:
 
 ```yaml
 environment:
-  DATABASE_URL: postgresql://${UMAMI_POSTGRES_USER}:${UMAMI_POSTGRES_PASSWORD}@umami-postgres:5432/${UMAMI_POSTGRES_DB}
-  APP_SECRET: ${UMAMI_APP_SECRET}
+    DATABASE_URL: postgresql://${UMAMI_POSTGRES_USER}:${UMAMI_POSTGRES_PASSWORD}@umami-postgres:5432/${UMAMI_POSTGRES_DB}
+    APP_SECRET: ${UMAMI_APP_SECRET}
 ```
 
 ## Starten
@@ -124,7 +124,7 @@ docker compose logs -f umami
 
 ## Aandachtspunten
 
-* `POSTGRES_PASSWORD` en de waarde in `DATABASE_URL` moeten overeenkomen.
-* `APP_SECRET` moet een vaste, willekeurige string zijn.
-* Verander het standaard admin-wachtwoord direct na de eerste login.
-* Voor iedere website moet het juiste tracking script geplaatst worden.
+- `POSTGRES_PASSWORD` en de waarde in `DATABASE_URL` moeten overeenkomen.
+- `APP_SECRET` moet een vaste, willekeurige string zijn.
+- Verander het standaard admin-wachtwoord direct na de eerste login.
+- Voor iedere website moet het juiste tracking script geplaatst worden.

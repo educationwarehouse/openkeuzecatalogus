@@ -10,7 +10,7 @@ from .settings import BASE_URL
 
 
 @pytest.mark.parametrize("width", [390, 1280])
-@pytest.mark.parametrize("path", ["methodes", "producten"])
+@pytest.mark.parametrize("path", ["producten", "pakketten"])
 def test_catalog_history_restores_results_without_requests(
     page: Page, seed_browser_data: BrowserDataLoader, width: int, path: str
 ) -> None:
@@ -87,15 +87,16 @@ def test_catalog_history_restores_results_without_requests(
     assert page.evaluate("sessionStorage.getItem('htmx-history-cache')") is None
 
 
-def test_history_without_browser_storage_uses_server(page: Page) -> None:
+@pytest.mark.parametrize(("path", "results_id"), [("producten", "product-results"), ("pakketten", "package-results")])
+def test_history_without_browser_storage_uses_server(page: Page, path: str, results_id: str) -> None:
     """Fall back to a server request when session storage is unavailable."""
     page.add_init_script("""Object.defineProperty(window, 'sessionStorage', {
         get() { throw new DOMException('Storage disabled', 'SecurityError'); }
     });""")
-    page.goto(f"{BASE_URL}/methodes")
-    expect(page.locator("#method-results h2")).to_be_visible()
+    page.goto(f"{BASE_URL}/{path}")
+    expect(page.locator(f"#{results_id} h2")).to_be_visible()
     page.get_by_role("navigation", name="Hoofdnavigatie").get_by_role("link", name="Home", exact=True).click()
-    expect(page.locator("main h1")).to_contain_text("Vind leermiddelen")
+    expect(page.locator("main h1")).to_contain_text("Van en voor scholen")
     page.go_back()
-    expect(page.locator("main h1")).to_have_text("Methodes & Producten")
-    expect(page.locator("#method-results h2")).to_be_visible()
+    expect(page.locator("main h1")).to_have_text("Pakketten & Producten")
+    expect(page.locator(f"#{results_id} h2")).to_be_visible()

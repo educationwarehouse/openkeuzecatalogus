@@ -32,6 +32,7 @@ from .method import Method, MethodEd
 from .organisation import Organisation, OrganisationEd
 from .product import Product, ProductEd
 from .rbac import Identity, Membership, RecursiveMembers
+from .school_subject import SchoolSubject, SchoolSubjectEd
 from .search_rank_weight import SearchRankWeight, SearchRankWeightEd
 from .static_content import StaticContent
 from .supplier import Supplier, SupplierEd
@@ -81,6 +82,8 @@ __all__ = [
     "Product",
     "ProductEd",
     "RecursiveMembers",
+    "SchoolSubject",
+    "SchoolSubjectEd",
     "SearchRankWeight",
     "SearchRankWeightEd",
     "Signal",

@@ -322,10 +322,10 @@ class SmartGrid[T: TableWithGid](Grid):
         if search.orderby:
             return search.orderby
         elif getattr(table, "sync_gid", None):
-            assert table.sync_gid
+            assert table.sync_gid, "The preceding check established that the table has a sync_gid field"
             return [~table.sync_gid]
         elif getattr(table, "effdt", None):
-            assert table.effdt and table.id
+            assert table.effdt and table.id, "An effective-dated table must expose effdt and id for stable ordering"
             return [~table.effdt, ~table.id]
         else:
             return [~table.id]
@@ -333,7 +333,7 @@ class SmartGrid[T: TableWithGid](Grid):
     def _setup_gid_represent(self, path: str, table: type[TableWithGid]) -> Field | None:
         if getattr(table, "gid", None) and table.gid and table.gid.readable:
             field_id = table.gid
-            assert field_id
+            assert field_id, "The preceding check established that the table has a readable gid field"
 
             # replace gid in grid with clipboard icon if 'select'
             # default to just showing the gid (e.g. 'select/archive' page)
@@ -420,7 +420,7 @@ class SmartGrid[T: TableWithGid](Grid):
     def render_archive(self) -> HTMLElement | FormWithParam:
         """Render the archive view for all versions of the current record."""
         table = self.table_ed
-        assert table and table.effdt
+        assert table and table.effdt, "Archive rendering requires a historical table with an effdt field"
 
         archive_scope = self.archive_query
         if archive_scope is None:

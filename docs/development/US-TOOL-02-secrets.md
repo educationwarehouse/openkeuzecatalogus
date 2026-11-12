@@ -4,7 +4,7 @@
 
 **Never store hardcoded secrets or credentials in a repository.**
 Requirement PvE §7.9 explicitly forbids it, and auditability demands the approach is
-*aantoonbaar correct* (demonstrably correct), not just factually correct.
+_aantoonbaar correct_ (demonstrably correct), not just factually correct.
 
 The solution is a two-layer system:
 
@@ -13,11 +13,11 @@ The solution is a two-layer system:
 
 ## Where Secrets Live
 
-| Layer | Path | Contents | Created by |
-|-------|------|----------|------------|
-| Env vars | `.env` (gitignored, never committed) | API keys, passwords, tokens, URIs | `edwh setup` → `edwh.check_env()` |
-| File secrets | `shared_keys/jwt.key` (dir gitignored) | 4096-byte hex JWT signing key | `generate_jwt_key()` |
-| File secrets | `py4web/password.txt` (gitignored) | py4web dashboard password | `setup_py4web_password()` |
+| Layer        | Path                                   | Contents                          | Created by                        |
+| ------------ | -------------------------------------- | --------------------------------- | --------------------------------- |
+| Env vars     | `.env` (gitignored, never committed)   | API keys, passwords, tokens, URIs | `edwh setup` → `edwh.check_env()` |
+| File secrets | `shared_keys/jwt.key` (dir gitignored) | 4096-byte hex JWT signing key     | `generate_jwt_key()`              |
+| File secrets | `py4web/password.txt` (gitignored)     | py4web dashboard password         | `setup_py4web_password()`         |
 
 ## `.gitignore` Protection
 
@@ -108,24 +108,24 @@ reference values from earlier ones.
 
 1. **Host identity**: `HOSTINGDOMAIN`, `APPLICATION_NAME`, `PROJECT`
 2. **Environment tier**: `STATE_OF_DEVELOPMENT` (ONT \| TEST \| DEMO \| PRD)
-   - Controls all subsequent defaults via `StateOfDevelopment`
+    - Controls all subsequent defaults via `StateOfDevelopment`
 3. **Network exposure**: `INTERNET_ACCESSIBLE`, `CERTRESOLVER`
-   - Production-like tiers default to internet-accessible + Let's Encrypt
+    - Production-like tiers default to internet-accessible + Let's Encrypt
 4. **Defaults gate** (ONT/TEST only): `ACCEPT_DEFAULTS`
-   - When `1`, all subsequent prompts use `force_default=True`
+    - When `1`, all subsequent prompts use `force_default=True`
 5. **Debug & scaling**: `PY4WEB_DEBUG_MODE`, `PY4WEB_REPLICAS`
-   - Dev: debug=1, replicas=1; Production: debug=0, replicas=3
+    - Dev: debug=1, replicas=1; Production: debug=0, replicas=3
 6. **Schema version and caching**: `SCHEMA_VERSION` (auto-computed hash, no
    prompt; doubles as the cache build id), `CACHE_BACKEND` (default `redis`),
    `REDIS_CACHE_DB` (only when the chain names `redis`, default `1`),
    `ROUTE_STATS` (dev `redis`, otherwise `applog`), `ROUTE_STATS_SLOW_MS`
    (only when the chain names `applog`, default `500`)
-   - `check_env` keeps existing values: a `.env` still carrying the old
-     `ROUTE_STATS=1` names no sink and records nothing until it is changed
-   - See [Caching](../architecture/caching.md)
+    - `check_env` keeps existing values: a `.env` still carrying the old
+      `ROUTE_STATS=1` names no sink and records nothing until it is changed
+    - See [Caching](../architecture/caching.md)
 7. **Subdomain**: `PY4WEB_SUBDOMAIN`
 8. **Applog credentials**: `PY4WEB_APPLOG_ID/KEY`, `TOOLS_APPLOG_ID/KEY`
-   - IDs use `hosting_domain`; keys are random
+    - IDs use `hosting_domain`; keys are random
 9. **Crypto seeds**: `EMAIL_VERIFICATION_SEED`, `DEFAULT_FROM_ADDRESS`
 10. **Error signals and notifications**: `ERROR_SIGNAL_BACKEND`,
     `ERROR_SIGNAL_QUEUE_PATH`, `NTFY_WARNING_URL`, `NTFY_SORT_URL`
@@ -164,15 +164,15 @@ New environment variables may be added as features evolve. The `setup` task is d
 
 Set via `tasks.py:StateOfDevelopment` (see [local-setup.md](local-setup.md) for the environment tier concept). Different defaults:
 
-| Variable | ONT/TEST | DEMO/PRD |
-|----------|----------|---------------|
-| `ACCEPT_DEFAULTS` | offered (default: 1) | not offered |
-| `ERROR_SIGNAL_BACKEND` | `mock` | `ntfy` |
-| `SMTP_FAKE` | 1 | 0 |
-| `PY4WEB_DEBUG_MODE` | 1 | 0 |
-| `PY4WEB_REPLICAS` | 1 | 3 |
-| `INTERNET_ACCESSIBLE` | 0 | 1 |
-| `CERTRESOLVER` | default | letsencrypt |
+| Variable               | ONT/TEST             | DEMO/PRD    |
+| ---------------------- | -------------------- | ----------- |
+| `ACCEPT_DEFAULTS`      | offered (default: 1) | not offered |
+| `ERROR_SIGNAL_BACKEND` | `mock`               | `ntfy`      |
+| `SMTP_FAKE`            | 1                    | 0           |
+| `PY4WEB_DEBUG_MODE`    | 1                    | 0           |
+| `PY4WEB_REPLICAS`      | 1                    | 3           |
+| `INTERNET_ACCESSIBLE`  | 0                    | 1           |
+| `CERTRESOLVER`         | default              | letsencrypt |
 
 Production-like environments require explicit input for every sensitive variable;
 unsafe defaults are never silently accepted.

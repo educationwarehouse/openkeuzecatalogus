@@ -31,7 +31,7 @@ def navigation_context() -> NavigationContext:
     path = request.path.rstrip("/") or "/"
     root_segment = path.removeprefix("/").partition("/")[0]
 
-    catalog_routes = {"producten", "methodes", "product", "methode", "supplier", "compare", "favorieten"}
+    catalog_routes = {"producten", "pakketten", "methodes", "product", "methode", "supplier", "compare", "favorieten"}
     if root_segment in catalog_routes or path == "/private/catalogus":
         return {"section": "catalogue", "label": "Catalogus", "current": "location"}
     elif path == "/private" or path.startswith("/private/"):

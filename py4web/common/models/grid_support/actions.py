@@ -109,7 +109,7 @@ class GridHeaderButton(GridActionButton):
 
         button = element(
             SPAN(
-                I(_class=f"fas {self.icon} px-1"),
+                I(_class=f"fas {self.icon} px-1") if self.icon else None,
                 SPAN(self.text, _class="px-1"),
                 **class_style,
             ),

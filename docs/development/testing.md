@@ -5,6 +5,7 @@
 Use `edwh test.run` as the standard command to run all test suites.
 
 This runs tests for:
+
 - `shared_code`
 - shared py4web tests in `py4web/tests` (inside `/p4w`)
 - app-local py4web tests in `py4web/apps/*/tests`
@@ -30,14 +31,15 @@ container test environment.
 ## Common Options
 
 `edwh test.run` supports these options:
+
 - `--verbose`: pass `-v` to pytest
 - `--show-output`: pass `-s` to pytest
 - `--exitfirst`: stop on first failure (`-x`); enabled by default in `ONT`
-  - `--no-exitfirst`: disable the default in `ONT`
+    - `--no-exitfirst`: disable the default in `ONT`
 - `--keyword-search "<expr>"`: pytest `-k` expression
 - `--extra "<args>"`: shell-style extra pytest args, split into individual arguments
 - `--coverage`: enable/disable coverage (defaults to enabled)
-  - disable explicitly with `--no-coverage`
+    - disable explicitly with `--no-coverage`
 - `TEST_PYTEST_DEFAULT_ARGS` (env var): default pytest args for direct `go-*` commands when no explicit pytest args are passed
 
 Examples:
@@ -77,9 +79,41 @@ to account for host load and compare cold and warm runs separately.
 Preserve database, migration, browser and side-effect isolation when optimizing the runner.
 Keep report files writable by host and container users, and merge every worker's coverage.
 
+### Optional test optimizations
+
+`TEST_OPTIMIZATIONS` defaults to `ram,template` on hosts with `STATE_OF_DEVELOPMENT=ONT`,
+and `none` elsewhere, including `TEST`. Set it in `.env` or override one run:
+
+```bash
+TEST_OPTIMIZATIONS=none ./venv/bin/ew test.run
+TEST_OPTIMIZATIONS=ram,template ./venv/bin/ew test.run
+```
+
+Combine options with commas; `none` must stand alone. Empty values and unknown names are rejected
+before the isolated database lifecycle starts.
+
+- `ram`: disposable PostgreSQL storage on a tmpfs, separate from the normal volume.
+  Applies to every task that runs inside the isolated test database lifecycle (`test.run`,
+  `test.go-shared-code`, `test.go-py4web`, `test.go-web` and `test.go-pgq`);
+  standalone `test.go-migrate` retains its normal storage and lifecycle.
+  Ensure sufficient host RAM; set `TEST_RAM_BYTES` (in bytes, default `2147483648` = 2 GiB) to adjust the limit.
+  RAM test runs disable pgAudit logging; the normal PostgreSQL configuration is unchanged.
+  PostgreSQL does not restart automatically in RAM mode: a restart would start on an empty tmpfs.
+  `COMPOSE_FILE` and `docker-compose.override.yml` are still loaded alongside the RAM overlay.
+- `template`: migrate once per shared-code session, then clone a fresh database per module using
+  `migrated_db_per_file`. Requires database creation privileges. Databases are never reused across runs.
+  Clones use PostgreSQL's `FILE_COPY` strategy (PostgreSQL 15+). The template gets the same extensions as
+  `postgres/extensions.sql`.
+- `startup`: skip the immediate py4web restart after recreation. Explicit opt-in only;
+  health checks and final coverage flushing remain enabled.
+
+Test selection, coverage collection and dedicated migration/snapshot fixtures retain their existing
+behaviour. Migration-specific tests should keep using their dedicated fixtures.
+
 ## Suite-Specific Commands
 
 Use these when you want to run a single suite:
+
 - `edwh test.go-shared-code`
 - `edwh test.go-py4web`
 - `edwh test.go-web`
@@ -193,27 +227,32 @@ edwh test.axe-core
 `shared_code/tests/conftest.py` provides reusable database fixtures for tests in `shared_code/tests`.
 
 Core fixtures:
+
 - `db_psql`: fresh Postgres `TypeDAL` per test.
 - `db`: same connection with shared tables defined.
 
 Lifecycle fixtures (function scope):
+
 - `wipe_db`: drop all non-system schemas and return DAL.
 - `run_migrations`: run pending migrations without wiping first.
 - `migrated_db`: wipe first, then run migrations.
 
 Lifecycle fixtures (file/module scope):
+
 - `wipe_db_per_file`: wipe once per test file.
 - `run_migrations_per_file`: migrate once per test file.
 - `migrated_db_per_file`: composed wipe + migrate once per file.
 - `db_per_file`: module-scoped DAL with tables defined after `migrated_db_per_file`.
 
 Snapshot fixtures:
+
 - `snapshot_session_per_file`: create a temporary `pg_dump` snapshot before first test in a file and restore on teardown.
 - `snapshot_session`: same lifecycle, but once per full pytest session.
 - `snapshot_name`: default snapshot directory name (`testing.snapshot`) used by `restored_db`.
 - `restored_db`: wipe, restore snapshot from `/data/<snapshot_name>`, then run migrations.
 
 Notes:
+
 - Snapshot data lives under `/data` in containers (bind-mounted from `migrate/data`).
 - `restored_db` expects `/data/<snapshot_name>` to exist and raises `FileNotFoundError` otherwise.
   If the directory exists but is empty, restoring will be skipped.
@@ -221,12 +260,14 @@ Notes:
 ## Coverage Behavior
 
 Coverage is collected per suite and written as JSON files under:
+
 - `shared_cache/pytest/cov.01_shared_code.json`
 - `shared_cache/pytest/cov.01_py4web.json`
 - `shared_cache/pytest/cov.01_pgq.json`
 - `shared_cache/pytest/cov.02_migrate.json`
 
 For browser-driven tests against the running `py4web` service, runtime coverage can be captured from the web process itself:
+
 - `edwh test.run` recreates `py4web` with
   `PY4WEB_COVERAGE_PROCESS_START=/p4w/coverage.py4web.toml`
   and `PY4WEB_COVERAGE_FILE=/shared_cache/pytest/.coverage.py4web.runtime`
@@ -252,9 +293,11 @@ When a file appears in multiple coverage reports, `edwh test.report` keeps the f
 
 `edwh test.report` aggregates those files into one combined summary and applies a threshold gate.
 It also combines coverage data files and always writes an HTML report to:
+
 - `shared_cache/pytest/htmlcov/index.html`
 
 Default threshold:
+
 - `80.0%`
 
 Override threshold:

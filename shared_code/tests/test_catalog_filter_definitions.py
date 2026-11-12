@@ -206,8 +206,16 @@ def test_sort_expression_parser_and_validator_cover_edge_cases(
         order_expression="name",
         sort_order=3,
     )
+    package_sort = dynamic_sort_factory(
+        slug=_unique_slug("package-sort"),
+        label="Package sort",
+        applies_to="package",
+        order_expression="recommended_price",
+        sort_order=4,
+    )
 
     assert validator("composition", record_id=product_sort.id) == ("composition", None)
+    assert validator("recommended_price", record_id=package_sort.id) == ("recommended_price", None)
     assert validator("composition", record_id=method_sort.id) == (None, "bad sort: onbekend veld composition")
     assert validator(" , ", record_id=both_sort.id) == (None, "bad sort: no sortable fields parsed")
 

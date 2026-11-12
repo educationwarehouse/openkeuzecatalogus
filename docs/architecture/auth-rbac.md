@@ -6,10 +6,10 @@ This project uses py4web auth for web-facing login flows, but authorization insi
 
 - `AppAuth` in `py4web/common/models/backend/auth_cls.py` handles login, logout, registration, email verification, and password reset flows.
 - `AuthAdapter` in `shared_code/modules/auth/contract.py` connects a runtime to the shared auth contract by providing:
-  - the current actor
-  - membership checks
-  - permission-scoped object identifiers
-  - optional membership mutation hooks
+    - the current actor
+    - membership checks
+    - permission-scoped object identifiers
+    - optional membership mutation hooks
 - `AuthContext` wraps the adapter and exposes framework-agnostic auth behavior to modules, policies, and table hooks.
 - `edwh_auth_rbac` is the low-level RBAC store used for groups, memberships, recursive memberships, and permissions.
 
@@ -58,8 +58,8 @@ At login and after email verification:
 - `AppAuth.store_user_in_session(...)` refreshes memberships
 - `AppAuth.grant_roles_after_email_verification(...)` refreshes memberships
 - the refresh currently includes:
-  - supplier memberships via `SupplierBackend.grant_memberships(...)`
-  - organisation memberships via `OrganisationBackend.grant_memberships(...)`
+    - supplier memberships via `SupplierBackend.grant_memberships(...)`
+    - organisation memberships via `OrganisationBackend.grant_memberships(...)`
 
 Membership assignment is data-driven:
 

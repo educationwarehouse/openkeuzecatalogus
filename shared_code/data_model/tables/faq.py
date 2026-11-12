@@ -28,6 +28,7 @@ class FaqQuestion(BaseTable):
     answer = TextField(label="Antwoord")
     show_on_homepage = TypedField(bool, label="Toon op homepage", default=False)
     sort_order = TypedField(int, label="Volgorde", default=0)
+    slug = TypedField(str | None, length=120, label="Anker", readable=False, writable=False)
 
     section = relationship(Ref[FaqSection], lambda question, faq_section: question.section_gid == faq_section.gid)
 

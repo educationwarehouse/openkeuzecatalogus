@@ -28,13 +28,13 @@ The `search_rank_weight` table stores one row per ranking rule:
 - `section` and `sort_order`: grouping and ordering in the admin editor only.
 - `label`: what the rule matches on, shown to the admin.
 - `source_field`: the field the search term is compared against.
-- `foreign_key`, `related_table`, `related_key`: set together to score a match on a *related*
+- `foreign_key`, `related_table`, `related_key`: set together to score a match on a _related_
   record. The rule then matches rows whose `foreign_key` points at a related row where
   `source_field` matches, for example a product matching on its supplier's name.
 - `exact`, `prefix`, `contains`, `trigram`: the scores, `0`-`5000` or empty.
 
 A score of `NULL` is not the same as `0`. An empty score removes that condition entirely, so it
-neither scores nor *finds* the row. A score of `0` keeps the row findable but awards no points.
+neither scores nor _finds_ the row. A score of `0` keeps the row findable but awards no points.
 
 ## Scoring Model
 
@@ -43,7 +43,7 @@ For every include term in the query:
 1. Each rule builds its conditions: `exact` (case-insensitive full match), `prefix`
    (`value%`), `contains` (substring), and `trigram` (PostgreSQL `similarity()` above the
    threshold, skipped for terms containing a space).
-2. A rule awards only its *strongest* matching condition, as a `CASE ... ELSE 0 END`, so a
+2. A rule awards only its _strongest_ matching condition, as a `CASE ... ELSE 0 END`, so a
    name that matches exactly does not additionally collect its prefix and contains points.
 3. Rule scores are summed across all rules and all include terms.
 

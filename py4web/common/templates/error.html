@@ -12,12 +12,16 @@
             <!-- Error Header -->
             <div class="error-header">
                 <h1 class="error-code">[[=error_code]]</h1>
+                [[block error_heading]]
                 <h2 class="error-title">[[=text]]</h2>
                 <h3 class="error-subtitle">[[=subtext]]</h3>
+                [[end]]
+                [[block error_actions]]
                 <nav class="error-actions" aria-label="Verder vanaf deze foutpagina">
                     <a class="okl-button okl-button--primary" href="[[=URL('index', use_appname=False)]]">Naar de startpagina</a>
                     <a class="okl-button okl-button--secondary" href="[[=URL('producten', use_appname=False)]]">Bekijk de catalogus</a>
                 </nav>
+                [[end]]
             </div>
 
             <!-- Ticket Section -->
@@ -39,6 +43,7 @@
             [[pass]]
 
             <!-- Support Section -->
+            [[block error_support]]
             <div class="support-section">
                 <div class="alert alert-info">
                     <h4 class="fw-bold mb-3">Hulp nodig?</h4>
@@ -61,6 +66,7 @@
                     [[pass]]
                 </div>
             </div>
+            [[end]]
 
             [[if not globals().get('is_admin', False):]]
             <section class="error-game" aria-labelledby="error-game-title">

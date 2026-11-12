@@ -7,7 +7,8 @@ import typing as t
 from typedal import QueryBuilder, TypedTable
 from typedal.types import OrderBy
 
-from shared_code.data_model import AnyDict, CatalogEntityKind, Method, Product
+from shared_code.data_model import AnyDict, Method, Product, ProductEd
+from shared_code.data_model.constants.catalog import CatalogListingKind
 from shared_code.data_model.validators.sort_expression import (
     CatalogSortTable,
     restore_sort_expression,
@@ -74,8 +75,8 @@ class CatalogSortOption[T: TypedTable](CachableProtocol):
 class CatalogFilterContext:
     """Context shared by filter definitions while building a listing."""
 
-    entity_kind: CatalogEntityKind
-    table: CatalogSortTable
+    entity_kind: CatalogListingKind
+    table: CatalogSortTable | type[ProductEd]
     params: AnyDict
     option_builder: QueryBuilder[t.Any]
 
@@ -111,7 +112,7 @@ class CatalogOptionPage:
 class ResolvedCatalogFilters:
     """Resolved filter definitions plus active values for one request."""
 
-    entity_kind: CatalogEntityKind
+    entity_kind: CatalogListingKind
     filters: list[BaseCatalogFilterDefinition]
     active_definitions: list[tuple[BaseCatalogFilterDefinition, str | list[str] | bool]]
     active_filter_count: int
@@ -147,11 +148,7 @@ class ResolvedCatalogFilters:
 
         all_options = definition.options()
         needle = query.strip().casefold()
-        matches = [
-            option
-            for option in all_options
-            if not needle or needle in option.label.casefold() or needle in option.value.casefold()
-        ]
+        matches = [option for option in all_options if definition.matches_option(option, needle)]
         options = matches[offset : offset + limit]
         next_offset = offset + len(options)
         current_value = definition.current_value

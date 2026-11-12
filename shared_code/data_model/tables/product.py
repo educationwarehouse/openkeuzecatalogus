@@ -24,6 +24,7 @@ class ProductEd(EffdtTable, SharedProductField):
 
     isbn = TypedField(str, label="ISBN")
     name = TypedField(str, label="Product Naam")
+    product_family_name = TypedField(str | None, default=None, label="Productfamilie")
     method_gid = UUIDReferenceField(label="Methode GID", notnull=True, public=True)
     payment_models = TypedField(list[str], label="Betaalmodellen", represent=comma_separated)
     product_usages = TypedField(list[str], label="Productgebruik", represent=comma_separated)

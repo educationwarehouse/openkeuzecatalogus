@@ -2,6 +2,7 @@
 
 import typing as t
 
+import pytest
 from typedal import TypeDAL
 
 from shared_code.data_model import MethodEd, ProductEd, Supplier, VisionEd
@@ -19,7 +20,14 @@ def _make_backend(db: TypeDAL) -> ComparisonBackend:
     )
 
 
+@pytest.mark.parametrize(
+    ("catalog_kind", "composition", "other_composition"),
+    [("product", "single", "package"), ("package", "package", "single")],
+)
 def test_product_comparison_keeps_url_order_and_uses_model_labels_and_representers(
+    catalog_kind: t.Literal["product", "package"],
+    composition: str,
+    other_composition: str,
     migrated_db_per_file: None,
     db_per_file: TypeDAL,
     supplier_factory: t.Callable[..., Supplier],
@@ -36,6 +44,7 @@ def test_product_comparison_keeps_url_order_and_uses_model_labels_and_represente
         method_gid=method.gid,
         olid="comparison-product-first",
         name="First Product",
+        composition=composition,
         levels=["Leerjaar 1", "Leerjaar 2"],
     )
     second = product_factory(
@@ -43,6 +52,7 @@ def test_product_comparison_keeps_url_order_and_uses_model_labels_and_represente
         method_gid=method.gid,
         olid="comparison-product-second",
         name="Second Product",
+        composition=composition,
     )
     removed = product_factory(
         supplier_gid=supplier.gid,
@@ -50,15 +60,30 @@ def test_product_comparison_keeps_url_order_and_uses_model_labels_and_represente
         olid="comparison-product-removed",
         name="Removed Product",
         available="verwijderd",
+        composition=composition,
+    )
+    other = product_factory(
+        supplier_gid=supplier.gid,
+        method_gid=method.gid,
+        olid="comparison-product-other",
+        name="Other Composition",
+        composition=other_composition,
+    )
+    component = product_factory(
+        supplier_gid=supplier.gid,
+        method_gid=method.gid,
+        olid="comparison-product-component",
+        name="Component",
+        composition="component",
     )
 
     page = _make_backend(db_per_file).load_public_comparison(
-        "product",
-        [second.gid, removed.gid, first.gid],
+        catalog_kind,
+        [second.gid, removed.gid, other.gid, component.gid, first.gid],
     )
 
     assert [record["name"] for record in page["records"]] == ["Second Product", "First Product"]
-    assert page["missing_count"] == 1
+    assert page["missing_count"] == 3
 
     fields = {field["name"]: field for field in page["fields"]}
     assert fields["name"] == {

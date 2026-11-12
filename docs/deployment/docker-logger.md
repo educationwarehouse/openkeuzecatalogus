@@ -10,12 +10,17 @@ De service wordt beheerd met de EDWH tooling:
 ew build
 ew up
 ```
+
 Voor leesbare logs staat JSON-output uit:
+
 ```
 JSON=false
 ```
+
 De logger sluit zichzelf uit met:
+
 ```
 EXCLUDE=logger
 ```
+
 Meer informatie over installatie, configuratie en veelgebruikte commands staat in de README van de edwh-docker-logger repository.

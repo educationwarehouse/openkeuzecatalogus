@@ -4,7 +4,7 @@ import datetime as dt
 
 import pytest
 
-from shared_code.util.strings import format_preview_value, pluralize
+from shared_code.util.strings import format_preview_value, pluralize, text_block
 
 
 def test_pluralize_returns_singular_form_with_count() -> None:
@@ -43,3 +43,24 @@ def test_pluralize_can_hide_the_count() -> None:
 def test_format_preview_value_formats_import_values_for_display(value: object, expected: str) -> None:
     """Import-preview values retain human-readable values and serialize structured data."""
     assert format_preview_value(value) == expected
+
+
+def test_text_block_removes_indentation_and_surrounding_blank_lines() -> None:
+    """An indented block starting after the opening quotes keeps only its relative layout."""
+    text = """
+        Eerste alinea
+        loopt door.
+
+            Ingesprongen regel.
+    """
+
+    assert text_block(text) == "Eerste alinea\nloopt door.\n\n    Ingesprongen regel."
+
+
+def test_text_block_cleans_text_starting_on_the_opening_line() -> None:
+    """Text on the same line as the opening quotes does not prevent dedenting the rest."""
+    text = """Eerste regel
+        tweede regel
+    """
+
+    assert text_block(text) == "Eerste regel\ntweede regel"

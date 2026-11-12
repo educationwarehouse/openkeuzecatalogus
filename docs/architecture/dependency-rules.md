@@ -5,21 +5,21 @@ These rules keep `shared_code/` easy to test and prevent framework or integratio
 ## Allowed Imports
 
 - `shared_code/modules/*`:
-  - may import `shared_code/data_model/*`
-  - may import service contracts/clients from `shared_code/services/*`
-  - may import runtime glue and policy helpers from `shared_code/infra/*`
-  - may import pure helpers from `shared_code/util/*`
-  - may import module-local `types.py` and helpers
+    - may import `shared_code/data_model/*`
+    - may import service contracts/clients from `shared_code/services/*`
+    - may import runtime glue and policy helpers from `shared_code/infra/*`
+    - may import pure helpers from `shared_code/util/*`
+    - may import module-local `types.py` and helpers
 - `shared_code/data_model/*`:
-  - may import shared contracts needed for table hooks and record operators
-  - should avoid importing feature workflows or delivery code
+    - may import shared contracts needed for table hooks and record operators
+    - should avoid importing feature workflows or delivery code
 - `shared_code/services/*`:
-  - may import third-party integration libraries
-  - may import shared typing/utilities
+    - may import third-party integration libraries
+    - may import shared typing/utilities
 - `shared_code/infra/*`:
-  - may import `shared_code/data_model/*`, `shared_code/services/*`, and `shared_code/util/*`
+    - may import `shared_code/data_model/*`, `shared_code/services/*`, and `shared_code/util/*`
 - `shared_code/tests/*`:
-  - may import any code under test from `shared_code/*`
+    - may import any code under test from `shared_code/*`
 
 ## Disallowed Imports
 

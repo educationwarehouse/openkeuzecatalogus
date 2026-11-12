@@ -25,6 +25,7 @@ from shared_code.migrations.migration_support import (
     MethodModelWithPrio_V1,
     OrganisationModelWithPrio_V1,
     ProductModelWithPrio_V1,
+    SchoolSubjectModelWithPrio_V1,
     SearchRankWeightModelWithPrio_V1,
     SupplierModelWithPrio_V1,
     TaggedModelWithPrio_V1,
@@ -40,6 +41,10 @@ from shared_code.migrations.migration_support.catalog_search_report import (
     CatalogSearchReport_V1c,
     CatalogSearchReport_V1d,
     CatalogSearchReport_V1e,
+)
+from shared_code.migrations.migration_support.catalog_search_settings import (
+    DynamicFilterModelWithPrio_V2,
+    DynamicSortModelWithPrio_V2,
 )
 from shared_code.migrations.migration_support.importer_run import (
     EduVDashboardReportV1,
@@ -61,10 +66,12 @@ from shared_code.migrations.migration_support.school_data_quality_reports import
     SchoolsWithoutHomepageUrlReport_V1,
     SchoolsWithoutHomepageUrlReport_V1b,
 )
+from shared_code.migrations.migration_support.school_subject import seed_school_subjects_2026_2027_v1
 from shared_code.migrations.migration_support.seeding import import_seed_relationships_v1, import_seed_table_v1
 from shared_code.modules.faq import parse_faq_seed
 from shared_code.util.email import email_domain_sql_v1
 from shared_code.util.olid import generate, generate_supplier_olid
+from shared_code.util.strings import text_block
 
 state_of_development = os.getenv("STATE_OF_DEVELOPMENT", "ONT").upper()
 seed_catalog_configuration = os.getenv("MIGRATE_SEED_CATALOG_CONFIGURATION", "").strip() == "1"
@@ -2286,6 +2293,75 @@ def add_catalog_search_recommendation_context_20261005_002(db: TypeDAL) -> bool:
     return True
 
 
+@migration(requires=add_supplier_endpoint_pagination_20260828_001)
+def add_supplier_catalogue_participation_20261102_001(db: TypeDAL) -> bool:
+    """Store catalogue participation separately from vision and live availability."""
+    with SupplierModelWithPrio_V1(db):
+        db.executesql("""
+            ALTER TABLE supplier_ed
+                ADD COLUMN catalogue_participation_status varchar(32) DEFAULT 'unknown';
+        """)
+
+    db.commit()
+    return True
+
+
+@migration(
+    requires=[create_effective_dated_dynamic_filters_20260831_001, create_effective_dated_dynamic_sorts_20260831_002]
+)
+def add_package_catalog_configuration_20261103_001(db: TypeDAL) -> bool:
+    """Copy product configuration into independent package filters and sorting."""
+    with DynamicFilterModelWithPrio_V2(db), DynamicSortModelWithPrio_V2(db):
+        "rebuild the models with scope-specific unique keys before copying settings"
+
+    db.executesql("""
+            INSERT INTO dynamic_filter_ed (
+                slug, label, filter_kind, field_name, match_mode, applies_to,
+                handler_key, widget_kind, is_active, sort_order, last_saved_by
+            )
+            SELECT slug, label, filter_kind, field_name, match_mode, 'package',
+                   handler_key, widget_kind, is_active, sort_order, 'migration/package-catalog'
+            FROM dynamic_filter_model
+            WHERE applies_to IN ('product', 'both')
+              AND field_name IS DISTINCT FROM 'composition';
+
+            INSERT INTO dynamic_sort_ed (
+                slug, label, order_expression, applies_to, is_active,
+                is_default, sort_order, last_saved_by
+            )
+            SELECT slug, label, order_expression, 'package', is_active,
+                   is_default, sort_order, 'migration/package-catalog'
+            FROM dynamic_sort_model
+            WHERE applies_to IN ('product', 'both');
+    """)
+
+    db.commit()
+    return True
+
+
+@migration(requires=add_package_catalog_configuration_20261103_001)
+def add_product_family_name_20261103_002(db: TypeDAL) -> bool:
+    """Store the imported family name and use it for product and package method filters."""
+    with ProductModelWithPrio_V1(db):
+        db.executesql("ALTER TABLE product_ed ADD COLUMN product_family_name varchar(512) DEFAULT NULL;")
+
+    db.executesql("""
+        INSERT INTO dynamic_filter_ed (
+            gid, slug, label, filter_kind, field_name, match_mode, applies_to,
+            handler_key, widget_kind, is_active, sort_order, prio, created_at, last_saved_by
+        )
+        SELECT gid, slug, label, 'dynamic', 'product_family_name', 'belongs', applies_to,
+               NULL, 'select', is_active, sort_order, prio, created_at, 'migration/product-family-name'
+        FROM dynamic_filter_model
+        WHERE applies_to IN ('product', 'package')
+          AND handler_key = 'method_lookup'
+          AND field_name = 'method_gid';
+    """)
+
+    db.commit()
+    return True
+
+
 @migration()
 def create_faq_tables_20261012_001(db: TypeDAL) -> bool:
     """Create the tables for admin-managed FAQ sections and questions."""
@@ -2351,6 +2427,41 @@ def seed_faq_questions_20261012_002(db: TypeDAL) -> bool:
 
 
 @migration()
+def create_school_subject_ed_20261102_001(db: TypeDAL) -> bool:
+    """Create effective-dated school subjects with standard names and aliases."""
+    with SchoolSubjectModelWithPrio_V1(db):
+        db.executesql("""
+            CREATE TABLE school_subject_ed (
+                id serial PRIMARY KEY,
+                gid uuid NOT NULL DEFAULT uuidv4(),
+                name varchar(512) NOT NULL,
+                aliases text NOT NULL DEFAULT '||'::text,
+                effdt timestamp NOT NULL DEFAULT utcnow(),
+                effstatus boolean NOT NULL DEFAULT TRUE,
+                prio integer NOT NULL DEFAULT 0,
+                last_saved_by varchar NOT NULL DEFAULT 'migration/create_school_subject_ed',
+                created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                sync_gid uuid NOT NULL DEFAULT uuidv7()
+                    CONSTRAINT school_subject_ed_unique_sync_gid UNIQUE
+            );
+
+            CREATE INDEX school_subject_ed_id_effdt
+                ON school_subject_ed (gid ASC, effdt DESC, id ASC);
+        """)
+    db.commit()
+    return True
+
+
+@migration(requires=create_school_subject_ed_20261102_001)
+def seed_school_subjects_2026_2027_20261102_002(db: TypeDAL) -> bool:
+    """Seed all standard school subjects and their unambiguous source aliases."""
+    seed_school_subjects_2026_2027_v1(db)
+    db.commit()
+    return True
+
+
+@migration()
 def add_signal_service_actor_20261105_001(db: TypeDAL) -> bool:
     """Preserve service identities without storing them in a UUID column."""
     db.executesql("ALTER TABLE signal ADD COLUMN service_actor varchar(255);")
@@ -2381,5 +2492,66 @@ def restrict_faq_section_deletion_20261106_002(db: TypeDAL) -> bool:
         ALTER TABLE faq_question ADD CONSTRAINT faq_question_section_gid_fkey
             FOREIGN KEY (section_gid) REFERENCES faq_section (gid) ON DELETE RESTRICT;
     """)
+    db.commit()
+    return True
+
+
+@migration(requires=create_faq_tables_20261012_001)
+def add_faq_question_slug_20261110_001(db: TypeDAL) -> bool:
+    """Give FAQ questions an optional internal anchor for stable deep links."""
+    db.executesql("""
+        ALTER TABLE faq_question ADD COLUMN slug varchar(120) DEFAULT NULL;
+        CREATE UNIQUE INDEX faq_question_slug_idx ON faq_question (slug) WHERE slug IS NOT NULL;
+    """)
+    db.commit()
+    return True
+
+
+@migration(requires=[seed_faq_questions_20261012_002, add_faq_question_slug_20261110_001])
+def add_methods_faq_question_20261110_002(db: TypeDAL) -> bool:
+    """Explain why the catalogue temporarily shows packages instead of methods."""
+    sections = db.executesql(
+        """
+        SELECT gid FROM faq_section
+        ORDER BY CASE WHEN title = %(section_title)s THEN 0 ELSE 1 END, sort_order, id
+        LIMIT 1;
+        """,
+        placeholders={"section_title": "Over de Open Keuzecatalogus"},
+    )
+    if not sections:
+        raise ValueError("Cannot add the methods explanation without an FAQ section")
+
+    section_gid = sections[0][0]
+
+    answer = text_block("""
+        De term \u2018methode\u2019 wordt in het Nederlandse onderwijs op verschillende manieren gebruikt en is in
+        de Edu-V-afspraken op dit moment niet eenduidig afgebakend. Een overzicht van methodes zou daardoor eerder
+        vragen oproepen dan helpen. Daarom gebruiken we die term voorlopig niet.
+
+        Wel vind je in de Open Keuzecatalogus een overzicht van de pakketten en de losse producten die aanbieders
+        beschikbaar stellen. Deze zijn op basis van de Edu-V-standaard wel goed af te bakenen.
+
+        Tegelijkertijd werken we samen met aanbieders en scholen toe naar een goede definitie van
+        \u2018methode\u2019, zodat we daar later ook een waardevol overzicht voor kunnen maken.
+
+        [→ Naar pakketten](/pakketten) [→ Naar losse producten](/producten)
+    """)
+
+    db.executesql(
+        """
+        INSERT INTO faq_question (section_gid, question, answer, show_on_homepage, sort_order, slug)
+        SELECT %(section_gid)s, %(question)s, %(answer)s, FALSE,
+               COALESCE(MAX(sort_order), 0) + 1, %(slug)s
+        FROM faq_question
+        WHERE section_gid = %(section_gid)s;
+        """,
+        placeholders={
+            "question": "Waarom geen overzicht van methodes?",
+            "answer": answer,
+            "slug": "waarom-geen-methodes",
+            "section_gid": section_gid,
+        },
+    )
+
     db.commit()
     return True

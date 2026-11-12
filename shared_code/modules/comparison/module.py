@@ -8,6 +8,7 @@ from typedal.tables import TypedRow
 
 from shared_code.data_model import Method, Product, Supplier
 from shared_code.data_model.constants import get_themes
+from shared_code.data_model.constants.catalog import CatalogListingKind
 from shared_code.data_model.fields import is_public_readable_field
 from shared_code.modules.catalog_filters import CatalogEntityKind
 from shared_code.modules.comparison.types import (
@@ -33,22 +34,23 @@ class ComparisonBackend(Domain):
     applog: Applogger
     visions: VisionBackend
 
-    def load_public_comparison(self, entity_kind: CatalogEntityKind, gids: Ordered[str]) -> ComparisonPage:
+    def load_public_comparison(self, entity_kind: CatalogListingKind, gids: Ordered[str]) -> ComparisonPage:
         """Return selected public records in URL order with their comparison payload."""
-        rows = (
-            self.methods.list_public_methods_for_comparison(gids)
-            if entity_kind == "method"
-            else self.products.list_public_products_for_comparison(gids)
-        )
+        if entity_kind == "method":
+            rows = self.methods.list_public_methods_for_comparison(gids)
+        else:
+            rows = self.products.list_public_products_for_comparison(gids, catalog_kind=entity_kind)
+
+        model_kind: CatalogEntityKind = "method" if entity_kind == "method" else "product"
         rows_by_gid = {row.gid: row for row in rows}
         ordered_rows = [rows_by_gid[gid] for gid in gids if gid in rows_by_gid]
-        visions_by_gid, vision_ids = self._comparison_visions(ordered_rows, entity_kind)
-        fields_by_gid = {row.gid: self._comparison_field_values(row, entity_kind) for row in ordered_rows}
-        fields = self._comparison_fields(ordered_rows, entity_kind, fields_by_gid)
+        visions_by_gid, vision_ids = self._comparison_visions(ordered_rows, model_kind)
+        fields_by_gid = {row.gid: self._comparison_field_values(row, model_kind) for row in ordered_rows}
+        fields = self._comparison_fields(ordered_rows, model_kind, fields_by_gid)
         visions = self._comparison_vision_rows(ordered_rows, visions_by_gid)
 
         self.applog.log_catalog_compare(
-            entity_kind,
+            model_kind,
             requested_gids=gids,
             rows=ordered_rows,
             vision_ids=vision_ids,

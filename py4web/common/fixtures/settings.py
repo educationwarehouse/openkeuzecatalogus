@@ -164,8 +164,8 @@ class SettingsFixture[T_Table: TypedTable](Fixture):
         gids = settings.pop("gids")
 
         table = self._table
-        assert issubclass(table, TableWithGid)
-        assert issubclass(table, SearchMixin)
+        assert issubclass(table, TableWithGid), "The bound search table must expose a GID for filtering"
+        assert issubclass(table, SearchMixin), "The bound search table must implement the whitelabel search API"
 
         builder = QueryBuilder(table)
         if gids:

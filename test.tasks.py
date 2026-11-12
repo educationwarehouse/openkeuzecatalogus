@@ -124,10 +124,49 @@ def record_test_run(c: Context) -> t.Generator[Path]:
         print(f"Test run {run_gid} ({metadata['status']}): {log_dir}")
 
 
+def enabled_test_optimizations() -> set[str]:
+    """Resolve explicit optimizations, defaulting to RAM and templates only on ONT."""
+    configured = os.environ.get("TEST_OPTIMIZATIONS")
+    if configured is None:
+        if os.environ.get("STATE_OF_DEVELOPMENT", "").strip().upper() == "ONT":
+            return {"ram", "template"}
+        else:
+            return set()
+
+    selected = {name.strip().lower() for name in configured.split(",")}
+    if selected == {"none"}:
+        return set()
+    elif selected - {"ram", "template", "startup"}:
+        raise ValueError("TEST_OPTIMIZATIONS must be 'none' or a comma-separated selection of ram, template, startup.")
+
+    return selected
+
+
+def ram_compose_files() -> list[str]:
+    """Keep the files Compose loads by default, which explicit -f flags would otherwise replace."""
+    if configured := os.environ.get("COMPOSE_FILE"):
+        files = configured.split(os.environ.get("COMPOSE_PATH_SEPARATOR", os.pathsep))
+    else:
+        files = ["docker-compose.yml"]
+        if Path("docker-compose.override.yml").exists():
+            files.append("docker-compose.override.yml")
+
+    return [*files, "docker-compose.test-ram.yml"]
+
+
+def compose_test_command() -> str:
+    """Select RAM-backed PostgreSQL for optimized isolated test runs."""
+    if os.environ.get("TEST_DATABASE_ISOLATED") == "1" and "ram" in enabled_test_optimizations():
+        compose_files = " ".join(f"-f {shlex.quote(file)}" for file in ram_compose_files())
+        return f"{DOCKER_COMPOSE} {compose_files}"
+    else:
+        return DOCKER_COMPOSE
+
+
 def docker_compose(c: Context, args: str) -> Result:
     """Run a docker compose command after enforcing non-production safety."""
     deny_in_productie()
-    return c.run(f"{DOCKER_COMPOSE} {args}", pty=True)
+    return c.run(f"{compose_test_command()} {args}", pty=True)
 
 
 def docker_compose_run(
@@ -433,6 +472,8 @@ def go_shared_code(
         updated_pytest_args.extend(coverage_args("shared_code", "01_shared_code"))
 
     with isolated_test_database(c):
+        environment["TEST_DATABASE_ISOLATED"] = "1"
+        environment["TEST_DATABASE_TEMPLATE"] = "1" if "template" in enabled_test_optimizations() else "0"
         result = go.body(
             c,
             container="migrate",
@@ -539,7 +580,7 @@ def wait_for_py4web(c: Context, attempts: int = 30, sleep_seconds: int = 1) -> N
 
 def recreate_py4web(c: Context, runtime_coverage: bool = True) -> None:
     """Recreate py4web with optional runtime coverage env for browser-driven tests."""
-    cmd = f"{DOCKER_COMPOSE} up -d --force-recreate py4web"
+    cmd = f"{compose_test_command()} up -d --force-recreate py4web"
     compose_env = default_testing_env()
     if runtime_coverage:
         compose_env["PY4WEB_COVERAGE_PROCESS_START"] = CONTAINER_PY4WEB_COVERAGE_CONFIG
@@ -569,7 +610,9 @@ def go_web(
         recreate_py4web(c, runtime_coverage=coverage)
 
         if coverage:
-            restart_py4web(c)
+            if "startup" not in enabled_test_optimizations():
+                restart_py4web(c)
+
             docker_compose(c, "up -d pgq-applog")
             edwh.tasks.wait_until_healthy(c, ["py4web", "pgq-applog"])
 
@@ -823,7 +866,7 @@ def coverage_args(
 
 @contextmanager
 def restore_database_after_tests(c: Context) -> t.Generator[None]:
-    """Run tests against a disposable postgres volume and remove it afterwards."""
+    """Run tests against disposable PostgreSQL storage and remove it afterwards."""
     volume_name = f"{os.environ['PROJECT']}_postgres_data_test_run"
     os.environ["POSTGRES_DATA_NAME"] = volume_name
     try:
@@ -844,6 +887,9 @@ def isolated_test_database(
     if os.environ.get("TEST_DATABASE_ISOLATED") == "1":
         yield
         return
+
+    # Reject an invalid TEST_OPTIMIZATIONS before any container changes, so cleanup never trips over it.
+    enabled_test_optimizations()
 
     os.environ["TEST_DATABASE_ISOLATED"] = "1"
     try:
@@ -1054,6 +1100,7 @@ def run_full_suite(
                 environment=environment,
                 coverage=coverage,
             )
+
             print(f"Finished suite: {test_name}: {results[test_name]}", flush=True)
             if log_dir is not None:
                 (log_dir / "suites.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
@@ -1082,6 +1129,7 @@ def run_full_suite(
 
 
 @task(
+    default=True,
     flags={
         "exitfirst": ("exitfirst", "x"),
         "no_wait_for_lock": ("no-wait-for-lock",),

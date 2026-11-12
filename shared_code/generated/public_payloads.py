@@ -37,6 +37,7 @@ class PublicProduct(t.TypedDict, total=False):
     """Generated public payload for Product."""
     isbn: str
     name: str
+    product_family_name: str | None
     method_gid: str
     payment_models: list[str]
     product_usages: list[str]

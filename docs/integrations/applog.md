@@ -5,6 +5,7 @@
 Application events are captured through `shared_code.services.applog.Applogger`.
 
 Current flow:
+
 1. Application code logs events (`Applogger.log_auth_action(...)` or `fire(...)`).
 2. Events are serialized into a local disk-backed deque (`DequeApplogger`) by default.
 3. `pgq-applog` runs a scheduled job every minute to process deque entries.
@@ -13,6 +14,7 @@ Current flow:
 ## Implementations
 
 `Applogger.from_env()` selects implementation via `APPLOG_FAKE`:
+
 - `APPLOG_FAKE=0` (default): `DequeApplogger` (queue-first async processing).
 - `APPLOG_FAKE=1`: `FileApplogger` (append-only JSONL at configured path).
 
@@ -25,10 +27,12 @@ Current flow:
 ## Queue Consumer
 
 The applog queue consumer lives in `pgq/consumers/applog.py`:
+
 - Schedule: `process_applog_deque_every_minute` (`* * * * *`)
 - Worker function: `process_applog_deque(db, batch_size=50, ...)`, with the PGQ job's database context passed in by the consumer.
 
 Batch behavior:
+
 - Reads up to `batch_size` records from deque.
 - Parses event payloads.
 - Persists rows through `process_applog_signal(...)`.
@@ -37,6 +41,7 @@ Batch behavior:
 ## Auth Events
 
 `py4web` auth actions are logged through `LoggingAuthForms` / `AppAuth`:
+
 - login / invalid login attempts
 - logout
 - register / verify_email / password flows from auth post-processing

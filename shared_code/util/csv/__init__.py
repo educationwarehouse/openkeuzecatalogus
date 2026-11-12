@@ -3,6 +3,7 @@
 import csv
 import io
 import typing as t
+from codecs import BOM_UTF8
 
 
 def utf8_csv_bytes[CsvKey: str](fieldnames: t.Sequence[CsvKey], rows: t.Iterable[t.Mapping[CsvKey, t.Any]]) -> bytes:
@@ -11,4 +12,4 @@ def utf8_csv_bytes[CsvKey: str](fieldnames: t.Sequence[CsvKey], rows: t.Iterable
     writer = csv.DictWriter(buffer, fieldnames=fieldnames)
     writer.writeheader()
     writer.writerows(rows)
-    return ("\ufeff" + buffer.getvalue()).encode()
+    return BOM_UTF8 + buffer.getvalue().encode("utf-8")

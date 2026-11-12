@@ -248,7 +248,7 @@ services:
       - "traefik.http.routers.${PROJECT}-fragments-secure.middlewares=strip-front-end-version, cors, www-redirect, edwh-std-security, regio-headers"
       - "traefik.http.routers.${PROJECT}-py4web-secure.tls=true"
       - "traefik.http.routers.${PROJECT}-py4web-secure.tls.certresolver=${CERTRESOLVER}"
-      - "traefik.http.routers.${PROJECT}-py4web-secure.rule=Host(`${PY4WEB_SUBDOMAIN}.${HOSTINGDOMAIN}`) || Host(`www.${PY4WEB_SUBDOMAIN}.${HOSTINGDOMAIN}`) || Host(`${HOSTINGDOMAIN}`)"
+      - "traefik.http.routers.${PROJECT}-py4web-secure.rule=Host(`${PY4WEB_SUBDOMAIN}.${HOSTINGDOMAIN}`) || Host(`www.${PY4WEB_SUBDOMAIN}.${HOSTINGDOMAIN}`) || Host(`${HOSTINGDOMAIN}`) || Host(`www.${HOSTINGDOMAIN}`)"
       - "traefik.http.routers.${PROJECT}-py4web-secure.middlewares=cors, www-redirect, edwh-std-security, regio-headers"
     healthcheck:
       test: [ "CMD", "curl", "-sf", "http://localhost:8000/healthcheck" ]

@@ -9,12 +9,12 @@ when one of them changes.
 `CACHE_BACKEND` is a comma-separated list of backends, fastest first. Unset
 means `none`; `docker-compose.yml` defaults it to `redis`.
 
-| Name | Store | Use |
-| --- | --- | --- |
-| `redis` | `REDIS_CACHE_HOST`/`PORT`, logical database `REDIS_CACHE_DB` (default `1`, clear of py4web's sessions on `0`) | deployments |
-| `postgres` | `cache_entry` + `cache_dependency` tables | second in a chain; survives a Redis outage |
-| `memory` | this process only | tests and local development; not shared between workers |
-| `none` | nothing | caching off, without any call site knowing |
+| Name       | Store                                                                                                         | Use                                                     |
+| ---------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `redis`    | `REDIS_CACHE_HOST`/`PORT`, logical database `REDIS_CACHE_DB` (default `1`, clear of py4web's sessions on `0`) | deployments                                             |
+| `postgres` | `cache_entry` + `cache_dependency` tables                                                                     | second in a chain; survives a Redis outage              |
+| `memory`   | this process only                                                                                             | tests and local development; not shared between workers |
+| `none`     | nothing                                                                                                       | caching off, without any call site knowing              |
 
 The `postgres` tables only exist if `CACHE_BACKEND` named `postgres` when
 `migrate` ran. See [conditional migrations](../development/migrations.md#environment-dependent-migrations)
@@ -133,12 +133,12 @@ and `admin()` and splits each request into handler, template render and fixture
 overhead. Routes that use neither aren't measured. `ROUTE_STATS` chooses where
 measurements go:
 
-| Value | Effect |
-| --- | --- |
-| `none` (or unset) | nothing recorded; the timing fixtures stay out of the request path |
-| `redis` | the counters behind the admin page (30-day retention) |
-| `applog` | one `slow_request` event per request slower than `ROUTE_STATS_SLOW_MS` (default 500 ms) |
-| `redis,applog` | both |
+| Value             | Effect                                                                                  |
+| ----------------- | --------------------------------------------------------------------------------------- |
+| `none` (or unset) | nothing recorded; the timing fixtures stay out of the request path                      |
+| `redis`           | the counters behind the admin page (30-day retention)                                   |
+| `applog`          | one `slow_request` event per request slower than `ROUTE_STATS_SLOW_MS` (default 500 ms) |
+| `redis,applog`    | both                                                                                    |
 
 Only `redis` can feed the admin page: ranking needs every request counted and a
 distinct count over request shapes, and neither survives a threshold. The page

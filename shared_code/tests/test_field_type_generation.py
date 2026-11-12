@@ -68,6 +68,7 @@ def test_payload_type_renderers_include_import_fields_and_exclude_private_public
 
     assert "class ImportProduct(t.TypedDict, total=False):" in import_payloads
     assert "    method_gid: str | None" in import_payloads
+    assert "    product_family_name: str | None" in import_payloads
     assert "    bundle_product_olids: list[str]" in import_payloads
     assert "    _errors: list[ImportErrorCode]" in import_payloads
     assert "    id:" not in import_payloads
@@ -76,4 +77,5 @@ def test_payload_type_renderers_include_import_fields_and_exclude_private_public
     assert "    recommended_price: float" in public_payloads
     assert "    gid: str" in public_payloads
     assert "    method_gid: str" in public_payloads
+    assert "    product_family_name: str | None" in public_payloads
     assert "    supplier_gid: str" in public_payloads

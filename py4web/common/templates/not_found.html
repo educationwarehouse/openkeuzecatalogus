@@ -1,0 +1,36 @@
+[[extend 'error.html']]
+
+[[block error_heading]]
+<edwh-editable id="title">
+    <h2 class="error-title">[[=text]]</h2>
+</edwh-editable>
+<edwh-editable id="subtitle">
+    <h3 class="error-subtitle">[[=subtext]]</h3>
+</edwh-editable>
+[[end]]
+
+[[block error_actions]]
+<nav class="error-actions" aria-label="Verder vanaf deze foutpagina">
+    <a class="okl-button okl-button--primary" href="[[=URL('index', use_appname=False)]]">
+        <edwh-editable id="home-label"><p class="mb-0">Naar de startpagina</p></edwh-editable>
+    </a>
+    <a class="okl-button okl-button--secondary" href="[[=URL('producten', use_appname=False)]]">
+        <edwh-editable id="catalogue-label"><p class="mb-0">Bekijk de catalogus</p></edwh-editable>
+    </a>
+</nav>
+[[end]]
+
+[[block error_support]]
+<div class="support-section">
+    <div class="alert alert-info">
+        <edwh-editable id="support">
+            <h4 class="fw-bold mb-3">Hulp nodig?</h4>
+            <p class="mb-2">
+                Neem dan contact met ons op via:
+                <a href="mailto:support@educationwarehouse.nl?subject=Foutmelding%20[[=error_code]]"
+                   class="alert-link fw-bold">support@educationwarehouse.nl</a>
+            </p>
+        </edwh-editable>
+    </div>
+</div>
+[[end]]

@@ -41,6 +41,8 @@ from shared_code.infra.database import database_context
 from shared_code.modules.auth import AuthAdapter
 from shared_code.modules.auth.contract import AuthActor, AuthContext
 from shared_code.services.applog import Applogger
+from shared_code.services.caching import MemoryCacheService
+from shared_code.tests.database_template import cloned_database, database_environment, migrated_template
 
 DEFAULT_SNAPSHOT_NAME = "testing.snapshot"
 MOCK_INBOX_PATH = Path(os.environ.get("SMTP_FAKE_INBOX_PATH", "/shared_cache/mail/mock_inbox.jsonl"))
@@ -304,9 +306,27 @@ def run_migrations_per_file() -> None:
     _run_migrate_subprocess()
 
 
+@pytest.fixture(scope="session")
+def template_database() -> t.Iterator[str]:
+    """Build the optional migrated template inside the runner's disposable cluster."""
+    if os.environ.get("TEST_DATABASE_ISOLATED") != "1":
+        raise RuntimeError("Database templates require the disposable database from test.go-shared-code or test.run.")
+
+    with migrated_template(_run_migrate_subprocess) as name:
+        yield name
+
+
 @pytest.fixture(scope="module")
-def migrated_db_per_file(wipe_db_per_file: None, run_migrations_per_file: None) -> None:
-    """Wipe and migrate once per test file."""
+def migrated_db_per_file(request: pytest.FixtureRequest) -> t.Iterator[None]:
+    """Wipe and migrate per file, or opt into a fresh clone of a migrated template."""
+    if os.environ.get("TEST_DATABASE_TEMPLATE") == "1":
+        template = request.getfixturevalue("template_database")
+        with cloned_database(template=template) as name, database_environment(name):
+            yield
+    else:
+        request.getfixturevalue("wipe_db_per_file")
+        request.getfixturevalue("run_migrations_per_file")
+        yield
 
 
 @pytest.fixture(scope="module")
@@ -316,6 +336,20 @@ def db_per_file(migrated_db_per_file: None) -> t.Iterator[TypeDAL]:
 
     with database_context("pytest.db_per_file") as database:
         yield database
+
+
+@pytest.fixture()
+def memory_caching(db_per_file: TypeDAL) -> t.Iterator[MemoryCacheService]:
+    """Wire an in-process cache into the tables, restoring the previous cache afterwards."""
+    previous = db_per_file.caching
+    service = MemoryCacheService.with_injected(db=db_per_file)
+    define_tables(db_per_file, caching=service)
+
+    try:
+        yield service
+    finally:
+        service.invalidate_all()
+        define_tables(db_per_file, caching=previous)
 
 
 def _unique_email(prefix: str, domain: str = "example.test") -> str:
@@ -518,6 +552,7 @@ def method_factory(db_per_file: TypeDAL) -> t.Iterator[t.Callable[..., MethodEd]
         name: str,
         available: str = "leverbaar",
         guide_price: float | None = None,
+        subjects: list[str] | None = None,
     ) -> MethodEd:
         row = MethodEd.insert(
             supplier_gid=supplier_gid,
@@ -525,6 +560,7 @@ def method_factory(db_per_file: TypeDAL) -> t.Iterator[t.Callable[..., MethodEd]
             name=name,
             available=available,
             guide_price=guide_price,
+            subjects=subjects or [],
         )
         assert row is not None
         db_per_file.commit()
@@ -557,6 +593,8 @@ def product_factory(db_per_file: TypeDAL) -> t.Iterator[t.Callable[..., ProductE
         description: str | None = None,
         recommended_price: float | None = None,
         tto: bool | None = None,
+        subjects: list[str] | None = None,
+        product_family_name: str | None = None,
     ) -> ProductEd:
         row = ProductEd.insert(
             supplier_gid=supplier_gid,
@@ -569,6 +607,8 @@ def product_factory(db_per_file: TypeDAL) -> t.Iterator[t.Callable[..., ProductE
             description=description,
             recommended_price=recommended_price,
             tto=tto,
+            subjects=subjects or [],
+            product_family_name=product_family_name,
         )
         assert row is not None
         db_per_file.commit()
@@ -625,9 +665,10 @@ def dynamic_filter_factory(db_per_file: TypeDAL) -> t.Iterator[t.Callable[..., D
         match_mode: str = "contains",
         handler_key: str | None = None,
         widget_kind: str | None = None,
+        unique_slug: bool = True,
     ) -> DynamicFilter:
         row = DynamicFilterEd.insert(
-            slug=_unique_slug(slug),
+            slug=_unique_slug(slug) if unique_slug else slug,
             label=label,
             filter_kind=filter_kind,
             field_name=field_name,
@@ -665,9 +706,10 @@ def dynamic_sort_factory(db_per_file: TypeDAL) -> t.Iterator[t.Callable[..., Dyn
         order_expression: str,
         sort_order: int,
         is_default: bool = False,
+        unique_slug: bool = True,
     ) -> DynamicSort:
         row = DynamicSortEd.insert(
-            slug=_unique_slug(slug),
+            slug=_unique_slug(slug) if unique_slug else slug,
             label=label,
             applies_to=applies_to,
             order_expression=order_expression,

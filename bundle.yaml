@@ -22,6 +22,7 @@ configurations:
       - $in_app/assets/js/catalogfilters.ts
       - $in_app/assets/js/comparison-selection.ts
       - $in_app/assets/js/catalog-detail.ts
+      - $in_app/assets/js/catalogue-participation.ts
       - $in_app/assets/js/platform-navigation.ts
       - $in_app/assets/js/motion.ts
     css: # to bundle.css

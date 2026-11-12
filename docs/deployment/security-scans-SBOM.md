@@ -5,16 +5,16 @@
 Deze configuratie voegt twee controles toe aan de bestaande n8n CI-flow:
 
 1. Security scan
-   - controleert Python dependencies met `pip-audit`
-   - controleert mogelijke secrets met `gitleaks`
-   - voert geen dependency fixes uit
-   - wijzigt niets in de repository
+    - controleert Python dependencies met `pip-audit`
+    - controleert mogelijke secrets met `gitleaks`
+    - voert geen dependency fixes uit
+    - wijzigt niets in de repository
 
 2. SBOM generatie
-   - genereert een CycloneDX SBOM met `syft`
-   - schrijft alleen `sbom/cyclonedx.json`
-   - commit en pusht alleen het SBOM-bestand naar de feature branch
-   - voert geen dependency updates of fixes uit
+    - genereert een CycloneDX SBOM met `syft`
+    - schrijft alleen `sbom/cyclonedx.json`
+    - commit en pusht alleen het SBOM-bestand naar de feature branch
+    - voert geen dependency updates of fixes uit
 
 De security scan is bedoeld als controle op kwetsbaarheden en mogelijke secrets. De SBOM is bedoeld om inzicht te geven in gebruikte componenten en om op verzoek een actuele CycloneDX SBOM te kunnen leveren.
 

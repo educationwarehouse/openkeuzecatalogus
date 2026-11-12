@@ -89,6 +89,7 @@ def similar_catalog(
         levels: list[str] | None = None,
         supplier: Supplier = supplier,
         available: str = "leverbaar",
+        composition: str = "single",
     ) -> ProductEd:
         method = method_factory(supplier_gid=supplier.gid, olid=uuid.uuid4().hex, name=f"{name} method")
         product = product_factory(
@@ -98,6 +99,7 @@ def similar_catalog(
             name=name,
             levels=levels if levels is not None else [f"Level {token} A"],
             available=available,
+            composition=composition,
         )
         product.update_record(subjects=subjects if subjects is not None else [f"Subject {token} A"])
         db_per_file.commit()
@@ -357,3 +359,30 @@ def test_normal_user_cannot_change_the_global_limit(
 
     assert visitor.get_limit() == 9
     assert similar_materials.get_limit() == 9
+
+
+@pytest.mark.parametrize(
+    ("source_composition", "catalog_kind", "expected_names"),
+    [
+        ("single", "product", {"Single match"}),
+        ("component", "product", {"Single match"}),
+        ("package", "package", {"Package match"}),
+    ],
+)
+def test_product_alternatives_stay_within_their_catalogue_tab(
+    similar_materials: SimilarMaterials,
+    similar_catalog: SimilarCatalog,
+    source_composition: str,
+    catalog_kind: t.Literal["product", "package"],
+    expected_names: set[str],
+) -> None:
+    """Packages suggest packages; single products and components suggest purchasable single products."""
+    source = similar_catalog["product"]("Source", composition=source_composition)
+    similar_catalog["product"]("Single match", composition="single")
+    similar_catalog["product"]("Package match", composition="package")
+    similar_catalog["product"]("Component match", composition="component")
+
+    payload: PublicProduct = public_readable_values(source, Product)
+    rows = similar_materials.for_product(payload, catalog_kind=catalog_kind)
+
+    assert {row.name for row in rows} == expected_names

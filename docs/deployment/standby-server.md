@@ -11,7 +11,7 @@ omgezet van OL1 naar OL2.
 ## Situatie
 
 | Server | Rol               | Private vSwitch IP |
-|--------|-------------------|--------------------|
+| ------ | ----------------- | ------------------ |
 | OL1    | Actieve productie | `192.168.100.2`    |
 | OL2    | Standby           | `192.168.100.1`    |
 

@@ -23,9 +23,9 @@ Voor alle PR's:
 - [ ] geen overgebleven FIXME's in code
 - [ ] security scans uitgevoerd en goed bevonden (via CI-flow)
 - [ ] SBOM gegenereerd en beschikbaar (via CI-flow)
-- [ ] SSD checks oke *(verplicht bij prd, anders optioneel)*
-- [ ] WCAG checks oke *(verplicht bij prd, anders optioneel)*
-- [ ] SIVON akkoord *(alleen voor prd)*
+- [ ] SSD checks oke _(verplicht bij prd, anders optioneel)_
+- [ ] WCAG checks oke _(verplicht bij prd, anders optioneel)_
+- [ ] SIVON akkoord _(alleen voor prd)_
 
 ## Opmerkingen
 

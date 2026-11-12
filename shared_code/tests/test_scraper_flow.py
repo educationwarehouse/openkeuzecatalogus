@@ -288,6 +288,7 @@ def test_import_methods_and_products_tracks_changes_errors_and_level_normalizati
     )
     assert method.levels == ["havo"]
     assert product.levels == ["havo"]
+    assert product.product_family_name is None
     assert product.follow_up_product != "None"  # str none ain't good
     assert latest_product_ed.follow_up_product is None
 
@@ -313,6 +314,7 @@ def test_import_methods_and_products_tracks_changes_errors_and_level_normalizati
                 "olid": product_olid,
                 "name": "Rekenen Werkboek",
                 "available": "beperkt leverbaar",
+                "product_family_name": "Rekenen Familie",
                 "method_gid": method_gid,
                 "method_olid": method_olid,
                 "levels": ["groep 4", "havo"],
@@ -332,6 +334,8 @@ def test_import_methods_and_products_tracks_changes_errors_and_level_normalizati
     updated_product = Product.where(Product.olid == product_olid).first_or_fail()
     assert updated_method.name == "Rekenen Basis Vernieuwd"
     assert updated_product.available == "beperkt leverbaar"
+    assert updated_product.product_family_name == "Rekenen Familie"
+    assert ProductEd.where(ProductEd.id == latest_product_ed.id).first_or_fail().product_family_name is None
 
 
 def test_import_validation_excludes_uuid_relationship_identifiers(
@@ -593,20 +597,39 @@ def test_eduv_product_and_method_bouw_and_tto(
 
 
 @pytest.mark.parametrize(
-    ("family_name", "expected_name"),
-    [("  Test Family  ", "Test Family"), ("  ", "Test Product")],
+    ("family_name", "expected_family", "expected_name"),
+    [
+        ("  Test Family  ", "Test Family", "Test Family"),
+        ("  ", None, "Test Product"),
+        ("", None, "Test Product"),
+        (None, None, "Test Product"),
+    ],
 )
-def test_eduv_method_identity_strips_whitespace(family_name: str, expected_name: str) -> None:
+def test_eduv_method_identity_strips_whitespace(
+    family_name: str | None, expected_family: str | None, expected_name: str
+) -> None:
     importer = EduVImporterV2(base_url="https://catalogus.edu-v.kennisnet.nl/v2/")
     product = _eduv_v2_product(publisher="  Test Publisher  ", productFamilyName=family_name)
 
     product_data = importer._convert_validated_product(product)
 
+    assert product_data["product_family_name"] == expected_family
     assert product_data["method_name"] == expected_name
     assert product_data["method_olid"] == generate("method", f"test publisher:{expected_name.lower()}")
 
 
-def test_eduv_invalid_product_keeps_normalized_method_identity() -> None:
+@pytest.mark.parametrize(
+    ("family_name", "expected_family", "expected_name"),
+    [
+        ("  Test Family  ", "Test Family", "Test Family"),
+        ("  ", None, "Test Product"),
+        ("", None, "Test Product"),
+        (None, None, "Test Product"),
+    ],
+)
+def test_eduv_invalid_product_keeps_normalized_method_identity(
+    family_name: str | None, expected_family: str | None, expected_name: str
+) -> None:
     importer = EduVImporterV2(
         base_url="https://catalogus.edu-v.kennisnet.nl/v2/",
         supplier_gid=str(uuid.uuid4()),
@@ -617,7 +640,7 @@ def test_eduv_invalid_product_keeps_normalized_method_identity() -> None:
             "productId": "9789402054958",
             "publisher": "  Test Publisher  ",
             "name": "Test Product",
-            "productFamilyName": "  Test Family  ",
+            "productFamilyName": family_name,
         },
         "_errors": [ImportErrorCode.ROW_VALIDATION_FAILED],
         "_validation_errors": [],
@@ -625,8 +648,18 @@ def test_eduv_invalid_product_keeps_normalized_method_identity() -> None:
 
     product_data = importer._convert_failing_product(invalid)
 
-    assert product_data["method_name"] == "Test Family"
-    assert product_data["method_olid"] == generate("method", "test publisher:test family")
+    assert product_data["product_family_name"] == expected_family
+    assert product_data["method_name"] == expected_name
+    assert product_data["method_olid"] == generate("method", f"test publisher:{expected_name.lower()}")
+
+
+def test_eduv_missing_product_family_does_not_use_the_product_name() -> None:
+    importer = EduVImporterV2(base_url="https://catalogus.edu-v.kennisnet.nl/v2/")
+
+    product_data = importer._convert_validated_product(_eduv_v2_product())
+
+    assert product_data["product_family_name"] is None
+    assert product_data["method_name"] == "Test Product"
 
 
 def test_eduv_product_references_are_unique_in_source_order() -> None:

@@ -119,7 +119,7 @@ class IS_SORT_EXPRESSION:
             row = DynamicSort(record_id)
             applies_to = row.applies_to if row and row.applies_to else None
 
-        if applies_to == "product":
+        if applies_to in {"product", "package"}:
             return (Product,)
         elif applies_to == "method":
             return (Method,)

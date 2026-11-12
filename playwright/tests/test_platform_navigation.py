@@ -29,7 +29,7 @@ def test_catalog_type_switch_preserves_shell_and_renders_one_response(page: Page
     requests = []
     page.on("request", lambda request: requests.append(request.url))
     tabs = page.get_by_role("navigation", name="Type leermiddelen")
-    for label, result_id in [("Methodes", "method-results"), ("Producten", "product-results")]:
+    for label, result_id in [("Pakketten", "package-results"), ("Producten", "product-results")]:
         tabs.get_by_role("link", name=label, exact=True).click()
         expect(page.locator(f"#{result_id} h2")).to_be_visible()
         expect(page.locator("main h1")).to_be_focused()
@@ -45,7 +45,7 @@ def test_catalog_to_landing_anchor_keeps_runtime_and_scrolls(page: Page) -> None
     page.get_by_text("Over het platform", exact=True).click()
     page.get_by_role("link", name="Over de Open Keuzecatalogus", exact=True).click()
     expect(page).to_have_url(re.compile(r"/#waarom$"))
-    expect(page.locator("#okl-page-status")).to_contain_text("Vind leermiddelen")
+    expect(page.locator("#okl-page-status")).to_contain_text("Van en voor scholen")
     assert page.evaluate("window.navigationRuntime === window.okl_track_save")
     assert 0 <= page.locator("#waarom").bounding_box()["y"] <= 120
 
@@ -56,7 +56,7 @@ def test_catalog_filter_labels_work_after_browser_back(page: Page) -> None:
     _wait_for_catalog_filters(page)
     expect(page.locator(".okl-catalog-page")).to_have_attribute("data-okl-history-ready", "true")
     page.get_by_role("navigation", name="Hoofdnavigatie").get_by_role("link", name="Home", exact=True).click()
-    expect(page.locator("main h1")).to_contain_text("Vind leermiddelen")
+    expect(page.locator("main h1")).to_contain_text("Van en voor scholen")
     page.go_back()
     expect(page.locator("#product-results h2")).to_be_visible()
     _wait_for_catalog_filters(page)
@@ -84,7 +84,7 @@ def test_boosted_navigation_keeps_filters_and_focus_after_back(page: Page) -> No
     page.evaluate("marker => { window.documentMarker = marker; }", marker)
 
     page.get_by_role("navigation", name="Hoofdnavigatie").get_by_role("link", name="Catalogus", exact=True).click()
-    expect(page.locator("main h1")).to_have_text("Methodes & Producten")
+    expect(page.locator("main h1")).to_have_text("Pakketten & Producten")
     expect(page.locator("main h1")).to_be_focused()
     assert page.evaluate("window.documentMarker") == marker
 
@@ -101,7 +101,7 @@ def test_boosted_navigation_keeps_filters_and_focus_after_back(page: Page) -> No
     expect(page).to_have_url(re.compile(r"q=biologie"))
 
     page.get_by_role("navigation", name="Hoofdnavigatie").get_by_role("link", name="Home", exact=True).click()
-    expect(page.locator("main h1")).to_contain_text("Vind leermiddelen")
+    expect(page.locator("main h1")).to_contain_text("Van en voor scholen")
     assert page.evaluate("window.documentMarker") == marker
     page.go_back()
     expect(page.get_by_role("searchbox", name="Zoekterm", exact=True)).to_have_value("biologie")
@@ -109,7 +109,7 @@ def test_boosted_navigation_keeps_filters_and_focus_after_back(page: Page) -> No
     expect(page.locator("main h1")).to_be_focused()
     assert page.evaluate("window.documentMarker") == marker
     page.go_forward()
-    expect(page.locator("main h1")).to_contain_text("Vind leermiddelen")
+    expect(page.locator("main h1")).to_contain_text("Van en voor scholen")
     assert not errors
 
 
@@ -126,7 +126,7 @@ def test_reduced_motion_skips_view_transitions(page: Page) -> None:
         };
     }""")
     page.get_by_role("navigation", name="Hoofdnavigatie").get_by_role("link", name="Catalogus", exact=True).click()
-    expect(page.locator("main h1")).to_have_text("Methodes & Producten")
+    expect(page.locator("main h1")).to_have_text("Pakketten & Producten")
     expect(page.locator("main h1")).to_be_focused()
     assert page.evaluate("window.transitionCalls") == 0
 
@@ -136,9 +136,9 @@ def test_navigation_without_view_transition_support(page: Page) -> None:
     page.goto(f"{BASE_URL}/index")
     page.evaluate("document.startViewTransition = undefined")
     page.get_by_role("navigation", name="Hoofdnavigatie").get_by_role("link", name="Catalogus", exact=True).click()
-    expect(page.locator("main h1")).to_have_text("Methodes & Producten")
+    expect(page.locator("main h1")).to_have_text("Pakketten & Producten")
     expect(page.locator("main h1")).to_be_focused()
-    expect(page.locator("#okl-page-status")).to_have_text("Methodes & Producten")
+    expect(page.locator("#okl-page-status")).to_have_text("Pakketten & Producten")
 
 
 def test_catalog_detail_uses_named_transition_and_preserves_document(page: Page) -> None:
@@ -179,7 +179,7 @@ def test_mobile_menu_and_select_survive_boosted_navigation(page: Page) -> None:
     drawer = page.locator("#okl-navigation-drawer")
     expect(drawer).to_be_visible()
     drawer.get_by_role("link", name=re.compile("Catalogus Vind")).click()
-    expect(page.locator("main h1")).to_have_text("Methodes & Producten")
+    expect(page.locator("main h1")).to_have_text("Pakketten & Producten")
     expect(page.locator("main h1")).to_be_focused()
     assert page.locator("main").evaluate("element => !element.inert")
     _wait_for_catalog_filters(page)
@@ -294,9 +294,9 @@ def test_landing_interactions_reinitialize_after_boosted_return(page: Page) -> N
         expect(page.locator("#okl-discussion")).to_have_class(re.compile("is-full"))
         page.evaluate('window.scrollTo({top: 0, behavior: "instant"})')
         page.get_by_role("navigation", name="Hoofdnavigatie").get_by_role("link", name="Catalogus", exact=True).click()
-        expect(page.locator("main h1")).to_have_text("Methodes & Producten")
+        expect(page.locator("main h1")).to_have_text("Pakketten & Producten")
         page.get_by_role("navigation", name="Hoofdnavigatie").get_by_role("link", name="Home", exact=True).click()
-        expect(page.locator("main h1")).to_contain_text("Vind leermiddelen")
+        expect(page.locator("main h1")).to_contain_text("Van en voor scholen")
 
 
 def test_compact_catalog_rows_and_comparison_actions(page: Page) -> None:
@@ -330,5 +330,5 @@ def test_compact_catalog_rows_and_comparison_actions(page: Page) -> None:
         return link.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
     }""")
     remove.click()
-    expect(page.locator("main h1")).to_have_text("Methodes & Producten")
+    expect(page.locator("main h1")).to_have_text("Pakketten & Producten")
     expect(page.locator(".catalog-result-item input:checked")).to_have_count(1)

@@ -1,5 +1,7 @@
 """Tests for the admin-managed FAQ sections, questions and seed conversion."""
 
+import psycopg2.errors
+import pytest
 from typedal import TypeDAL
 
 from shared_code.data_model import FaqQuestion, FaqSection
@@ -53,6 +55,38 @@ def test_faq_question_defaults(migrated_db_per_file: None, db_per_file: TypeDAL)
     assert saved is not None
     assert saved.show_on_homepage is False
     assert saved.sort_order == 0
+
+
+def test_methods_faq_question_is_linkable_after_migration(migrated_db_per_file: None) -> None:
+    """The migrated method explanation closes its section and keeps a stable anchor."""
+    assert migrated_db_per_file is None
+
+    question = FaqQuestion.where(FaqQuestion.slug == "waarom-geen-methodes").join("section").collect().first()
+
+    assert question is not None
+    assert question.question == "Waarom geen overzicht van methodes?"
+    assert question.section.title == "Over de Open Keuzecatalogus"
+    assert question.show_on_homepage is False
+    assert "[→ Naar pakketten](/pakketten)" in question.answer
+    assert "[→ Naar losse producten](/producten)" in question.answer
+
+    section_sort_orders = FaqQuestion.where(FaqQuestion.section_gid == question.section_gid).column(
+        FaqQuestion.sort_order
+    )
+    assert question.sort_order == max(section_sort_orders)
+
+
+def test_faq_question_slug_is_unique(migrated_db_per_file: None, db_per_file: TypeDAL) -> None:
+    """Two questions cannot claim the same anchor, while questions without one are unrestricted."""
+    section = FaqSection.insert(title="Sectie", sort_order=1)
+    FaqQuestion.insert(section_gid=section.gid, question="Zonder anker A", answer="Antwoord")
+    FaqQuestion.insert(section_gid=section.gid, question="Zonder anker B", answer="Antwoord")
+    FaqQuestion.insert(section_gid=section.gid, question="Met anker", answer="Antwoord", slug="dubbel-anker")
+    db_per_file.commit()
+
+    with pytest.raises(psycopg2.errors.UniqueViolation):
+        FaqQuestion.insert(section_gid=section.gid, question="Ook met anker", answer="Antwoord", slug="dubbel-anker")
+    db_per_file.rollback()
 
 
 def test_faq_question_requires_question_text(migrated_db_per_file: None) -> None:

@@ -67,7 +67,9 @@ monitor replica memory too. Recreate the Redis containers to apply these options
 - FIXME marker detection in source comments
 - custom EW lint rules from `linting.tasks.py`
 
-`edwh fmt` also formats JavaScript and TypeScript files with Prettier via `bunx`.
+`edwh fmt` also formats JavaScript, TypeScript, application SCSS, and Markdown with Prettier via `bunx`.
+Markdown tables are aligned automatically; existing paragraph wrapping is preserved.
+Superset exports and the project virtual environment are excluded.
 When Bun is absent, the formatting and TypeScript checks install it with Bun's official installer.
 
 Current custom EW rules:

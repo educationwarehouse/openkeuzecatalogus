@@ -24,17 +24,17 @@ Gatus leest bij het opstarten de configuratie uit `config.yml`. In deze configur
 
 Een endpoint is een URL die periodiek gecontroleerd wordt. Voor ieder endpoint wordt ingesteld:
 
-* welke URL gecontroleerd wordt;
-* hoe vaak de controle uitgevoerd wordt;
-* aan welke voorwaarden de response moet voldoen.
+- welke URL gecontroleerd wordt;
+- hoe vaak de controle uitgevoerd wordt;
+- aan welke voorwaarden de response moet voldoen.
 
 Wanneer een endpoint niet voldoet aan de ingestelde voorwaarden, markeert Gatus deze als ongezond.
 
 Voorbeelden van voorwaarden zijn:
 
-* de HTTP-status moet `200` zijn;
-* de response time moet lager zijn dan een ingestelde waarde;
-* het SSL-certificaat moet nog minimaal een bepaalde tijd geldig zijn.
+- de HTTP-status moet `200` zijn;
+- de response time moet lager zijn dan een ingestelde waarde;
+- het SSL-certificaat moet nog minimaal een bepaalde tijd geldig zijn.
 
 ## Configuratiebestand
 
@@ -48,14 +48,14 @@ In `docker-compose.yml` wordt dit bestand in de container gemount:
 
 ```yaml
 volumes:
-  - ./config.yml:/config/config.yml:ro
+    - ./config.yml:/config/config.yml:ro
 ```
 
 De Gatus-container gebruikt dit bestand via:
 
 ```yaml
 environment:
-  GATUS_CONFIG_PATH: /config/config.yml
+    GATUS_CONFIG_PATH: /config/config.yml
 ```
 
 ## Basisconfiguratie
@@ -64,12 +64,12 @@ Een minimale configuratie bevat minimaal één endpoint.
 
 ```yaml
 endpoints:
-  - name: example
-    group: test
-    url: "https://example.org"
-    interval: 1m
-    conditions:
-      - "[STATUS] == 200"
+    - name: example
+      group: test
+      url: "https://example.org"
+      interval: 1m
+      conditions:
+          - "[STATUS] == 200"
 ```
 
 Zonder endpoint start Gatus niet op. De foutmelding is dan meestal:
@@ -86,13 +86,13 @@ Voorbeeld:
 
 ```yaml
 endpoints:
-  - name: website-health
-    group: websites
-    url: "https://example.nl/health"
-    interval: 1m
-    conditions:
-      - "[STATUS] == 200"
-      - "[RESPONSE_TIME] < 1000"
+    - name: website-health
+      group: websites
+      url: "https://example.nl/health"
+      interval: 1m
+      conditions:
+          - "[STATUS] == 200"
+          - "[RESPONSE_TIME] < 1000"
 ```
 
 ### Velden
@@ -115,7 +115,7 @@ endpoints:
   url: "https://example.nl"
   interval: 1m
   conditions:
-    - "[STATUS] == 200"
+      - "[STATUS] == 200"
 ```
 
 ### Health endpoint controleren
@@ -126,8 +126,8 @@ endpoints:
   url: "https://example.nl/health"
   interval: 1m
   conditions:
-    - "[STATUS] == 200"
-    - "[RESPONSE_TIME] < 1000"
+      - "[STATUS] == 200"
+      - "[RESPONSE_TIME] < 1000"
 ```
 
 ### API controleren
@@ -138,8 +138,8 @@ endpoints:
   url: "https://api.example.nl/health"
   interval: 1m
   conditions:
-    - "[STATUS] == 200"
-    - "[RESPONSE_TIME] < 1500"
+      - "[STATUS] == 200"
+      - "[RESPONSE_TIME] < 1500"
 ```
 
 ### SSL-certificaat controleren
@@ -150,8 +150,8 @@ endpoints:
   url: "https://example.nl"
   interval: 6h
   conditions:
-    - "[STATUS] == 200"
-    - "[CERTIFICATE_EXPIRATION] > 168h"
+      - "[STATUS] == 200"
+      - "[CERTIFICATE_EXPIRATION] > 168h"
 ```
 
 ## Wijzigingen toepassen
@@ -196,8 +196,8 @@ docker compose logs -f gatus
 
 ## Aandachtspunten
 
-* Gatus heeft minimaal één endpoint nodig om te starten.
-* Na wijzigingen in `config.yml` moet de Gatus-container opnieuw gestart worden.
-* Gebruik duidelijke namen en groepen voor endpoints.
-* Gebruik voor health checks bij voorkeur specifieke `/health` endpoints in plaats van alleen de homepage.
-* Controleer na iedere wijziging de logs om configuratiefouten snel te vinden.
+- Gatus heeft minimaal één endpoint nodig om te starten.
+- Na wijzigingen in `config.yml` moet de Gatus-container opnieuw gestart worden.
+- Gebruik duidelijke namen en groepen voor endpoints.
+- Gebruik voor health checks bij voorkeur specifieke `/health` endpoints in plaats van alleen de homepage.
+- Controleer na iedere wijziging de logs om configuratiefouten snel te vinden.

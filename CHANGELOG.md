@@ -1,5 +1,40 @@
 # CHANGELOG
 
+## 12-11-2026
+
+### Features
+
+#### Catalogus en filters
+
+- Afzonderlijke catalogusoverzichten voor pakketten en losse producten ingericht, met eigen filters, sortering, vergelijkingen en aanbevelingen
+- Productdetailgegevens uitgebreid met pakketonderdelen en pakketten waarin het product voorkomt
+- Productfamilienamen uit Edu-V beschikbaar gemaakt voor filtering op producten en pakketten
+- Vakfilters voorzien van standaardnamen en aliassen, met behoud van oorspronkelijke leveranciersgegevens
+- Beheer van vaknamen en aliassen toegevoegd, inclusief het koppelen van onbekende vaknamen
+- FAQ uitgebreid met uitleg over het gebruik van pakketten in plaats van een methodeoverzicht
+
+#### Publieke website en beheer
+
+- Catalogusdeelname van aanbieders inzichtelijk gemaakt met aantallen en aanbiederslijsten per deelnamestatus
+- CSV-import voor catalogusdeelname toegevoegd, met controle van aanbiederskoppelingen en statussen vooraf
+- Teksten en navigatieacties op de 404-pagina bewerkbaar gemaakt voor beheerders
+- Platformnavigatie aangepast met een link naar SIVON en zichtbaarheid van de visie-keuzemodule voor ingelogde gebruikers
+
+### Internals
+
+#### Betrouwbaarheid en performance
+
+- HTMX-doorverwijzingen verbeterd met behoud van de volledige bestemmings-URL
+- Databaseopvragingen voor bewerkbare pagina-inhoud gebundeld per pagina
+- Cache-invalidatie uitgebreid voor vaknamen en pakketrelaties
+- Standaardfoutpagina behouden als terugval wanneer bewerkbare 404-inhoud niet beschikbaar is
+
+#### Testen en ontwikkeltooling
+
+- Testuitvoering versneld met ondersteuning voor PostgreSQL in RAM en herbruikbare gemigreerde databasetemplates
+- Testdekking uitgebreid voor pakketten, vakfilters, catalogusdeelname en bewerkbare pagina’s
+- Architectuur-, beheer-, deployment- en testdocumentatie bijgewerkt
+
 ## 10-11-2026
 
 ### Features

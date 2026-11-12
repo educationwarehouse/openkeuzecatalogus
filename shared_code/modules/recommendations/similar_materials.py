@@ -7,6 +7,7 @@ from typedal import PaginatedRows, QueryBuilder
 from typedal.types import OrderBy
 
 from shared_code.data_model import Method, Product
+from shared_code.data_model.constants.catalog import CatalogListingKind
 from shared_code.generated.public_payloads import PublicMethod, PublicProduct
 from shared_code.modules.catalog_filters import CatalogEntityKind, any_value_matches
 from shared_code.modules.catalogus_settings import CatalogusSettings
@@ -48,9 +49,13 @@ class SimilarMaterials(Domain):
             raise ValueError("Vul een geheel getal van minimaal 1 in.")
         self.settings.set(SIMILAR_MATERIAL_LIMIT_KEY, value=limit)
 
-    def for_product(self, source: PublicProduct) -> PaginatedRows[Product]:
-        """Return other public products sharing a subject and a level."""
-        return self._find(Product, self.products.public_recommendation_candidates(), source, entity_kind="product")
+    def for_product(
+        self, source: PublicProduct, catalog_kind: t.Literal["product", "package"] = "product"
+    ) -> PaginatedRows[Product]:
+        """Return other public products of the same catalogue tab sharing a subject and a level."""
+        composition = "package" if catalog_kind == "package" else "single"
+        candidates = self.products.public_recommendation_candidates().where(Product.composition == composition)
+        return self._find(Product, candidates, source, entity_kind="product", catalog_kind=catalog_kind)
 
     def for_method(self, source: PublicMethod) -> PaginatedRows[Method]:
         """Return other public methods sharing a subject."""
@@ -62,6 +67,7 @@ class SimilarMaterials(Domain):
         candidates: QueryBuilder[T],
         source: PublicMethod | PublicProduct,
         entity_kind: CatalogEntityKind,
+        catalog_kind: CatalogListingKind | None = None,
     ) -> PaginatedRows[T]:
         subjects = sorted(set(source.get("subjects") or []) - {""})
         levels = sorted(set(source.get("levels") or []) - {""})
@@ -72,6 +78,7 @@ class SimilarMaterials(Domain):
         with self.caching(
             "catalog.similar",
             f"{entity_kind=}",
+            f"{catalog_kind=}",
             f"{source_gid=}",
             f"{subjects=}",
             f"{levels=}",

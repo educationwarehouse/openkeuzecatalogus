@@ -10,6 +10,7 @@ For full architecture details, read [docs/README.md](docs/README.md).
 Core code lives under `shared_code/` and is intentionally framework-light so it can be tested directly.
 
 High-level split:
+
 - `shared_code/modules/*`: package directories for feature-oriented business flows and module-local types.
 - `shared_code/data_model/*`: package directories for ORM model definitions and related helpers.
 - `shared_code/services/*`: package directories for side-effecting integrations (mail, storage, remote APIs), with explicit contracts and test doubles where useful.
@@ -19,16 +20,19 @@ High-level split:
 - `shared_code/tests/*`: automated tests for modules, models, services, infra, and util code.
 
 Dependency guideline:
+
 - Modules may use `data_model` and service contracts.
 - `data_model` should not depend on feature modules.
 - Services provide integration implementations used by module wiring.
 - `modules`, `data_model`, `services`, `infra`, and `util` should be organized as package directories, not flat top-level files.
 
 Python syntax guideline:
+
 - In Python 3.14, add `from __future__ import annotations` only when a file actually needs postponed annotation evaluation for correctness or compatibility.
 - Do not add the future import by default to every file.
 
 JavaScript code style:
+
 - Use snake case for variables.
 - Prefix HTML element variables with `$` and HTML element collections with `$$`.
 - Use `data-*` attributes only to store data; do not use them as bootleg CSS classes or selectors.
@@ -71,17 +75,21 @@ Use this section only for durable agent-behavior feedback from the user.
 Do not log normal project decisions that are already captured in code/docs.
 
 Include:
+
 - Working-style constraints (for example editing preferences, review expectations).
 - Repeated correction patterns that should change how agents operate.
 
 Do not include:
+
 - Feature/release architecture decisions documented elsewhere.
 - Routine implementation updates or changelog-style notes.
 
 Entry format:
+
 - `YYYY-MM-DD` - Short title: what changed, why it matters, and what agents should do next time.
 
 Entries:
+
 - `2026-05-18` - File editing preference: use proper patch/edit tools; avoid rewriting whole files when only a section needs changes.
 - `2026-05-19` - Editing method clarification: do not use `cat`/heredoc-style rewrites for file edits; use proper patch/edit tools for minimal, targeted changes.
 - `2026-05-19` - Pytest config location in Dockerized tests: test suites run inside service containers with service-specific mounts/workdirs (`migrate:/pythonpath`, `py4web:/p4w`, `pgq-applog:/pythonpath`), so root `pyproject.toml` will not be visible or applied. Do not suggest root-level pytest config as the default; prefer container-visible suite config (for example `pgq/pytest.toml`) or explicit pytest args in `test.tasks.py`.
@@ -102,10 +110,18 @@ Entries:
 - `2026-10-06` - Superset exports are read-only: never edit files under `./superset/`. Use them only as references and document required live dashboard changes elsewhere.
 - `2026-10-06` - Feedback log ordering: always keep dated entries in ascending chronological order, oldest first and newest last. Append entries for the same date after existing entries for that date.
 - `2026-10-06` - Full-suite execution: ask the user to run the full suite instead of running or delegating it, including during PR delivery, to avoid unnecessary token costs.
-- `2026-10-08` - Admin tile ordering and icons: append new tiles after existing tiles, preserving their order, and use an icon class backed by the SVG icon set.
+- `2026-10-08` - Admin tile ordering and icons: use an icon class backed by the SVG icon set. The original instruction to append tiles is superseded by the 2026-11-02 ordering guidance below.
 - `2026-10-08` - Explicit ORM registration: never call `db.define` in a loop; define each table explicitly so its registration remains visible and independently configurable.
 - `2026-10-29` - SQL parameterization clarification: parameterized t-strings, when supported, and named placeholders provide the same value-binding safety. Preserve existing safe SQL syntax rather than converting between them for style alone.
 - `2026-10-29` - Extracted helper placement: prefer placing extracted helpers above the functions that call them so code follows its natural reading order.
 - `2026-10-29` - Decorator readability: preserve `@decorator` syntax when extracting functions; do not replace decorated definitions with chained decorator-factory calls to reduce complexity scores. Extract a cohesive registration helper when needed.
 - `2026-10-30` - Logical whitespace: separate logical chunks with blank lines, including input extraction, validation, lookups, state updates, successive loops and returns. Do not compress these into dense blocks just because the formatter permits it.
+- `2026-11-02` - Test before publishing corrections: keep fixes local until the user has tested them and explicitly approves committing or pushing; a green test report alone is not approval.
+- `2026-11-02` - Odoo links in PRs: always use a clickable task link such as https://www.educationwarehouse.nl/odoo/my-tasks/10319 in the Odoo section, never only the task number.
+- `2026-11-02` - Admin navigation order and colors: place new tiles where they logically belong, ending with general settings. Preserve the established tile design and distinguish semantic groups with consistent colors; do not flatten all tiles to one color or redesign them when reorganizing navigation.
+- `2026-11-02` - Verify icons before delivery: for every new or changed icon, check its class in `py4web/apps/_default/assets/css/_okl-icons.scss` and verify the referenced SVG exists. Font Awesome names are compatibility aliases, not an installed icon font. When no icon is supplied, omit the icon element instead of rendering a bare icon class or `None`.
+- `2026-11-02` - Assertion messages: in application code, always give assertions a second argument explaining why the asserted condition should hold; do not add bare assertions. Messages are not required in tests or test fixtures.
+- `2026-11-02` - Separate HTTP handlers: use separate controller functions for GET and POST behavior, with explicit methods on `@action`, instead of branching on `request.method` inside a controller.
+- `2026-11-02` - Explicit redirect returns: use `return redirect(...)` in controllers and helpers to make it clear that the function ends at the redirect; apply this consistently when editing existing code.
 - `2026-11-05` - Dictionary merging: prefer `dict1 | dict2` over `{**dict1, **dict2}` when combining dictionaries.
+- `2026-11-10` - Standalone migration-manager versions: a new `*_V<n>` manager subclasses `ViewMigrationManager` directly with its own `up()` and `down()`, never an earlier version of itself. Point `replaces` at the previous version so it is deactivated.

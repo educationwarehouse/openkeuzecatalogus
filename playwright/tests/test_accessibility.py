@@ -35,11 +35,11 @@ CATALOG_SCENARIOS: tuple[CatalogScenario, ...] = (
         "results_endpoint": "/htmx/products/results",
     },
     {
-        "path": "/methodes",
-        "title": "Methodenoverzicht",
-        "results_id": "method-results",
-        "results_heading": "Methodes",
-        "results_endpoint": "/htmx/methods/results",
+        "path": "/pakketten",
+        "title": "Pakkettenoverzicht",
+        "results_id": "package-results",
+        "results_heading": "Pakketten",
+        "results_endpoint": "/htmx/packages/results",
     },
 )
 
@@ -64,7 +64,7 @@ def _scan_catalog_states(
 ) -> None:
     """Scan a catalogue in its initial, filtered, and list-view states."""
     page.goto(f"{BASE_URL}{path}")
-    expect(page.get_by_role("heading", name="Methodes & Producten", exact=True)).to_be_visible()
+    expect(page.get_by_role("heading", name="Pakketten & Producten", exact=True)).to_be_visible()
     _wait_for_catalog(page, results_id, results_heading)
     report.scan(page, f"{title} — standaardweergave")
 

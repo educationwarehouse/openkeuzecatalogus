@@ -147,7 +147,7 @@ class KennisnetCatalogueImporter(AbstractImporter):
 
     def after_methods_and_products_import(self, stats: ImportStats) -> None:
         """Expose completed catalogue counts while CDN uploads continue."""
-        assert self.run_gid
+        assert self.run_gid, "The import run should be created before methods and products finish importing"
         ImporterRun.where(ImporterRun.gid == self.run_gid).update(phase="images")
         self.progress_event_gid = ImporterRunEvent.insert(
             run_gid=self.run_gid,
@@ -183,7 +183,7 @@ class KennisnetCatalogueImporter(AbstractImporter):
         print(f"[{self.source}] {message}", flush=True)
 
     def _update_image_progress(self, supplier_number: int) -> None:
-        assert self.progress_event_gid
+        assert self.progress_event_gid, "The image progress event should exist before image uploads report progress"
         ImporterRunEvent.where(ImporterRunEvent.gid == self.progress_event_gid).update(value=supplier_number)
         self.db.commit()
 

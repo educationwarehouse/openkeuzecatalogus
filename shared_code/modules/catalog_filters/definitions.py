@@ -157,6 +157,10 @@ class BaseCatalogFilterDefinition:
         """
         self._options = list(options)
 
+    def matches_option(self, option: FilterOption, query: str) -> bool:
+        """Match a normalized dropdown search against its label or value."""
+        return not query or query in option.label.casefold() or query in option.value.casefold()
+
     @property
     def field(self) -> Field:
         """Return the bound database field for this filter."""
@@ -314,7 +318,7 @@ class SearchFilterDefinition(BaseCatalogFilterDefinition):
     @property
     def placeholder(self) -> str:
         """Return entity-specific placeholder text for the search input."""
-        if self.context.entity_kind == "product":
+        if self.context.entity_kind in {"product", "package"}:
             return "Zoek op naam, OLID of ISBN"
         return "Zoek op naam of OLID"
 

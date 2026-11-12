@@ -7,11 +7,14 @@
     <nav class="okl-navigation__fallback" aria-label="Hoofdnavigatie">
         <a href="/" [[if okl_navigation['section'] == 'home':]]aria-current="[[=okl_navigation['current']]]"[[pass]]>Home</a>
         <a href="/producten" [[if okl_navigation['section'] == 'catalogue':]]aria-current="[[=okl_navigation['current']]]"[[pass]]>Catalogus</a>
+        [[if okl_navigation_user or okl_navigation_label:]]
         <a href="/private/keuzecanvas" [[if okl_navigation['section'] == 'vision':]]aria-current="[[=okl_navigation['current']]]"[[pass]]>Visie-keuzemodule</a>
+        [[pass]]
         <details class="okl-navigation__dropdown">
             <summary>Over het platform</summary>
             <nav aria-label="Over het platform">
                 <a href="/#waarom">Over de Open Keuzecatalogus</a>
+                <a href="https://sivon.nl/over-ons/" target="_blank" rel="noopener noreferrer">Over SIVON<span class="visually-hidden"> (opent in nieuw tabblad)</span></a>
                 <a href="/faq" [[if okl_navigation['section'] == 'faq':]]aria-current="[[=okl_navigation['current']]]"[[pass]]>Veelgestelde vragen</a>
                 <a href="/#planning">Volg de ontwikkeling</a>
                 <a href="/#contact">Contact</a>
@@ -65,13 +68,16 @@
                     <span><strong>Catalogus</strong><small>Vind en vergelijk leermiddelen</small></span>
                     <span class="okl-navigation__current">Je bent hier</span>
                 </a>
+                [[if okl_navigation_user or okl_navigation_label:]]
                 <a class="okl-navigation__destination" href="/private/keuzecanvas" [[if okl_navigation['section'] == 'vision':]]aria-current="[[=okl_navigation['current']]]"[[pass]]>
                     <span><strong>Visie-keuzemodule</strong><small>Werk samen aan jullie keuzetraject</small></span>
                     <span class="okl-navigation__current">Je bent hier</span>
                 </a>
+                [[pass]]
             </nav>
             <nav class="okl-navigation__secondary" aria-label="Over het platform">
                 <a href="/#waarom">Over de Open Keuzecatalogus</a>
+                <a href="https://sivon.nl/over-ons/" target="_blank" rel="noopener noreferrer">Over SIVON<span class="visually-hidden"> (opent in nieuw tabblad)</span></a>
                 <a href="/faq" [[if okl_navigation['section'] == 'faq':]]aria-current="[[=okl_navigation['current']]]"[[pass]]>Veelgestelde vragen</a>
                 <a href="/#planning">Volg de ontwikkeling</a>
                 <a href="/#contact">Contact</a>

@@ -1,4 +1,4 @@
-"""Safe `?next` redirect helpers.
+"""HTMX-aware redirects and safe `?next` redirect helpers.
 
 Kept separate from :mod:`common.models.request_data` (which pulls in
 `common.models.backend`) so that `common.models.backend.auth_forms` can
@@ -9,7 +9,16 @@ import os
 import typing as t
 from urllib.parse import urlsplit
 
-from py4web import redirect, request
+from py4web import HTTP, request
+from py4web import redirect as py4web_redirect
+
+
+def redirect(location: str) -> t.NoReturn:
+    """Preserve the complete destination URL when redirecting HTMX requests."""
+    if request.headers.get("HX-Request") == "true":
+        raise HTTP(200, headers={"HX-Redirect": location})
+
+    return py4web_redirect(location)
 
 
 def find_next(default: str) -> str:
@@ -45,5 +54,6 @@ def redirect_next(default: str) -> t.NoReturn:
 
 __all__ = [
     "find_next",
+    "redirect",
     "redirect_next",
 ]

@@ -185,14 +185,6 @@ def caching(
         db_per_file.commit()
 
 
-@pytest.fixture()
-def memory_caching(db_per_file: DatabaseContext) -> MemoryCacheService:
-    """Yield an in-process cache for tests that do not need a second backend."""
-    service = MemoryCacheService.with_injected(db=db_per_file)
-    define_tables(db_per_file, caching=service)
-    return service
-
-
 # ---------------------------------------------------------------------------
 # Keys and scope
 # ---------------------------------------------------------------------------

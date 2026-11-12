@@ -141,7 +141,7 @@ class MethodBackend(Domain, TypeDALPolicyMixin[Method]):
                 return rows
 
             builder = self.public_method_base_query().select(*public_readable_fields(Method))
-            cache.update_deps(TableDep("dynamic_sort"), TableDep("dynamic_filter"))
+            cache.update_deps(TableDep("dynamic_sort"), TableDep("dynamic_filter"), TableDep("school_subject"))
             builder = Method.apply_orderby(sort_option.order, builder)
             builder = self.filters.apply(builder, filters)
             builder = self._with_public_relations(builder)

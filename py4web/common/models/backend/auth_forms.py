@@ -234,7 +234,7 @@ class LoggingAuthForms(DefaultAuthForms):
             self._set_flash(error)
             raise redirect(URL("auth", "login", use_appname=False))
 
-        assert user
+        assert user, "Consuming a magic-login token without an error should return its user"
         self.auth.store_user_in_session(user.id)
         self._set_flash("magic-login-success")
         self._postprocessing("magic_login", user=user)

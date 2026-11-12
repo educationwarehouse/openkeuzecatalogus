@@ -1,0 +1,11 @@
+# Only selected by the opt-in test runner. The production/development volume remains untouched.
+services:
+  pg-0:
+    command: ["postgres", "-c", "pgaudit.log=none"]
+    # A restart would come back on an empty tmpfs; fail visibly instead of handing later suites an empty database.
+    restart: "no"
+    volumes:
+      - type: tmpfs
+        target: /var/lib/postgresql
+        tmpfs:
+          size: ${TEST_RAM_BYTES:-2147483648}

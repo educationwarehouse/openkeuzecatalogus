@@ -167,7 +167,7 @@ def test_recommendation_controls_lock_team_criteria_and_preserve_preview_totals(
     assert products["has_more"]
     assert len(products["visible_recommendations"]) == 9
     query = parse_qs(urlsplit(products["catalog_url"]).query)
-    assert query[data["subject_slug"]] == [data["subject"]]
+    assert query[data["subject_slug"]] == [data["subject"].strip().casefold()]
     assert query[data["level_slug"]] == ["Havo"]
     assert "sort" not in query
 
@@ -180,7 +180,7 @@ def test_recommendation_search_requeries_and_preserves_criteria_in_catalogue_lin
 ) -> None:
     """Additional search filters produce fresh counts and correctly encoded full-catalogue links."""
     data = vision_catalogue_data
-    # Match the full phrase so a random prefix containing "11" cannot match every supplier's product.
+    # Match the full phrase so random prefix digits cannot satisfy a separate search term.
     term = f'"{data["prefix"]} {search}"'
     context = vision_catalog_context(
         data["backend"],
@@ -200,7 +200,7 @@ def test_recommendation_search_requeries_and_preserves_criteria_in_catalogue_lin
     assert len(products["visible_recommendations"]) == expected_count
     query = parse_qs(urlsplit(products["catalog_url"]).query)
     assert query[data["search_slug"]] == [term]
-    assert query[data["subject_slug"]] == [data["subject"]]
+    assert query[data["subject_slug"]] == [data["subject"].strip().casefold()]
     assert query[data["level_slug"]] == ["Havo"]
     assert query["sort"] == [data["sort_slug"]]
 

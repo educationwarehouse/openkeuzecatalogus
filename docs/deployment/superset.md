@@ -16,4 +16,3 @@ These credentials are used for a **read-only database user**. This limits the im
 Superset should connect to the database through a private/internal network instead of exposing the database port publicly.
 
 In our setup, Superset is hosted on a separate server. Since both servers are hosted at the same server provider, we connect Superset to the database server through an internal vSwitch. This allows Superset to remotely read from the database without opening the database port to the public internet.
-
